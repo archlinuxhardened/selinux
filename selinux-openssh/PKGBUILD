@@ -1,0 +1,83 @@
+# $Id: PKGBUILD 157126 2012-04-24 08:19:53Z bisson $
+# Maintainer: Gaetan Bisson <bisson@archlinux.org>
+# Maintainer: Nicky726 <Nicky726@gmail.com>
+# Contributor: Aaron Griffin <aaron@archlinux.org>
+# Contributor: judd <jvinet@zeroflux.org>
+
+pkgname=selinux-openssh
+_origname=openssh
+pkgver=6.0p1
+pkgrel=1
+pkgdesc='Free version of the SSH connectivity tools with SELinux support'
+arch=('i686' 'x86_64')
+license=('custom:BSD')
+url='http://www.openssh.org/portable.html'
+backup=('etc/ssh/ssh_config' 'etc/ssh/sshd_config' 'etc/pam.d/sshd' 'etc/conf.d/sshd')
+depends=('krb5' 'openssl' 'libedit' 'ldns' 'selinux-usr-libselinux')
+optdepends=('x11-ssh-askpass: input passphrase in X without a terminal')
+conflicts=("${_origname}")
+provides=("${_origname}=${pkgver}-${pkgrel}")
+source=("ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/${_origname}-${pkgver}.tar.gz"
+        'sshd.close-sessions'
+        'sshd.confd'
+        'sshd.pam'
+        'sshd')
+sha1sums=('f691e53ef83417031a2854b8b1b661c9c08e4422'
+          '954bf1660aa32620c37034320877f4511b767ccb'
+          'ec102deb69cad7d14f406289d2fc11fee6eddbdd'
+          'cc3d4463849cf388cc3fbe6068a8f2ce8fb3ae95'
+          '21fa88de6cc1c7912e71655f50896ba17991a1c2')
+
+backup=('etc/ssh/ssh_config' 'etc/ssh/sshd_config' 'etc/pam.d/sshd' 'etc/conf.d/sshd')
+
+build() {
+	cd "${srcdir}/${_origname}-${pkgver}"
+
+	./configure \
+		--prefix=/usr \
+		--libexecdir=/usr/lib/ssh \
+		--sysconfdir=/etc/ssh \
+		--with-ldns \
+		--with-libedit \
+		--with-ssl-engine \
+		--with-pam \
+		--with-privsep-user=nobody \
+		--with-kerberos5=/usr \
+		--with-xauth=/usr/bin/xauth \
+		--with-mantype=man \
+		--with-md5-passwords \
+		--with-selinux
+
+	make
+}
+
+check() {
+	cd "${srcdir}/${_origname}-${pkgver}"
+
+	# The connect.sh test must be run by a user with a decent login shell;
+	# chroot builds use nobody with /bin/false.
+	make tests || true
+}
+
+package() {
+	cd "${srcdir}/${_origname}-${pkgver}"
+	make DESTDIR="${pkgdir}" install
+
+	install -Dm755 ../sshd "${pkgdir}"/etc/rc.d/sshd
+	install -Dm644 ../sshd.pam "${pkgdir}"/etc/pam.d/sshd
+	install -Dm644 ../sshd.confd "${pkgdir}"/etc/conf.d/sshd
+	install -Dm644 LICENCE "${pkgdir}/usr/share/licenses/${_origname}/LICENCE"
+	install -Dm755 ../sshd.close-sessions "${pkgdir}/etc/rc.d/functions.d/sshd-close-sessions" # FS#17389
+
+	rm "${pkgdir}"/usr/share/man/man1/slogin.1
+	ln -sf ssh.1.gz "${pkgdir}"/usr/share/man/man1/slogin.1.gz
+
+	install -Dm755 contrib/findssl.sh "${pkgdir}"/usr/bin/findssl.sh
+	install -Dm755 contrib/ssh-copy-id "${pkgdir}"/usr/bin/ssh-copy-id
+	install -Dm644 contrib/ssh-copy-id.1 "${pkgdir}"/usr/share/man/man1/ssh-copy-id.1
+
+	sed \
+		-e '/^#ChallengeResponseAuthentication yes$/c ChallengeResponseAuthentication no' \
+		-e '/^#UsePAM no$/c UsePAM yes' \
+		-i "${pkgdir}"/etc/ssh/sshd_config
+}

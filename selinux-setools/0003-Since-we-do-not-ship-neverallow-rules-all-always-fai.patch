@@ -1,0 +1,28 @@
+From 252b7c8bf311d615164a20f4f402767e5859d972 Mon Sep 17 00:00:00 2001
+From: Dan Walsh <dwalsh@redhat.com>
+Date: Tue, 20 Sep 2011 15:40:28 -0400
+Subject: [PATCH 3/6] Since-we-do-not-ship-neverallow-rules-all-always-fail
+
+---
+ libqpol/src/avrule_query.c |    5 +++--
+ 1 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/libqpol/src/avrule_query.c b/libqpol/src/avrule_query.c
+index 749565b..76dcaa3 100644
+--- a/libqpol/src/avrule_query.c
++++ b/libqpol/src/avrule_query.c
+@@ -57,8 +57,9 @@ int qpol_policy_get_avrule_iter(const qpol_policy_t * policy, uint32_t rule_type
+ 
+ 	if ((rule_type_mask & QPOL_RULE_NEVERALLOW) && !qpol_policy_has_capability(policy, QPOL_CAP_NEVERALLOW)) {
+ 		ERR(policy, "%s", "Cannot get avrules: Neverallow rules requested but not available");
+-		errno = ENOTSUP;
+-		return STATUS_ERR;
++/*		errno = ENOTSUP;
++		return STATUS_ERR; */
++		return STATUS_SUCCESS;
+ 	}
+ 
+ 	db = &policy->p->p;
+-- 
+1.7.6.2
+

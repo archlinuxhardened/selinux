@@ -1,0 +1,28 @@
+# Maintainer: Nicky726 (Nicky726 <at> gmail <dot> com)
+# Contributor: Sergej Pupykin (pupykin <dot> s+arch <at> gmail <dot> com)
+
+pkgname=selinux-usr-checkpolicy
+_origname=checkpolicy
+_release=20110727
+pkgver=2.1.0
+pkgrel=1
+pkgdesc="SELinux userspace (checkpolicy)"
+arch=('i686' 'x86_64')
+url="http://userspace.selinuxproject.org"
+license=('GPL')
+groups=('selinux' 'selinux-userspace')
+depends=('selinux-usr-libsepol>=2.1.0' 'selinux-usr-libselinux>=2.1.0')
+makedepends=('selinux-flex')
+options=(!emptydirs)
+source=(http://userspace.selinuxproject.org/releases/${_release}/devel/${_origname}-${pkgver}.tar.gz)
+sha256sums=('9eaa15d1fbd23faebda9b1aef902d986edd3a9f9e75791e081b322875ab4f1aa')
+
+build() {
+  cd "${srcdir}/${_origname}-${pkgver}"
+  make
+}
+
+package(){
+  cd "${srcdir}/${_origname}-${pkgver}"
+  make DESTDIR="${pkgdir}" install
+}

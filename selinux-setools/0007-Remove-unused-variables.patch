@@ -1,0 +1,277 @@
+From e30036e358b8f1c3f56048b467e8646fa3bfffb6 Mon Sep 17 00:00:00 2001
+From: Dan Walsh <dwalsh@redhat.com>
+Date: Tue, 20 Sep 2011 16:40:26 -0400
+Subject: [PATCH 7/7] Remove unused variables
+
+---
+ libapol/src/ftrule-query.c |   11 ++----
+ libqpol/src/ftrule_query.c |    2 -
+ secmds/sesearch.c          |   86 +++++++++++++++++++++++++++++++++-----------
+ 3 files changed, 68 insertions(+), 31 deletions(-)
+
+diff --git a/libapol/src/ftrule-query.c b/libapol/src/ftrule-query.c
+index dc248de..9c7a23b 100644
+--- a/libapol/src/ftrule-query.c
++++ b/libapol/src/ftrule-query.c
+@@ -45,14 +45,11 @@ struct apol_filename_trans_query
+ int apol_filename_trans_get_by_query(const apol_policy_t * p, const apol_filename_trans_query_t * t, apol_vector_t ** v)
+ {
+ 	apol_vector_t *source_list = NULL, *target_list = NULL, *class_list = NULL, *default_list = NULL;
+-	int retval = -1, source_as_any = 0, is_regex = 0, append_filename_trans;
+-	char *bool_name = NULL;
++	int retval = -1, source_as_any = 0, is_regex = 0;
+ 	*v = NULL;
+-	unsigned int flags = 0;
+-	qpol_iterator_t *iter = NULL, *type_iter = NULL;
++	qpol_iterator_t *iter = NULL;
+ 
+ 	if (t != NULL) {
+-		flags = t->flags;
+ 		is_regex = t->flags & APOL_QUERY_REGEX;
+ 		if (t->source != NULL &&
+ 		    (source_list =
+@@ -104,7 +101,7 @@ int apol_filename_trans_get_by_query(const apol_policy_t * p, const apol_filenam
+ 		if (qpol_iterator_get_item(iter, (void **)&filename_trans) < 0) {
+ 			goto cleanup;
+ 		}
+-		int match_source = 0, match_target = 0, match_default = 0, match_bool = 0;
++		int match_source = 0, match_target = 0, match_default = 0;
+ 		size_t i;
+ 
+ 		if (source_list == NULL) {
+@@ -265,10 +262,8 @@ char *apol_filename_trans_render(const apol_policy_t * policy, const qpol_filena
+ {
+ 	char *tmp = NULL;
+ 	const char *tmp_name = NULL;
+-	const char *filename_trans_type_str;
+ 	int error = 0;
+ 	size_t tmp_sz = 0;
+-	uint32_t filename_trans_type = 0;
+ 	const qpol_type_t *type = NULL;
+ 	const qpol_class_t *obj_class = NULL;
+ 
+diff --git a/libqpol/src/ftrule_query.c b/libqpol/src/ftrule_query.c
+index d6db848..3148d30 100644
+--- a/libqpol/src/ftrule_query.c
++++ b/libqpol/src/ftrule_query.c
+@@ -254,7 +254,6 @@ int qpol_filename_trans_get_default_type(const qpol_policy_t * policy, const qpo
+ 
+ int qpol_filename_trans_get_filename(const qpol_policy_t * policy, const qpol_filename_trans_t * rule, const char ** name)
+ {
+-	policydb_t *db = NULL;
+ 	filename_trans_t *ft = NULL;
+ 
+ 	if (name) {
+@@ -267,7 +266,6 @@ int qpol_filename_trans_get_filename(const qpol_policy_t * policy, const qpol_fi
+ 		return STATUS_ERR;
+ 	}
+ 
+-	db = &policy->p->p;
+ 	ft = (filename_trans_t *) rule;
+ 
+ 	*name = ft->name;
+diff --git a/secmds/sesearch.c b/secmds/sesearch.c
+index e44b3bc..319ffe7 100644
+--- a/secmds/sesearch.c
++++ b/secmds/sesearch.c
+@@ -72,6 +72,7 @@ static struct option const longopts[] = {
+ 
+ 	{"source", required_argument, NULL, 's'},
+ 	{"target", required_argument, NULL, 't'},
++	{"default", required_argument, NULL, 'D'},
+ 	{"role_source", required_argument, NULL, EXPR_ROLE_SOURCE},
+ 	{"role_target", required_argument, NULL, EXPR_ROLE_TARGET},
+ 	{"class", required_argument, NULL, 'c'},
+@@ -92,6 +93,7 @@ typedef struct options
+ {
+ 	char *src_name;
+ 	char *tgt_name;
++	char *default_name;
+ 	char *src_role_name;
+ 	char *tgt_role_name;
+ 	char *class_name;
+@@ -293,7 +295,8 @@ static void print_syn_av_results(const apol_policy_t * policy, const options_t *
+ 				tmp = apol_cond_expr_render(policy, cond);
+ 				enable_char = (enabled ? 'E' : 'D');
+ 				branch_char = ((is_true && enabled) || (!is_true && !enabled) ? 'T' : 'F');
+-				asprintf(&expr, "[ %s ]", tmp);
++				if (asprintf(&expr, "[ %s ]", tmp) < 0)
++					goto cleanup;
+ 				free(tmp);
+ 				tmp = NULL;
+ 				if (!expr)
+@@ -356,7 +359,8 @@ static void print_av_results(const apol_policy_t * policy, const options_t * opt
+ 				qpol_iterator_destroy(&iter);
+ 				enable_char = (enabled ? 'E' : 'D');
+ 				branch_char = (list ? 'T' : 'F');
+-				asprintf(&expr, "[ %s ]", tmp);
++				if (asprintf(&expr, "[ %s ]", tmp) < 0)
++					goto cleanup;
+ 				free(tmp);
+ 				tmp = NULL;
+ 				if (!expr)
+@@ -488,7 +492,8 @@ static void print_syn_te_results(const apol_policy_t * policy, const options_t *
+ 				tmp = apol_cond_expr_render(policy, cond);
+ 				enable_char = (enabled ? 'E' : 'D');
+ 				branch_char = ((is_true && enabled) || (!is_true && !enabled) ? 'T' : 'F');
+-				asprintf(&expr, "[ %s ]", tmp);
++				if (asprintf(&expr, "[ %s ]", tmp) < 0)
++					goto cleanup;
+ 				free(tmp);
+ 				tmp = NULL;
+ 				if (!expr)
+@@ -553,7 +558,8 @@ static void print_te_results(const apol_policy_t * policy, const options_t * opt
+ 				qpol_iterator_destroy(&iter);
+ 				enable_char = (enabled ? 'E' : 'D');
+ 				branch_char = (list ? 'T' : 'F');
+-				asprintf(&expr, "[ %s ]", tmp);
++				if (asprintf(&expr, "[ %s ]", tmp) < 0)
++					goto cleanup;
+ 				free(tmp);
+ 				tmp = NULL;
+ 				if (!expr)
+@@ -586,7 +592,7 @@ static int perform_ft_query(const apol_policy_t * policy, const options_t * opt,
+ 		return -1;
+ 	}
+ 
+-	if (!opt->type == QPOL_RULE_TYPE_TRANS && !opt->all) {
++	if (!opt->type && !opt->all) {
+ 		*v = NULL;
+ 		return 0;	       /* no search to do */
+ 	}
+@@ -600,17 +606,44 @@ static int perform_ft_query(const apol_policy_t * policy, const options_t * opt,
+ 
+ 	apol_filename_trans_query_set_regex(policy, ftq, opt->useregex);
+ 	if (opt->src_name) {
+-		if (apol_filename_trans_query_set_source(policy, ftq, opt->src_name)) {
++		if (apol_filename_trans_query_set_source(policy, ftq, opt->src_name, opt->indirect)) {
+ 			error = errno;
+ 			goto err;
+ 		}
+ 	}
++
+ 	if (opt->tgt_name) {
+ 		if (apol_filename_trans_query_set_target(policy, ftq, opt->tgt_name, opt->indirect)) {
+ 			error = errno;
+ 			goto err;
+ 		}
+ 	}
++	if (opt->default_name) {
++		if (apol_filename_trans_query_set_default(policy, ftq, opt->default_name)) {
++			error = errno;
++			goto err;
++		}
++	}
++
++	if (opt->class_name) {
++		if (opt->class_vector == NULL) {
++			if (apol_filename_trans_query_append_class(policy, ftq, opt->class_name)) {
++				error = errno;
++				goto err;
++			}
++		} else {
++			for (size_t i = 0; i < apol_vector_get_size(opt->class_vector); ++i) {
++				char *class_name;
++				class_name = apol_vector_get_element(opt->class_vector, i);
++				if (!class_name)
++					continue;
++				if (apol_filename_trans_query_append_class(policy, ftq, class_name)) {
++					error = errno;
++					goto err;
++				}
++			}
++		}
++	}
+ 
+ 	if (apol_filename_trans_get_by_query(policy, ftq, v)) {
+ 		error = errno;
+@@ -630,37 +663,36 @@ static int perform_ft_query(const apol_policy_t * policy, const options_t * opt,
+ 
+ static void print_ft_results(const apol_policy_t * policy, const options_t * opt, const apol_vector_t * v)
+ {
+-	qpol_policy_t *q = apol_policy_get_qpol(policy);
+-	size_t i, num_rules = 0;
+-	const qpol_filename_trans_t *rule = NULL;
+-	char *tmp = NULL, *rule_str = NULL, *expr = NULL;
++	size_t i, num_filename_trans = 0;
++	const qpol_filename_trans_t *filename_trans = NULL;
++	char *tmp = NULL, *filename_trans_str = NULL, *expr = NULL;
+ 	char enable_char = ' ', branch_char = ' ';
+ 	qpol_iterator_t *iter = NULL;
+ 	const qpol_cond_t *cond = NULL;
+ 	uint32_t enabled = 0, list = 0;
+ 
+-	if (!(num_rules = apol_vector_get_size(v)))
++	if (!(num_filename_trans = apol_vector_get_size(v)))
+ 		goto cleanup;
+ 
+-	fprintf(stdout, "Found %zd named file transition rules:\n", num_rules);
++	fprintf(stdout, "Found %zd named file transition filename_trans:\n", num_filename_trans);
+ 
+-	for (i = 0; i < num_rules; i++) {
++	for (i = 0; i < num_filename_trans; i++) {
+ 		enable_char = branch_char = ' ';
+-		if (!(rule = apol_vector_get_element(v, i)))
++		if (!(filename_trans = apol_vector_get_element(v, i)))
+ 			goto cleanup;
+ 
+-		if (!(rule_str = apol_filename_trans_render(policy, rule)))
++		if (!(filename_trans_str = apol_filename_trans_render(policy, filename_trans)))
+ 			goto cleanup;
+-		fprintf(stdout, "%s %s\n", rule_str, expr ? expr : "");
+-		free(rule_str);
+-		rule_str = NULL;
++		fprintf(stdout, "%s %s\n", filename_trans_str, expr ? expr : "");
++		free(filename_trans_str);
++		filename_trans_str = NULL;
+ 		free(expr);
+ 		expr = NULL;
+ 	}
+ 
+       cleanup:
+ 	free(tmp);
+-	free(rule_str);
++	free(filename_trans_str);
+ 	free(expr);
+ }
+ 
+@@ -930,7 +962,7 @@ int main(int argc, char **argv)
+ 
+ 	memset(&cmd_opts, 0, sizeof(cmd_opts));
+ 	cmd_opts.indirect = true;
+-	while ((optc = getopt_long(argc, argv, "ATs:t:c:p:b:dRnSChV", longopts, NULL)) != -1) {
++	while ((optc = getopt_long(argc, argv, "ATs:t:c:p:b:dD:RnSChV", longopts, NULL)) != -1) {
+ 		switch (optc) {
+ 		case 0:
+ 			break;
+@@ -946,6 +978,18 @@ int main(int argc, char **argv)
+ 				exit(1);
+ 			}
+ 			break;
++		case 'D':	       /* source */
++			if (optarg == 0) {
++				usage(argv[0], 1);
++				printf("Missing source default type for -D (--default)\n");
++				exit(1);
++			}
++			cmd_opts.default_name = strdup(optarg);
++			if (!cmd_opts.default_name) {
++		
++				exit(1);
++			}
++			break;
+ 		case 't':	       /* target */
+ 			if (optarg == 0) {
+ 				usage(argv[0], 1);
+@@ -1218,7 +1262,7 @@ int main(int argc, char **argv)
+ 		fprintf(stdout, "\n");
+ 	}
+ 
+-	if (cmd_opts.all || cmd_opts.type == QPOL_RULE_TYPE_TRANS) {
++	if (cmd_opts.all || cmd_opts.type) {
+ 		apol_vector_destroy(&v);
+ 		if (perform_ft_query(policy, &cmd_opts, &v)) {
+ 			rt = 1;
+-- 
+1.7.6.2
+

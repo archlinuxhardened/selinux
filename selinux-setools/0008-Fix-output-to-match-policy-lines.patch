@@ -1,0 +1,34 @@
+From 2f89d9acc12c0a7b50a94e4247b015242ce712c9 Mon Sep 17 00:00:00 2001
+From: Dan Walsh <dwalsh@redhat.com>
+Date: Wed, 21 Sep 2011 15:15:02 -0400
+Subject: [PATCH 8/8] Fix output to match policy lines
+
+---
+ libapol/src/ftrule-query.c |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/libapol/src/ftrule-query.c b/libapol/src/ftrule-query.c
+index 9c7a23b..1d5f5c8 100644
+--- a/libapol/src/ftrule-query.c
++++ b/libapol/src/ftrule-query.c
+@@ -282,7 +282,7 @@ char *apol_filename_trans_render(const apol_policy_t * policy, const qpol_filena
+ 		error = errno;
+ 		goto err;
+ 	}
+-	if (apol_str_appendf(&tmp, &tmp_sz, "transition_type %s ", tmp_name)) {
++	if (apol_str_appendf(&tmp, &tmp_sz, "type_transition %s ", tmp_name)) {
+ 		error = errno;
+ 		ERR(policy, "%s", strerror(error));
+ 		goto err;
+@@ -338,7 +338,7 @@ char *apol_filename_trans_render(const apol_policy_t * policy, const qpol_filena
+ 		goto err;
+ 	}
+ 
+-	if (apol_str_appendf(&tmp, &tmp_sz, " %s", tmp_name)) {
++	if (apol_str_appendf(&tmp, &tmp_sz, " \"%s\"", tmp_name)) {
+ 		error = errno;
+ 		ERR(policy, "%s", strerror(error));
+ 		goto err;
+-- 
+1.7.6.2
+

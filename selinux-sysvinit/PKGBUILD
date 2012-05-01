@@ -1,0 +1,38 @@
+# $Id: PKGBUILD 137778 2011-09-10 22:03:08Z tomegun $
+# Maintainer: Eric Belanger <eric@archlinux.org>
+# Maintainer: Nicky726 <Nicky726@gmail.com>
+# Contributor: judd <jvinet@zeroflux.org>
+
+pkgname=selinux-sysvinit
+_origname=sysvinit
+pkgver=2.88
+pkgrel=3
+pkgdesc="SELinux aware Linux System V Init"
+arch=('i686' 'x86_64')
+url="http://savannah.nongnu.org/projects/sysvinit"
+license=('GPL')
+groups=('selinux' 'selinux-system-utilities')
+depends=('selinux-shadow' 'selinux-util-linux' 'selinux-coreutils' 'glibc' 'awk')
+conflicts=("${_origname}")
+provides=("${_origname}=${pkgver}-${pkgrel}")
+install=sysvinit.install
+source=(http://download.savannah.gnu.org/releases/sysvinit/${_origname}-${pkgver}dsf.tar.bz2
+        ${_origname}-2.88-selinux.patch)
+sha1sums=('f2ca149df1314a91f3007cccd7a0aa47d990de26'
+          '9ed8746e61860c11c1152c6727e31d29c3d81d4f')
+
+build() {
+  cd "${srcdir}/${_origname}-${pkgver}dsf"
+  patch -Np1 -i "${srcdir}/${_origname}-2.88-selinux.patch"
+  make WITH_SELINUX=yes
+}
+
+package() {
+  cd "${srcdir}/${_origname}-${pkgver}dsf"
+  make ROOT="${pkgdir}" install
+
+  # mountpoint is now provided by util-linux instead
+  cd "${pkgdir}"
+  rm bin/mountpoint
+  rm usr/share/man/man1/mountpoint.1
+}

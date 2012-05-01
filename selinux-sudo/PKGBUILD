@@ -1,0 +1,49 @@
+# $Id: PKGBUILD 153501 2012-03-15 08:12:51Z allan $
+# Maintainer: Allan McRae <allan@archlinux.org>
+# Maintainer: Nicky726 <Nicky726@gmail.com>
+# Contributor: Tom Newsom <Jeepster@gmx.co.uk>
+
+pkgname=selinux-sudo
+_origname=sudo
+_ver=1.8.4p4
+pkgver=1.8.4p4
+#pkgver=${_ver/[a-z]/.${_ver//[0-9.]/}}
+pkgrel=1
+pkgdesc="Give certain users the ability to run some commands as root with SELinux support"
+arch=('i686' 'x86_64')
+url="http://www.sudo.ws/sudo/"
+license=('custom')
+groups=('selinux' 'selinux-system-utilities')
+depends=('glibc' 'selinux-pam' 'selinux-usr-libselinux')
+conflicts=("${_origname}")
+provides=("${_origname}=${pkgver}-${pkgrel}")
+backup=('etc/sudoers' 'etc/pam.d/sudo')
+options=('!libtool' '!makeflags')
+source=(ftp://ftp.sudo.ws/pub/sudo/$_origname-$_ver.tar.gz{,.sig}
+        sudo.pam)
+md5sums=('b9be6df7ecefedff2263052ed9fc5e93'
+         '24da0bf96506b81678726778aad9ea4c'
+         '4e7ad4ec8f2fe6a40e12bcb2c0b256e3')
+
+build() {
+  cd "$srcdir/$_origname-$_ver"
+
+  ./configure --prefix=/usr --with-pam --libexecdir=/usr/lib \
+    --with-env-editor --with-all-insults --with-logfac=auth \
+    --with-selinux
+  make
+}
+
+check() {
+  cd "$srcdir/$_origname-$_ver"
+  make check
+}
+
+package() {
+  cd "$srcdir/$_origname-$_ver"
+  make DESTDIR="$pkgdir" install
+
+  install -Dm644 "$srcdir/sudo.pam" "$pkgdir/etc/pam.d/sudo"
+
+  install -Dm644 doc/LICENSE "$pkgdir/usr/share/licenses/sudo/LICENSE"
+}

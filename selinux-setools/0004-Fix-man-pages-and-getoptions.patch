@@ -1,0 +1,78 @@
+From b3c8ef5822dbf3e3272fc29627ddac7e20e936d5 Mon Sep 17 00:00:00 2001
+From: Dan Walsh <dwalsh@redhat.com>
+Date: Tue, 20 Sep 2011 15:41:12 -0400
+Subject: [PATCH 4/6] Fix-man-pages-and-getoptions
+
+---
+ man/replcon.1            |    2 ++
+ man/seinfo.1             |    6 +++++-
+ seaudit/seaudit-report.c |    2 +-
+ sediff/sediff.c          |    2 +-
+ 4 files changed, 9 insertions(+), 3 deletions(-)
+
+diff --git a/man/replcon.1 b/man/replcon.1
+index 8aca08a..478dc51 100644
+--- a/man/replcon.1
++++ b/man/replcon.1
+@@ -44,6 +44,8 @@ Search for files which include PATH.
+ .IP "-c CLASS, --class=CLASS"
+ Search only files of object class CLASS.
+ .SH OPTIONS
++.IP "-R, --regex"
++Enable regular expressions
+ .IP "-v, --verbose"
+ Display context info during replacement.
+ .IP "-h, --help"
+diff --git a/man/seinfo.1 b/man/seinfo.1
+index 8612119..6bc17db 100644
+--- a/man/seinfo.1
++++ b/man/seinfo.1
+@@ -76,6 +76,10 @@ There is no expanded information for this component.
+ .IP "--nodecon[=ADDR]"
+ Print a list of node contexts or, if ADDR is provided, print the statement for the node with address ADDR.
+ There is no expanded information for this component.
++.IP "--polcap"
++Print policy capabilities.
++.IP "--permissive"
++Print permissive types.
+ .IP "--portcon[=PORT]"
+ Print a list of port contexts or, if PORT is provided, print the statement for port PORT.
+ There is no expanded information for this component.
+@@ -93,7 +97,7 @@ These details include the types assigned to an attribute or role and the permiss
+ This option is not available for all component types; see the description of each component for the details this option will provide.
+ .IP "--stats"
+ Print policy statistics including policy type and version information and counts of all components and rules.
+-.IP "-l"
++.IP "-l, --line-breaks"
+ Print line breaks when displaying constraint statements.
+ .IP "-h, --help"
+ Print help information and exit.
+diff --git a/seaudit/seaudit-report.c b/seaudit/seaudit-report.c
+index af3c6fb..d436c18 100644
+--- a/seaudit/seaudit-report.c
++++ b/seaudit/seaudit-report.c
+@@ -100,7 +100,7 @@ static void seaudit_report_info_usage(const char *program_name, int brief)
+ 	printf("  -s, --stdin              read log data from standard input\n");
+ 	printf("  -m, --malformed          include malformed log messages\n");
+ 	printf("  -o FILE, --output=FILE   output to FILE\n");
+-	printf("  --config=FILE            read configuration from FILE\n");
++	printf("  -c FILE, --config=FILE   read configuration from FILE\n");
+ 	printf("  --html                   set output format to HTML\n");
+ 	printf("  --stylesheet=FILE        HTML style sheet for formatting HTML report\n");
+ 	printf("                           (ignored if --html is not given)\n");
+diff --git a/sediff/sediff.c b/sediff/sediff.c
+index 6022775..341c650 100644
+--- a/sediff/sediff.c
++++ b/sediff/sediff.c
+@@ -420,7 +420,7 @@ int main(int argc, char **argv)
+ 	poldiff_t *diff = NULL;
+ 	size_t total = 0;
+ 
+-	while ((optc = getopt_long(argc, argv, "ctarubANDLMCRqhV", longopts, NULL)) != -1) {
++	while ((optc = getopt_long(argc, argv, "ctarubAqhV", longopts, NULL)) != -1) {
+ 		switch (optc) {
+ 		case 0:
+ 			break;
+-- 
+1.7.6.2
+

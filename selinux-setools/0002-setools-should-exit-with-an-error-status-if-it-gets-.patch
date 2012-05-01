@@ -1,0 +1,133 @@
+From 667fe9187c203ffcba855e821dff11c8f71ef000 Mon Sep 17 00:00:00 2001
+From: Dan Walsh <dwalsh@redhat.com>
+Date: Tue, 20 Sep 2011 15:39:51 -0400
+Subject: [PATCH 2/6] setools-should-exit-with-an-error-status-if-it-gets-an
+ error
+
+---
+ secmds/seinfo.c |   51 +++++++++++++++++++++++++++------------------------
+ 1 files changed, 27 insertions(+), 24 deletions(-)
+
+diff --git a/secmds/seinfo.c b/secmds/seinfo.c
+index fdf23e9..3088f88 100644
+--- a/secmds/seinfo.c
++++ b/secmds/seinfo.c
+@@ -827,7 +827,7 @@ static int print_sens(FILE * fp, const char *name, int expand, const apol_policy
+  */
+ static int print_cats(FILE * fp, const char *name, int expand, const apol_policy_t * policydb)
+ {
+-	int retval = 0;
++	int retval = -1;
+ 	apol_cat_query_t *query = NULL;
+ 	apol_vector_t *v = NULL;
+ 	const qpol_cat_t *cat_datum = NULL;
+@@ -911,9 +911,10 @@ static int print_fsuse(FILE * fp, const char *type, const apol_policy_t * policy
+ 		fprintf(fp, "   %s\n", tmp);
+ 		free(tmp);
+ 	}
+-	if (type && !apol_vector_get_size(v))
++	if (type && !apol_vector_get_size(v)) {
+ 		ERR(policydb, "No fs_use statement for filesystem of type %s.", type);
+-
++		goto cleanup;
++	}
+ 	retval = 0;
+       cleanup:
+ 	apol_fs_use_query_destroy(&query);
+@@ -949,7 +950,6 @@ static int print_genfscon(FILE * fp, const char *type, const apol_policy_t * pol
+ 		ERR(policydb, "%s", strerror(ENOMEM));
+ 		goto cleanup;
+ 	}
+-
+ 	if (apol_genfscon_query_set_filesystem(policydb, query, type))
+ 		goto cleanup;
+ 	if (apol_genfscon_get_by_query(policydb, query, &v))
+@@ -967,8 +967,10 @@ static int print_genfscon(FILE * fp, const char *type, const apol_policy_t * pol
+ 		free(tmp);
+ 	}
+ 
+-	if (type && !apol_vector_get_size(v))
++	if (type && !apol_vector_get_size(v)) {
+ 		ERR(policydb, "No genfscon statement for filesystem of type %s.", type);
++		goto cleanup;
++	}
+ 
+ 	retval = 0;
+       cleanup:
+@@ -1646,6 +1648,7 @@ cleanup:	// close and destroy iterators etc.
+ 
+ int main(int argc, char **argv)
+ {
++	int rc = 0;
+ 	int classes, types, attribs, roles, users, all, expand, stats, rt, optc, isids, bools, sens, cats, fsuse, genfs, netif,
+ 		node, port, permissives, polcaps, constrain, linebreaks;
+ 	apol_policy_t *policydb = NULL;
+@@ -1851,46 +1854,46 @@ int main(int argc, char **argv)
+ 
+ 	/* display requested info */
+ 	if (stats || all)
+-		print_stats(stdout, policydb);
++		rc = print_stats(stdout, policydb);
+ 	if (classes || all)
+-		print_classes(stdout, class_name, expand, policydb);
++		rc = print_classes(stdout, class_name, expand, policydb);
+ 	if (types || all)
+-		print_types(stdout, type_name, expand, policydb);
++		rc = print_types(stdout, type_name, expand, policydb);
+ 	if (attribs || all)
+-		print_attribs(stdout, attrib_name, expand, policydb);
++		rc = print_attribs(stdout, attrib_name, expand, policydb);
+ 	if (roles || all)
+-		print_roles(stdout, role_name, expand, policydb);
++		rc = print_roles(stdout, role_name, expand, policydb);
+ 	if (users || all)
+-		print_users(stdout, user_name, expand, policydb);
++		rc = print_users(stdout, user_name, expand, policydb);
+ 	if (bools || all)
+-		print_booleans(stdout, bool_name, expand, policydb);
++		rc = print_booleans(stdout, bool_name, expand, policydb);
+ 	if (sens || all)
+-		print_sens(stdout, sens_name, expand, policydb);
++		rc = print_sens(stdout, sens_name, expand, policydb);
+ 	if (cats || all)
+-		print_cats(stdout, cat_name, expand, policydb);
++		rc = print_cats(stdout, cat_name, expand, policydb);
+ 	if (fsuse || all)
+-		print_fsuse(stdout, fsuse_type, policydb);
++		rc = print_fsuse(stdout, fsuse_type, policydb);
+ 	if (genfs || all)
+-		print_genfscon(stdout, genfs_type, policydb);
++		rc = print_genfscon(stdout, genfs_type, policydb);
+ 	if (netif || all)
+-		print_netifcon(stdout, netif_name, policydb);
++		rc = print_netifcon(stdout, netif_name, policydb);
+ 	if (node || all)
+-		print_nodecon(stdout, node_addr, policydb);
++		rc = print_nodecon(stdout, node_addr, policydb);
+ 	if (port || all)
+-		print_portcon(stdout, port_num, protocol, policydb);
++		rc = print_portcon(stdout, port_num, protocol, policydb);
+ 	if (isids || all)
+-		print_isids(stdout, isid_name, expand, policydb);
++		rc = print_isids(stdout, isid_name, expand, policydb);
+ 	if (permissives || all)
+-		print_permissives(stdout, permissive_name, expand, policydb);
++		rc = print_permissives(stdout, permissive_name, expand, policydb);
+ 	if (polcaps || all)
+-		print_polcaps(stdout, polcap_name, expand, policydb);
++		rc = print_polcaps(stdout, polcap_name, expand, policydb);
+ 	if (constrain || all)
+-		print_constraints(stdout, expand, policydb, linebreaks);
++		rc = print_constraints(stdout, expand, policydb, linebreaks);
+ 
+ 	apol_policy_destroy(&policydb);
+ 	apol_policy_path_destroy(&pol_path);
+ 	free(policy_file);
+-	exit(0);
++	exit(rc);
+ }
+ 
+ /**
+-- 
+1.7.6.2
+
