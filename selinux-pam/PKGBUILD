@@ -34,7 +34,7 @@ build() {
 
 package() {
   cd $srcdir/Linux-PAM-$pkgver
-  make INSTALL=/bin/install DESTDIR=$pkgdir install
+  make INSTALL=install DESTDIR=$pkgdir install
   install -D -m644 ../other $pkgdir/etc/pam.d/other
   # build pam_unix2 module
   # source ftp://ftp.suse.com/pub/people/kukuk/pam/pam_unix2
