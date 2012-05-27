@@ -3,6 +3,38 @@
 
 *x86_64.pkg.tar.xz
 *x86_64.pkg.tar.xz.sig
+*any.pkg.tar.xz
+*any.pkg.tar.xz.sig
 
 *~
+
+linux-selinux/linux-*.tar.xz
+linux-selinux/patch-*.xz
+selinux-coreutils/coreutils-*.tar.xz
+selinux-coreutils/coreutils-*.tar.xz.sig
+selinux-cronie/cronie-*.tar.gz
+selinux-findutils/findutils-*-selinux.diff
+selinux-findutils/findutils-*.tar.gz
+selinux-flex/flex-*.tar.bz2
+selinux-logrotate/logrotate-*.tar.gz
+selinux-openssh/openssh-*.tar.gz
+selinux-pam/Linux-PAM-*.tar.bz2
+selinux-pam/pam_unix2-*.tar.bz2
+selinux-procps/procps-*.tar.gz
+selinux-psmisc/psmisc-*.tar.gz
+selinux-refpolicy-arch/refpolicy-*.tar.bz2
+selinux-setools/setools-*.tar.bz2
+selinux-shadow/shadow-*.tar.bz2
+selinux-shadow/shadow-*.tar.bz2.sig
+selinux-sudo/sudo-*.tar.gz
+selinux-sudo/sudo-*.tar.gz.sig
+selinux-sysvinit/sysvinit-*.tar.bz2
+selinux-udev/udev-*.tar.xz
+selinux-usr-checkpolicy/checkpolicy-*.tar.gz
+selinux-usr-libselinux/libselinux-*.tar.gz
+selinux-usr-libsemanage/libsemanage-*.tar.gz
+selinux-usr-libsepol/libsepol-*.tar.gz
+selinux-usr-policycoreutils/policycoreutils-*.tar.gz
+selinux-usr-sepolgen/sepolgen-*.tar.gz
+selinux-util-linux/util-linux-*.tar.xz
 
