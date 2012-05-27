@@ -15,6 +15,7 @@ url='http://www.openssh.org/portable.html'
 backup=('etc/ssh/ssh_config' 'etc/ssh/sshd_config' 'etc/pam.d/sshd' 'etc/conf.d/sshd')
 depends=('krb5' 'openssl' 'libedit' 'ldns' 'selinux-usr-libselinux')
 optdepends=('x11-ssh-askpass: input passphrase in X without a terminal')
+groups=('selinux' 'selinux-system-utilities')
 conflicts=("${_origname}")
 provides=("${_origname}=${pkgver}-${pkgrel}")
 source=("ftp://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/${_origname}-${pkgver}.tar.gz"
