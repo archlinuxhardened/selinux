@@ -13,7 +13,8 @@ arch=('i686' 'x86_64')
 url="http://www.freedesktop.org/wiki/Software/systemd"
 license=('GPL2' 'LGPL2.1' 'MIT')
 makedepends=('acl' 'cryptsetup' 'dbus-core' 'docbook-xsl' 'gperf' 'intltool'
-             'kmod' 'libcap' 'libxslt' 'linux-api-headers' 'pam' 'udev' 'xz')
+             'kmod' 'libcap' 'libxslt' 'linux-api-headers' 'pam' 'udev' 'xz'
+             'selinux-usr-libselinux')
 options=('!libtool')
 source=("http://www.freedesktop.org/software/${_origname}/${_origname}-$pkgver.tar.xz"
         "os-release"
@@ -44,8 +45,8 @@ build() {
               --localstatedir=/var \
               --with-distro=arch \
               --enable-split-usr \
-	      --enable-selinux \
-              --disable-ima
+              --enable-selinux \
+              --enable-plymouth
 
   make
 }

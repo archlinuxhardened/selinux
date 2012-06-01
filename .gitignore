@@ -28,6 +28,7 @@ selinux-shadow/shadow-*.tar.bz2
 selinux-shadow/shadow-*.tar.bz2.sig
 selinux-sudo/sudo-*.tar.gz
 selinux-sudo/sudo-*.tar.gz.sig
+selinux-systemd/systemd-*.tar.xz
 selinux-sysvinit/sysvinit-*.tar.bz2
 selinux-udev/udev-*.tar.xz
 selinux-usr-checkpolicy/checkpolicy-*.tar.gz
