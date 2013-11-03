@@ -1,0 +1,63 @@
+# Maintainer: Timothée Ravier <tim@siosm.fr>
+# Contributor: Nicky726 <Nicky726 [at] gmail [dot] com>
+# Contributor: Xiao-Long Chen <chenxiaolong@cxl.epac.to>
+
+pkgname=setools
+pkgver=3.3.8
+pkgrel=1
+pkgdesc="Policy analysis tools for SELinux"
+groups=('selinux')
+arch=('i686' 'x86_64')
+url="http://oss.tresys.com/projects/setools/"
+license=('GPL' 'LGPL')
+depends=('flex' 'bison' 'libselinux>=2.2' 'sqlite3>=3.6.20')
+#        'selinux-refpolicy-src')
+optdepends=('glib2: needed for graphical tools'
+            'gtk2>=2.8: needed for graphical tools'
+            'bwidget>=1.8: needed for graphical tools'
+	    'libglade>=2.6.4: needed for graphical tools'
+	    'tk>=8.4.9: needed for graphical tools')
+makedepends=('java-environment' 'bwidget>=1.8' 'gtk2>=2.8' 'glib2'
+             'libglade>=2.6.4' 'tk>=8.4.9')
+source=("http://oss.tresys.com/projects/${pkgname}/chrome/site/dists/${pkgname}-${pkgver}/${pkgname}-${pkgver}.tar.bz2"
+        "http://dev.gentoo.org/~swift/patches/0008-fix_swig_build_failures_bug_430262.patch"
+        )
+md5sums=('d68d0d4e4da0f01da0f208782ff04b91'
+         '9740ed5b41860703b1083e0837289d8a')
+sha256sums=('44387ecc9a231ec536a937783440cd8960a72c51f14bffc1604b7525e341e999'
+            '2f314f9236bf4c5137e1e5b1dd5bc312c4ce84942238b98725468e75096eae8f')
+
+prepare() {
+  cd ${pkgname}-${pkgver}
+  patch -Np1 -i ../0008-fix_swig_build_failures_bug_430262.patch
+}
+
+build() {
+  cd ${pkgname}-${pkgver}
+
+  export PYTHON=/usr/bin/python2
+
+  aclocal
+  autoreconf -if
+  automake
+
+  # Arch uses rather nonstandard directory for policy sources
+  ./configure \
+    --enable-swig-python \
+    --enable-swig-tcl \
+    --with-default-policy=/etc/selinux/refpolicy/src/policy \
+    --disable-bwidget-check \
+    --disable-selinux-check \
+    --prefix=/usr
+  # work around issue with gcc 4.3 + gnu99 + swig-generated code:
+  sed -i -e 's:$(CC):gcc -std=gnu89:' libseaudit/swig/python/Makefile
+  # qpol build fails due to this
+  sed -i -e '470d' libqpol/swig/java/Makefile
+
+  make
+}
+
+package() {
+  cd ${pkgname}-${pkgver}
+  make DESTDIR="${pkgdir}" install
+}
