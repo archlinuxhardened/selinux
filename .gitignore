@@ -14,7 +14,10 @@ coreutils-selinux/coreutils-*.tar.xz*
 cronie-selinux/cronie-*.tar.gz
 findutils-selinux/findutils-*.tar.gz*
 libcgroup/libcgroup-*.tar.bz2
+libselinux/libselinux-rhat.patch
 libselinux/libselinux-*.tar.gz
+libselinux/selinuxconlist.8
+libselinux/selinuxdefcon.8
 libsemanage/libsemanage-*.tar.gz
 libsepol/libsepol-*.tar.gz
 linux-selinux/config.x86_64.last
