@@ -24,6 +24,7 @@ linux-selinux/config.x86_64.last
 linux-selinux/linux-*.tar.xz
 linux-selinux/patch-*.xz
 openssh-selinux/openssh-*.tar.gz
+openssh-selinux/openssh-*.tar.gz.asc
 pam-selinux/Linux-PAM-*.tar.bz2
 pam-selinux/pam_unix2-*.tar.bz2
 policycoreutils/policycoreutils-*.tar.gz
