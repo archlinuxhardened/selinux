@@ -2,7 +2,7 @@
 # Contributor: Jan "heftig" Steffens <jan.steffens@gmail.com>
 
 pkgname=libcgroup
-pkgver=0.40rc1
+pkgver=0.41
 pkgrel=1
 pkgdesc="Library that abstracts the control group file system in Linux"
 arch=('i686' 'x86_64')
@@ -18,7 +18,7 @@ source=("http://downloads.sourceforge.net/libcg/${pkgname}-${pkgver/rc/.rc}.tar.
 	'cgrules.service')
 
 build() {
-	cd ${pkgname}-${pkgver/rc/.rc}
+	cd "${srcdir}/${pkgname}-${pkgver/rc/.rc}"
 
 	./configure \
 		--prefix=/usr \
@@ -31,27 +31,27 @@ build() {
 }
 
 package() {
-	cd ${pkgname}-${pkgver/rc/.rc}
+	cd "${srcdir}/${pkgname}-${pkgver/rc/.rc}"
 
-	make DESTDIR="${pkgdir}" pkgconfigdir=/usr/lib/pkgconfig install
+	make DESTDIR="${pkgdir}" pkgconfigdir="/usr/lib/pkgconfig" install
 
-	install -D -m0644 samples/cgconfig.conf "${pkgdir}"/etc/cgconfig.conf
-	install -D -m0644 samples/cgrules.conf "${pkgdir}"/etc/cgrules.conf
-	install -D -m0644 samples/cgsnapshot_blacklist.conf "${pkgdir}"/etc/cgsnapshot_blacklist.conf
+	install -D -m0644 samples/cgconfig.conf "${pkgdir}/etc/cgconfig.conf"
+	install -D -m0644 samples/cgrules.conf "${pkgdir}/etc/cgrules.conf"
+	install -D -m0644 samples/cgsnapshot_blacklist.conf "${pkgdir}/etc/cgsnapshot_blacklist.conf"
 
-	install -D -m0644 "${srcdir}"/cgconfig.service "${pkgdir}"/usr/lib/systemd/system/cgconfig.service
-	install -D -m0644 "${srcdir}"/cgrules.service "${pkgdir}"/usr/lib/systemd/system/cgrules.service
+	install -D -m0644 "${srcdir}/cgconfig.service" "${pkgdir}/usr/lib/systemd/system/cgconfig.service"
+	install -D -m0644 "${srcdir}/cgrules.service" "${pkgdir}/usr/lib/systemd/system/cgrules.service"
 
 	rm -f "${pkgdir}"/usr/lib/security/pam_cgroup.{la,so,so.0}
 	mv "${pkgdir}"/usr/lib/security/pam_cgroup.so.0.0.0 "${pkgdir}"/usr/lib/security/pam_cgroup.so
 
-	rm -rf "${pkgdir}"/etc/rc.d
+	rm -rf "${pkgdir}/etc/rc.d"
 
 	# Make cgexec setgid cgred
-	chown root:160 "${pkgdir}"/usr/bin/cgexec
-	chmod 2755 "${pkgdir}"/usr/bin/cgexec
+	chown root:160 "${pkgdir}/usr/bin/cgexec"
+	chmod 2755 "${pkgdir}/usr/bin/cgexec"
 }
 
-sha256sums=('c2fa2cfdfd1023093afb6de456fc3ac000f92a2f01b905bcdda1c3e36ad44072'
+sha256sums=('e4e38bdc7ef70645ce33740ddcca051248d56b53283c0dc6d404e17706f6fb51'
             '808fc354abf36d7b6673dad790be275309ac57a2606d1be3732b9b3aeb5885eb'
             '6b1340ff6717f55e5e57dacc72accc0bfaed7e50ef31439271b6ddc893cbf671')
