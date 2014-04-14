@@ -20,8 +20,9 @@ libselinux/selinuxconlist.8
 libselinux/selinuxdefcon.8
 libsemanage/libsemanage-*.tar.gz
 libsepol/libsepol-*.tar.gz
-linux-selinux/config.x86_64.last
+linux-selinux/config.*.last
 linux-selinux/linux-*.tar.xz
+linux-selinux/linux-selinux.install.pkg
 linux-selinux/patch-*.xz
 openssh-selinux/openssh-*.tar.gz
 openssh-selinux/openssh-*.tar.gz.asc
