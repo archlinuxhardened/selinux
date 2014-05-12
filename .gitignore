@@ -24,6 +24,7 @@ linux-selinux/config.*.last
 linux-selinux/linux-*.tar.xz
 linux-selinux/linux-selinux.install.pkg
 linux-selinux/patch-*.xz
+logrotate-selinux/logrotate-*.tar.gz
 openssh-selinux/openssh-*.tar.gz
 openssh-selinux/openssh-*.tar.gz.asc
 pam-selinux/Linux-PAM-*.tar.bz2
