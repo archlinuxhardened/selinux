@@ -4,7 +4,7 @@
 
 pkgname=setools
 pkgver=3.3.8
-pkgrel=1
+pkgrel=2
 pkgdesc="Policy analysis tools for SELinux"
 groups=('selinux')
 arch=('i686' 'x86_64')
@@ -23,19 +23,27 @@ conflicts=("selinux-${pkgname}")
 provides=("selinux-${pkgname}=${pkgver}-${pkgrel}")
 source=("http://oss.tresys.com/projects/${pkgname}/chrome/site/dists/${pkgname}-${pkgver}/${pkgname}-${pkgver}.tar.bz2"
         "http://dev.gentoo.org/~swift/patches/0008-fix_swig_build_failures_bug_430262.patch"
+        "0001-fix-compile-error.patch"
         )
 md5sums=('d68d0d4e4da0f01da0f208782ff04b91'
-         '9740ed5b41860703b1083e0837289d8a')
+         '9740ed5b41860703b1083e0837289d8a'
+         '4d944e5f47ed1569584d0e1214755875')
 sha256sums=('44387ecc9a231ec536a937783440cd8960a72c51f14bffc1604b7525e341e999'
-            '2f314f9236bf4c5137e1e5b1dd5bc312c4ce84942238b98725468e75096eae8f')
+            '2f314f9236bf4c5137e1e5b1dd5bc312c4ce84942238b98725468e75096eae8f'
+            '4848e31d918085871d08dcff4de4b3c0bbc60484f2afbad51535bf46b2a2e51f')
 
 prepare() {
-  cd ${pkgname}-${pkgver}
+  cd "${pkgname}-${pkgver}"
   patch -Np1 -i ../0008-fix_swig_build_failures_bug_430262.patch
+  patch -Np1 -i ../0001-fix-compile-error.patch
+
+  # Disable broken check for SWIG version, to allow using swig 3
+  # http://sources.gentoo.org/cgi-bin/viewvc.cgi/gentoo-x86/app-admin/setools/setools-3.3.8-r4.ebuild
+  sed -e "s/AC_PROG_SWIG(2.0.0)/AC_PROG_SWIG/" -i configure.ac
 }
 
 build() {
-  cd ${pkgname}-${pkgver}
+  cd "${pkgname}-${pkgver}"
 
   export PYTHON=/usr/bin/python2
 

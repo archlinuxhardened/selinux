@@ -1,0 +1,47 @@
+With libselinux 2.3, GCC fails to compile secmds/replcon.cc:
+
+  replcon.cc:73:25: error: invalid operands of types ‘<unresolved overloaded function type>’ and ‘long int’ to binary ‘operator!=’
+    if (lsetfilecon_raw != NULL)
+                           ^
+  Makefile:641: recipe for target 'replcon.o' failed
+  make[2]: *** [replcon.o] Error 1
+
+Indeed the interface of the lsetfilecon_raw function has been changed:
+
+  -extern int lsetfilecon_raw(const char *path, security_context_t con);
+  +extern int lsetfilecon_raw(const char *path, const char * con);
+
+This error can be fixed by removing the "weak function trick" and assuming
+libselinux provides lsetfilecon_raw.
+
+This has been reported upstream by Gentoo maintainer:
+http://marc.info/?l=selinux&m=140129722008136&w=2
+--
+--- a/secmds/replcon.cc
++++ b/secmds/replcon.cc
+@@ -60,24 +60,9 @@ static struct option const longopts[] =
+ 	{NULL, 0, NULL, 0}
+ };
+ 
+-extern int lsetfilecon_raw(const char *, security_context_t) __attribute__ ((weak));
+-
+-/**
+- * As that setools must work with older libselinux versions that may
+- * not have the _raw() functions, declare them as weak.  If libselinux
+- * does indeed have the new functions then use them; otherwise
+- * fallback to the originals.
+- */
+ static int replcon_lsetfilecon(const char *path, security_context_t context)
+ {
+-	if (lsetfilecon_raw != NULL)
+-	{
+-		return lsetfilecon_raw(path, context);
+-	}
+-	else
+-	{
+-		return lsetfilecon(path, context);
+-	}
++	return lsetfilecon_raw(path, context);
+ }
+ 
+ struct replcon_info
