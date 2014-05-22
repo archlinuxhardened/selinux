@@ -32,7 +32,7 @@ policycoreutils/policycoreutils-*.tar.gz
 psmisc-selinux/psmisc-*.tar.gz
 sepolgen/sepolgen-*.tar.gz
 setools/setools-*.tar.bz2
-shadow-selinux/shadow-*.tar.bz2*
+shadow-selinux/shadow-*.tar.xz*
 sudo-selinux/sudo-*.tar.gz*
 systemd-selinux/systemd-*.tar.xz
 util-linux-selinux/util-linux-*.tar.xz
