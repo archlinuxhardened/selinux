@@ -13,6 +13,7 @@ checkpolicy/checkpolicy-*.tar.gz
 coreutils-selinux/coreutils-*.tar.xz*
 cronie-selinux/cronie-*.tar.gz
 findutils-selinux/findutils-*.tar.gz*
+iproute2-selinux/iproute2-*.tar.xz
 libcgroup/libcgroup-*.tar.bz2
 libselinux/libselinux-rhat.patch
 libselinux/libselinux-*.tar.gz
