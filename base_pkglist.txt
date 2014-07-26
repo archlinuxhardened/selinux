@@ -3,7 +3,7 @@
 ;  * "foo" is a base package which is replaced by "foo-selinux"
 ;  * "foo-selinux/PKGBUILD" is in sync with "foo" version 1.4.2-1
 
-coreutils = 8.22-4
+coreutils = 8.23-1
 cronie = 1.4.11-2
 dbus = 1.8.4-1
 findutils = 4.4.2-5
