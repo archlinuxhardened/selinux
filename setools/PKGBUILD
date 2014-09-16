@@ -4,7 +4,7 @@
 
 pkgname=setools
 pkgver=3.3.8
-pkgrel=2
+pkgrel=3
 pkgdesc="Policy analysis tools for SELinux"
 groups=('selinux')
 arch=('i686' 'x86_64')
@@ -21,7 +21,7 @@ makedepends=('java-environment' 'bwidget>=1.8' 'gtk2>=2.8' 'glib2'
              'libglade>=2.6.4' 'tk>=8.4.9')
 conflicts=("selinux-${pkgname}")
 provides=("selinux-${pkgname}=${pkgver}-${pkgrel}")
-source=("http://oss.tresys.com/projects/${pkgname}/chrome/site/dists/${pkgname}-${pkgver}/${pkgname}-${pkgver}.tar.bz2"
+source=("https://raw.githubusercontent.com/wiki/TresysTechnology/setools3/files/dists/${pkgname}-${pkgver}/${pkgname}-${pkgver}.tar.bz2"
         "http://dev.gentoo.org/~swift/patches/0008-fix_swig_build_failures_bug_430262.patch"
         "0001-fix-compile-error.patch"
         )
