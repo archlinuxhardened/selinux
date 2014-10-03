@@ -105,6 +105,10 @@ def get_pkgbuild_pkgver(pkgbuild_filepath):
             if matches is not None:
                 pkgver = '.'.join(matches.groups())
                 continue
+            matches = re.match(r'^_sudover=([0-9a-zA-Z-.]+)\s$', line)
+            if matches is not None:
+                pkgver = matches.group(1)
+                continue
 
             # Retrieve pkgrel
             matches = re.match(r'^pkgrel=([0-9]+)\s*$', line)
