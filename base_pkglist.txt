@@ -4,7 +4,7 @@
 ;  * "foo-selinux/PKGBUILD" is in sync with "foo" version 1.4.2-1
 
 coreutils = 8.23-1
-cronie = 1.4.11-2
+cronie = 1.4.12-1
 dbus = 1.8.10-1
 findutils = 4.4.2-6
 iproute2 = 3.17.0-1
