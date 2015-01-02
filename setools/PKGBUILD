@@ -5,19 +5,19 @@
 
 pkgname=setools
 pkgver=3.3.8
-pkgrel=3
+pkgrel=4
 pkgdesc="Policy analysis tools for SELinux"
 groups=('selinux')
 arch=('i686' 'x86_64')
 url="http://oss.tresys.com/projects/setools/"
 license=('GPL' 'LGPL')
-depends=('flex' 'bison' 'libselinux>=2.2' 'sqlite3>=3.6.20')
+depends=('flex' 'bison' 'libselinux>=2.2' 'sqlite3>=3.6.20' 'python2')
 #        'selinux-refpolicy-src')
 optdepends=('glib2: needed for graphical tools'
             'gtk2>=2.8: needed for graphical tools'
             'bwidget>=1.8: needed for graphical tools'
-	    'libglade>=2.6.4: needed for graphical tools'
-	    'tk>=8.4.9: needed for graphical tools')
+            'libglade>=2.6.4: needed for graphical tools'
+            'tk>=8.4.9: needed for graphical tools')
 makedepends=('java-environment' 'bwidget>=1.8' 'gtk2>=2.8' 'glib2'
              'libglade>=2.6.4' 'tk>=8.4.9')
 conflicts=("selinux-${pkgname}")
@@ -59,7 +59,8 @@ build() {
     --with-default-policy=/etc/selinux/refpolicy/src/policy \
     --disable-bwidget-check \
     --disable-selinux-check \
-    --prefix=/usr
+    --prefix=/usr \
+    --sbindir=/usr/bin
   # work around issue with gcc 4.3 + gnu99 + swig-generated code:
   sed -i -e 's:$(CC):gcc -std=gnu89:' libseaudit/swig/python/Makefile
   # qpol build fails due to this
