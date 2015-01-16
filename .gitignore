@@ -27,8 +27,10 @@ libsemanage/libsemanage-*.tar.gz
 libsepol/libsepol-*.tar.gz
 linux-selinux/config.last
 linux-selinux/config.*.last
+linux-selinux/linux-*.tar.sign
 linux-selinux/linux-*.tar.xz
 linux-selinux/linux-selinux.install.pkg
+linux-selinux/patch-*.sign
 linux-selinux/patch-*.xz
 logrotate-selinux/logrotate-*.tar.gz
 openssh-selinux/openssh-*.tar.gz
