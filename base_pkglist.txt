@@ -5,7 +5,7 @@
 
 coreutils = 8.23-1
 cronie = 1.4.12-1
-dbus = 1.8.14-1
+dbus = 1.8.16-1
 findutils = 4.4.2-6
 iproute2 = 3.18.0-1
 linux = 3.18.5-1
