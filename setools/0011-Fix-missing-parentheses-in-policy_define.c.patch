@@ -1,0 +1,35 @@
+From 8001568ca3914432ffc3825acb278a1e6d8293d9 Mon Sep 17 00:00:00 2001
+From: Chris PeBenito <cpebenito@tresys.com>
+Date: Fri, 31 Oct 2014 20:40:35 -0400
+Subject: [PATCH 11/13] Fix missing parentheses in policy_define.c.
+
+This fixes #1
+---
+ libqpol/src/policy_define.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/libqpol/src/policy_define.c b/libqpol/src/policy_define.c
+index f5d6764ae64c..229779c54311 100644
+--- a/libqpol/src/policy_define.c
++++ b/libqpol/src/policy_define.c
+@@ -3344,7 +3344,7 @@ int define_conditional(cond_expr_t * expr, avrule_t * t, avrule_t * f)
+ 	tmp = cn.avtrue_list;
+ 	last_tmp = NULL;
+ 	while (tmp) {
+-		if (!tmp->specified & AVRULE_TRANSITION)
++		if (!(tmp->specified & AVRULE_TRANSITION))
+ 			continue;
+ 		retval = insert_check_type_rule(tmp, &policydbp->te_cond_avtab, &cn_old->true_list, &cn_old->false_list);
+ 		switch (retval) {
+@@ -3383,7 +3383,7 @@ int define_conditional(cond_expr_t * expr, avrule_t * t, avrule_t * f)
+ 	tmp = cn.avfalse_list;
+ 	last_tmp = NULL;
+ 	while (tmp) {
+-		if (!tmp->specified & AVRULE_TRANSITION)
++		if (!(tmp->specified & AVRULE_TRANSITION))
+ 			continue;
+ 		retval = insert_check_type_rule(tmp, &policydbp->te_cond_avtab, &cn_old->false_list, &cn_old->true_list);
+ 		switch (retval) {
+-- 
+2.3.0
+

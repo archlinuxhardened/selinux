@@ -1,0 +1,22 @@
+From 76e333503433be018e8aee8992d8f77aa14979a5 Mon Sep 17 00:00:00 2001
+From: Chris PeBenito <cpebenito@tresys.com>
+Date: Thu, 16 Jan 2014 16:33:15 +0000
+Subject: [PATCH 02/13] Fix changelog entry.
+
+---
+ ChangeLog | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/ChangeLog b/ChangeLog
+index 4d883f3a6df2..df377ce748a9 100644
+--- a/ChangeLog
++++ b/ChangeLog
+@@ -1,4 +1,4 @@
+-2014-01-16
++2014-01-16  Chris PeBenito <cpebenito@tresys.com>
+ 	* Fix bug preventing sediffx from starting.
+ 
+ 2013-01-08 Steve Lawrence <slawrence@tresys.com>
+-- 
+2.3.0
+

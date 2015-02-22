@@ -1,0 +1,2060 @@
+From 0aa68c97dfd909d84242f3aca96923676770bf33 Mon Sep 17 00:00:00 2001
+From: Steve Lawrence <slawrence@tresys.com>
+Date: Fri, 25 Apr 2014 16:19:37 +0000
+Subject: [PATCH 05/13] setools: APOL Add type, user, role bounds support
+
+Added bounds support and various fixes to handle_unknown and the
+APOL types_tab.tcl
+
+Signed-off-by: Richard Haines <richard_c_haines@btinternet.com>
+---
+ apol/Makefile.am                    |   1 +
+ apol/bounds_tab.tcl                 | 436 ++++++++++++++++++++++++++++++++++++
+ apol/top.tcl                        |  55 +++++
+ apol/types_tab.tcl                  |  51 ++++-
+ libapol/include/apol/Makefile.am    |   1 +
+ libapol/include/apol/bounds-query.h | 177 +++++++++++++++
+ libapol/include/apol/policy-query.h |   1 +
+ libapol/src/Makefile.am             |   1 +
+ libapol/src/bounds-query.c          | 216 ++++++++++++++++++
+ libapol/src/libapol.map             |   3 +
+ libapol/src/policy-query-internal.h |  19 ++
+ libapol/src/policy-query.c          |  23 ++
+ libapol/swig/apol.i                 | 101 +++++++++
+ libqpol/include/qpol/Makefile.am    |   1 +
+ libqpol/include/qpol/bounds_query.h | 162 ++++++++++++++
+ libqpol/include/qpol/policy.h       |  10 +
+ libqpol/src/Makefile.am             |   1 +
+ libqpol/src/bounds_query.c          | 314 ++++++++++++++++++++++++++
+ libqpol/src/libqpol.map             |   4 +
+ libqpol/swig/qpol.i                 | 135 +++++++++++
+ 20 files changed, 1701 insertions(+), 11 deletions(-)
+ create mode 100644 apol/bounds_tab.tcl
+ create mode 100644 libapol/include/apol/bounds-query.h
+ create mode 100644 libapol/src/bounds-query.c
+ create mode 100644 libqpol/include/qpol/bounds_query.h
+ create mode 100644 libqpol/src/bounds_query.c
+
+diff --git a/apol/Makefile.am b/apol/Makefile.am
+index 71402d7cae21..5b64d7dbb47a 100644
+--- a/apol/Makefile.am
++++ b/apol/Makefile.am
+@@ -27,6 +27,7 @@ dist_setools_DATA = apol_help.txt domaintrans_help.txt file_relabel_help.txt \
+ 
+ EXTRA_DIST = \
+ 	analysis_tab.tcl \
++	bounds_tab.tcl \
+ 	classes_perms_tab.tcl \
+ 	common_widgets.tcl \
+ 	cond_bools_tab.tcl \
+diff --git a/apol/bounds_tab.tcl b/apol/bounds_tab.tcl
+new file mode 100644
+index 000000000000..73e32ac78829
+--- /dev/null
++++ b/apol/bounds_tab.tcl
+@@ -0,0 +1,436 @@
++# Copyright (C) 2001-2007 Tresys Technology, LLC
++#  This program is free software; you can redistribute it and/or modify
++#  it under the terms of the GNU General Public License as published by
++#  the Free Software Foundation; either version 2 of the License, or
++#  (at your option) any later version.
++#
++#  This program is distributed in the hope that it will be useful,
++#  but WITHOUT ANY WARRANTY; without even the implied warranty of
++#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++#  GNU General Public License for more details.
++#
++#  You should have received a copy of the GNU General Public License
++#  along with this program; if not, write to the Free Software
++#  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++
++namespace eval Apol_Bounds {
++    variable vals
++    variable widgets
++}
++
++proc Apol_Bounds::create {tab_name nb} {
++    variable vals
++    variable widgets
++
++    _initializeVars
++
++    set frame [$nb insert end $tab_name -text "Bounds Rules"]
++    set topf [frame $frame.top]
++    set bottomf [frame $frame.bottom]
++    pack $topf -expand 0 -fill both -pady 2
++    pack $bottomf -expand 1 -fill both -pady 2
++
++    set rsbox [TitleFrame $topf.rs -ipad 30 -text "Rule Selection"]
++    set obox [TitleFrame $topf.opts -text "Search Options"]
++    set dbox [TitleFrame $bottomf.results -text "Bounds Rules Display"]
++    pack $rsbox -side left -expand 0 -fill both -padx 2
++    pack $obox -side left -expand 1 -fill both -padx 2
++    pack $dbox -expand 1 -fill both -padx 2
++
++    # Rule selection subframe
++    set rs [$rsbox getframe]
++    radiobutton $rs.user -text user -value user \
++        -variable Apol_Bounds::vals(rule_selection)
++    radiobutton $rs.role -text role -value role \
++        -variable Apol_Bounds::vals(rule_selection)
++    radiobutton $rs.type -text type -value type \
++        -variable Apol_Bounds::vals(rule_selection)
++    trace add variable Apol_Bounds::vals(rule_selection) write \
++        [list Apol_Bounds::_ruleChanged]
++    pack $rs.user $rs.role $rs.type -side top -anchor w
++
++    set widgets(options_pm) [PagesManager [$obox getframe].opts]
++
++    _userCreate [$widgets(options_pm) add user]
++    _roleCreate [$widgets(options_pm) add role]
++    _typeCreate [$widgets(options_pm) add type]
++
++    $widgets(options_pm) compute_size
++    pack $widgets(options_pm) -expand 1 -fill both -side left
++    $widgets(options_pm) raise type
++
++    set ok [button [$obox getframe].ok -text OK -width 6 -command Apol_Bounds::_searchBounds]
++    pack $ok -side right -padx 5 -pady 5 -anchor ne
++
++    set widgets(results) [Apol_Widget::makeSearchResults [$dbox getframe].results]
++    pack $widgets(results) -expand yes -fill both
++
++    return $frame
++}
++
++proc Apol_Bounds::open {ppath} {
++    variable vals
++    variable widgets
++    $widgets(user:user_parent) configure -values $Apol_Users::users_list
++    $widgets(user:user_child) configure -values $Apol_Users::users_list
++    $widgets(role:role_parent) configure -values $Apol_Roles::role_list
++    $widgets(role:role_child) configure -values $Apol_Roles::role_list
++    $widgets(type:type_parent) configure -values $Apol_Types::typelist
++    $widgets(type:type_child) configure -values $Apol_Types::typelist
++
++    set vals(rule_selection) type
++}
++
++proc Apol_Bounds::close {} {
++    variable widgets
++
++    _initializeVars
++    $widgets(user:user_parent) configure -values {}
++    $widgets(user:user_child) configure -values {}
++    $widgets(role:role_parent) configure -values {}
++    $widgets(role:role_child) configure -values {}
++    $widgets(type:type_parent) configure -values {}
++    $widgets(type:type_child) configure -values {}
++}
++
++proc Apol_Bounds::getTextWidget {} {
++    variable widgets
++#    return $widgets(results).tb
++}
++
++#### private functions below ####
++
++proc Apol_Bounds::_initializeVars {} {
++    variable vals
++    array set vals {
++        rule_selection type
++
++        user_parent:use 0
++        user_parent:sym {}
++        user_child:sym {}
++        user_child:use 0
++
++        role_parent:use 0
++        role_parent:sym {}
++        role_child:sym {}
++        role_child:use 0
++
++        type_parent:use 0
++        type_parent:sym {}
++        type_child:sym {}
++        type_child:use 0
++    }
++}
++
++proc Apol_Bounds::_userCreate {a_f} {
++    variable vals
++    variable widgets
++
++    set user_parent [frame $a_f.user_parent]
++    set user_parent_cb [checkbutton $user_parent.enable -text "Parent user" \
++                       -variable Apol_Bounds::vals(user_parent:use)]
++    set widgets(user:user_parent) [ComboBox $user_parent.cb -width 20 -state disabled \
++                                   -entrybg $ApolTop::default_bg_color \
++                                   -textvariable Apol_Bounds::vals(user_parent:sym) \
++                                   -helptext "Select the bounding user" -autopost 1]
++
++    trace add variable Apol_Bounds::vals(user_parent:use) write \
++        [list Apol_Bounds::_toggleCheckbutton $widgets(user:user_parent) {}]
++    pack $user_parent_cb -side top -anchor w
++    pack $widgets(user:user_parent) -side top -expand 0 -fill x -padx 4
++
++    pack $user_parent -side left -padx 4 -pady 2 -expand 0 -anchor nw
++
++    set user_child [frame $a_f.user_child]
++    set widgets(user:user_child_cb) [checkbutton $user_child.enable -text "Child user" \
++                                      -variable Apol_Bounds::vals(user_child:use)]
++    set widgets(user:user_child) [ComboBox $user_child.cb -width 20 -state disabled \
++                                   -entrybg $ApolTop::default_bg_color \
++                                   -textvariable Apol_Bounds::vals(user_child:sym) \
++                                   -helptext "Select the bounded user" -autopost 1]
++    trace add variable Apol_Bounds::vals(user_child:use) write \
++        [list Apol_Bounds::_toggleCheckbutton $widgets(user:user_child) {}]
++    pack $widgets(user:user_child_cb) -side top -anchor w
++    pack $widgets(user:user_child) -side top -expand 0 -fill x -padx 4
++    pack $user_child -side left -padx 4 -pady 2 -expand 0 -fill y
++}
++
++proc Apol_Bounds::_roleCreate {t_f} {
++    variable vals
++    variable widgets
++
++    set role_parent [frame $t_f.role_parent]
++    set role_parent_cb [checkbutton $role_parent.enable -text "Parent role" \
++                       -variable Apol_Bounds::vals(role_parent:use)]
++    set widgets(role:role_parent) [ComboBox $role_parent.cb -width 20 -state disabled \
++                                   -entrybg $ApolTop::default_bg_color \
++                                   -textvariable Apol_Bounds::vals(role_parent:sym) \
++                                   -helptext "Select the bounding role" -autopost 1]
++
++    trace add variable Apol_Bounds::vals(role_parent:use) write \
++        [list Apol_Bounds::_toggleCheckbutton $widgets(role:role_parent) {}]
++    pack $role_parent_cb -side top -anchor w
++    pack $widgets(role:role_parent) -side top -expand 0 -fill x -padx 4
++
++    pack $role_parent -side left -padx 4 -pady 2 -expand 0 -anchor nw
++
++    set role_child [frame $t_f.role_child]
++    set widgets(role:role_child_cb) [checkbutton $role_child.enable -text "Child role" \
++                                      -variable Apol_Bounds::vals(role_child:use)]
++    set widgets(role:role_child) [ComboBox $role_child.cb -width 20 -state disabled \
++                                   -entrybg $ApolTop::default_bg_color \
++                                   -textvariable Apol_Bounds::vals(role_child:sym) \
++                                   -helptext "Select the bounded role" -autopost 1]
++    trace add variable Apol_Bounds::vals(role_child:use) write \
++        [list Apol_Bounds::_toggleCheckbutton $widgets(role:role_child) {}]
++    pack $widgets(role:role_child_cb) -side top -anchor w
++    pack $widgets(role:role_child) -side top -expand 0 -fill x -padx 4
++    pack $role_child -side left -padx 4 -pady 2 -expand 0 -fill y
++}
++
++proc Apol_Bounds::_typeCreate {b_t} {
++    variable vals
++    variable widgets
++
++    set type_parent [frame $b_t.type_parent]
++    set type_parent_cb [checkbutton $type_parent.enable -text "Parent type" \
++                       -variable Apol_Bounds::vals(type_parent:use)]
++    set widgets(type:type_parent) [ComboBox $type_parent.cb -width 20 -state disabled \
++                                   -entrybg $ApolTop::default_bg_color \
++                                   -textvariable Apol_Bounds::vals(type_parent:sym) \
++                                   -helptext "Select the bounding type" -autopost 1]
++
++    trace add variable Apol_Bounds::vals(type_parent:use) write \
++        [list Apol_Bounds::_toggleCheckbutton $widgets(type:type_parent) {}]
++    pack $type_parent_cb -side top -anchor w
++    pack $widgets(type:type_parent) -side top -expand 0 -fill x -padx 4
++
++    pack $type_parent -side left -padx 4 -pady 2 -expand 0 -anchor nw
++
++    set type_child [frame $b_t.type_child]
++    set widgets(type:type_child_cb) [checkbutton $type_child.enable -text "Child type" \
++                                      -variable Apol_Bounds::vals(type_child:use)]
++    set widgets(type:type_child) [ComboBox $type_child.cb -width 20 -state disabled \
++                                   -entrybg $ApolTop::default_bg_color \
++                                   -textvariable Apol_Bounds::vals(type_child:sym) \
++                                   -helptext "Select the bounded type" -autopost 1]
++    trace add variable Apol_Bounds::vals(type_child:use) write \
++        [list Apol_Bounds::_toggleCheckbutton $widgets(type:type_child) {}]
++    pack $widgets(type:type_child_cb) -side top -anchor w
++    pack $widgets(type:type_child) -side top -expand 0 -fill x -padx 4
++    pack $type_child -side left -padx 4 -pady 2 -expand 0 -fill y
++}
++
++proc Apol_Bounds::_toggleCheckbutton {cb w name1 name2 ops} {
++    variable vals
++
++    if {$vals($name2)} {
++        $cb configure -state normal -entrybg white
++        foreach x $w {
++            $x configure -state normal
++        }
++    } else {
++        $cb configure -state disabled -entrybg $ApolTop::default_bg_color
++        foreach x $w {
++            $x configure -state disabled
++        }
++    }
++}
++
++
++# callback invoked when the user changes which Bounds rule to search
++proc Apol_Bounds::_ruleChanged {name1 name2 ops} {
++    variable vals
++    variable widgets
++    Apol_Widget::clearSearchResults $widgets(results)
++    $widgets(options_pm) raise $vals(rule_selection)
++}
++
++proc Apol_Bounds::_searchBounds {} {
++    variable vals
++    variable widgets
++
++    Apol_Widget::clearSearchResults $widgets(results)
++    if {![ApolTop::is_policy_open]} {
++        tk_messageBox -icon error -type ok -title "Error" -message "No current policy file is opened."
++        return
++    }
++
++
++    if {$vals(rule_selection) == "user"} {
++        Apol_Bounds::_searchUserBounds
++        return
++    }
++    if {$vals(rule_selection) == "role"} {
++        Apol_Bounds::_searchRoleBounds
++        return
++    }
++
++    if {$vals(rule_selection) == "type" } {
++        Apol_Bounds::_searchTypeBounds
++        return
++    }
++}
++
++proc Apol_Bounds::_searchUserBounds {} {
++    variable vals
++    variable widgets
++
++    set results {}
++    set bounds {}
++    set counter 0
++    set printit 0
++    set parent_regexp 0
++    set child_regexp 0
++
++    if {$vals(user_parent:use) && $vals(user_parent:sym) == {}} {
++        tk_messageBox -icon error -type ok -title "Error" -message "No parent user selected."
++    } elseif {$vals(user_parent:use)} {
++        set parent_regexp 1
++    }
++    if {$vals(user_child:use) && $vals(user_child:sym) == {}} {
++        tk_messageBox -icon error -type ok -title "Error" -message "No child user selected."
++    } elseif {$vals(user_child:use)} {
++        set child_regexp 1
++    }
++
++    set q [new_apol_userbounds_query_t]
++    set v [$q run $::ApolTop::policy]
++    $q -acquire
++    $q -delete
++    for {set i 0} {$v != "NULL" && $i < [$v get_size]} {incr i} {
++        for {set i 0} {$v != "NULL" && $i < [$v get_size]} {incr i} {
++            set q [qpol_userbounds_from_void [$v get_element $i]]
++            set parent [$q get_parent_name $::ApolTop::qpolicy]
++            set child [$q get_child_name $::ApolTop::qpolicy]
++            if {$parent != ""} {
++                if {$parent_regexp == 1 && $parent == $vals(user_parent:sym)} {
++                    set printit 1
++                } 
++                if {$child_regexp == 1 && $child == $vals(user_child:sym)} {
++                    set printit 1
++                }
++                if {$parent_regexp == 0 && $child_regexp == 0} {
++                    set printit 1
++                }
++                if {$printit == 1} {
++                    append bounds "userbounds $parent "
++                    append bounds "$child;\n"
++                    set counter [expr $counter + 1]
++                }
++            }
++            set printit 0
++        }
++    }
++    append results "$counter rules match search criteria.\n\n$bounds\n"
++    Apol_Widget::appendSearchResultText $widgets(results) $results
++}
++
++proc Apol_Bounds::_searchRoleBounds {} {
++    variable vals
++    variable widgets
++
++    set results {}
++    set bounds {}
++    set counter 0
++    set printit 0
++    set parent_regexp 0
++    set child_regexp 0
++
++    if {$vals(role_parent:use) && $vals(role_parent:sym) == {}} {
++        tk_messageBox -icon error -type ok -title "Error" -message "No parent role selected."
++    } elseif {$vals(role_parent:use)} {
++        set parent_regexp 1
++    }
++    if {$vals(role_child:use) && $vals(role_child:sym) == {}} {
++        tk_messageBox -icon error -type ok -title "Error" -message "No child role selected."
++    } elseif {$vals(role_child:use)} {
++        set child_regexp 1
++    }
++
++    set q [new_apol_rolebounds_query_t]
++    set v [$q run $::ApolTop::policy]
++    $q -acquire
++    $q -delete
++    for {set i 0} {$v != "NULL" && $i < [$v get_size]} {incr i} {
++        for {set i 0} {$v != "NULL" && $i < [$v get_size]} {incr i} {
++            set q [qpol_rolebounds_from_void [$v get_element $i]]
++            set parent [$q get_parent_name $::ApolTop::qpolicy]
++            set child [$q get_child_name $::ApolTop::qpolicy]
++            if {$parent != ""} {
++                if {$parent_regexp == 1 && $parent == $vals(role_parent:sym)} {
++                    set printit 1
++                } 
++                if {$child_regexp == 1 && $child == $vals(role_child:sym)} {
++                    set printit 1
++                }
++                if {$parent_regexp == 0 && $child_regexp == 0} {
++                    set printit 1
++                }
++                if {$printit == 1} {
++                    append bounds "rolebounds $parent "
++                    append bounds "$child;\n"
++                    set counter [expr $counter + 1]
++                }
++            }
++            set printit 0
++        }
++    }
++    append results "$counter rules match search criteria.\n\n$bounds\n"
++    Apol_Widget::appendSearchResultText $widgets(results) $results
++}
++
++proc Apol_Bounds::_searchTypeBounds {} {
++    variable vals
++    variable widgets
++
++    set results {}
++    set bounds {}
++    set counter 0
++    set printit 0
++    set parent_regexp 0
++    set child_regexp 0
++
++    if {$vals(type_parent:use) && $vals(type_parent:sym) == {}} {
++        tk_messageBox -icon error -type ok -title "Error" -message "No parent type selected."
++    } elseif {$vals(type_parent:use)} {
++        set parent_regexp 1
++    }
++    if {$vals(type_child:use) && $vals(type_child:sym) == {}} {
++        tk_messageBox -icon error -type ok -title "Error" -message "No child type selected."
++    } elseif {$vals(type_child:use)} {
++        set child_regexp 1
++    }
++
++    set q [new_apol_typebounds_query_t]
++    set v [$q run $::ApolTop::policy]
++    $q -acquire
++    $q -delete
++    for {set i 0} {$v != "NULL" && $i < [$v get_size]} {incr i} {
++        for {set i 0} {$v != "NULL" && $i < [$v get_size]} {incr i} {
++            set q [qpol_typebounds_from_void [$v get_element $i]]
++            set parent [$q get_parent_name $::ApolTop::qpolicy]
++            set child [$q get_child_name $::ApolTop::qpolicy]
++            if {$parent != ""} {
++                if {$parent_regexp == 1 && $parent == $vals(type_parent:sym)} {
++                    set printit 1
++                } 
++                if {$child_regexp == 1 && $child == $vals(type_child:sym)} {
++                    set printit 1
++                }
++                if {$parent_regexp == 0 && $child_regexp == 0} {
++                    set printit 1
++                }
++                if {$printit == 1} {
++                    append bounds "typebounds $parent "
++                    append bounds "$child;\n"
++                    set counter [expr $counter + 1]
++                }
++            }
++            set printit 0
++        }
++    }
++    append results "$counter rules match search criteria.\n\n$bounds\n"
++    Apol_Widget::appendSearchResultText $widgets(results) $results
++}
++
+diff --git a/apol/top.tcl b/apol/top.tcl
+index 3d51e22ee1dc..3a1f42c25a11 100644
+--- a/apol/top.tcl
++++ b/apol/top.tcl
+@@ -75,6 +75,7 @@ namespace eval ApolTop {
+         {Apol_Constraint rules {tag_query_saveable}}
+         {Apol_RBAC rules {}}
+         {Apol_Range rules {tag_mls}}
++        {Apol_Bounds rules {}}
+         {Apol_File_Contexts {} {}}
+         {Apol_Analysis {} {tag_query_saveable}}
+         {Apol_PolicyConf {} {tag_source}}
+@@ -558,6 +559,57 @@ proc ApolTop::_toplevel_update_stats {} {
+         set policy_stats(mlsvalidatetrans) 0
+     }
+ 
++    # Determine number of typebounds statements
++    set q [new_apol_typebounds_query_t]
++    set v [$q run $::ApolTop::policy]
++    $q -acquire
++    $q -delete
++    set counter 0
++    for {set i 0} {$v != "NULL" && $i < [$v get_size]} {incr i} {
++        for {set i 0} {$v != "NULL" && $i < [$v get_size]} {incr i} {
++            set q [qpol_typebounds_from_void [$v get_element $i]]
++            set parent [$q get_parent_name $::ApolTop::qpolicy]
++            if {$parent != ""} {
++                set counter [expr $counter + 1]
++            }
++        }
++    }
++    set policy_stats(typebounds) $counter
++
++    # Determine number of rolebounds statements
++    set q [new_apol_rolebounds_query_t]
++    set v [$q run $::ApolTop::policy]
++    $q -acquire
++    $q -delete
++    set counter 0
++    for {set i 0} {$v != "NULL" && $i < [$v get_size]} {incr i} {
++        for {set i 0} {$v != "NULL" && $i < [$v get_size]} {incr i} {
++            set q [qpol_rolebounds_from_void [$v get_element $i]]
++            set parent [$q get_parent_name $::ApolTop::qpolicy]
++            if {$parent != ""} {
++                set counter [expr $counter + 1]
++            }
++        }
++    }
++    set policy_stats(rolebounds) $counter
++
++    # Determine number of userbounds statements
++    set q [new_apol_userbounds_query_t]
++    set v [$q run $::ApolTop::policy]
++    $q -acquire
++    $q -delete
++    set counter 0
++    for {set i 0} {$v != "NULL" && $i < [$v get_size]} {incr i} {
++        for {set i 0} {$v != "NULL" && $i < [$v get_size]} {incr i} {
++            set q [qpol_userbounds_from_void [$v get_element $i]]
++            set parent [$q get_parent_name $::ApolTop::qpolicy]
++            if {$parent != ""} {
++                set counter [expr $counter + 1]
++            }
++        }
++    }
++    set policy_stats(userbounds) $counter
++
+     set policy_stats_summary ""
+     append policy_stats_summary "Classes: $policy_stats(classes)   "
+     append policy_stats_summary "Perms: $policy_stats(perms)   "
+@@ -757,6 +809,7 @@ proc ApolTop::_show_policy_summary {} {
+         "Number of Types and Attributes" {
+             "Types" types
+             "   that includes permissive types" permissive
++            "   that includes bounded types" typebounds
+             "Attributes" attribs
+         }
+         "Number of Type Enforcement Rules" {
+@@ -771,6 +824,7 @@ proc ApolTop::_show_policy_summary {} {
+         }
+         "Number of Roles" {
+             "Roles" roles
++            "   that includes bounded roles" rolebounds
+         }
+         "Number of RBAC Rules" {
+             "allows" role_allow
+@@ -798,6 +852,7 @@ proc ApolTop::_show_policy_summary {} {
+     foreach {title block} {
+         "Number of Users" {
+             "Users" users
++            "   that includes bounded users" userbounds
+         }
+         "Number of Booleans" {
+             "Booleans" bools
+diff --git a/apol/types_tab.tcl b/apol/types_tab.tcl
+index 80f416baee5d..34b131f78576 100644
+--- a/apol/types_tab.tcl
++++ b/apol/types_tab.tcl
+@@ -15,7 +15,6 @@
+ 
+ namespace eval Apol_Types {
+     variable typelist {}
+-    variable permissivelist {}
+     variable attriblist {}
+     variable opts
+     variable widgets
+@@ -61,8 +60,8 @@ proc Apol_Types::create {tab_name nb} {
+     set ofm [$obox getframe]
+     set fm_types_select [frame $ofm.to]
+     set fm_attribs_select [frame $ofm.ao]
+-    set fm_permissive_select [frame $ofm.po]
+-    pack $fm_types_select $fm_attribs_select $fm_permissive_select -side left -padx 4 -pady 2 -anchor nw
++    set fm_permissive_bounds [frame $ofm.po]
++    pack $fm_types_select $fm_attribs_select $fm_permissive_bounds -side left -padx 4 -pady 2 -anchor nw
+ 
+     set types_select [checkbutton $fm_types_select.type -text "Show types" -variable Apol_Types::opts(types)]
+     set typeattribs [checkbutton $fm_types_select.typeattribs -text "Include attributes" \
+@@ -83,12 +82,18 @@ proc Apol_Types::create {tab_name nb} {
+     trace add variable Apol_Types::opts(attribs) write \
+         [list Apol_Types::_toggleCheckbuttons [list $a_typeattribs $a_types]]
+ 
+-    set permissive_select [checkbutton $fm_permissive_select.type -text "Show permissive types" \
++    set permissive_select [checkbutton $fm_permissive_bounds.type -text "Show permissive types" \
+         -variable Apol_Types::opts(permissive)]
+     pack $permissive_select -anchor w
+     trace add variable Apol_Types::opts(permissive:show_names) write \
+         [list Apol_Types::_toggleCheckbuttons $permissive_select]
+ 
++    set typebounds_select [checkbutton $fm_permissive_bounds.bounds -text "Show typebounds rules" \
++        -variable Apol_Types::opts(typebounds)]
++    pack $typebounds_select -anchor w
++    trace add variable Apol_Types::opts(typebounds:show_names) write \
++        [list Apol_Types::_toggleCheckbuttons $typebounds_select]
++
+     set widgets(regexp) [Apol_Widget::makeRegexpEntry $ofm.regexpf]
+     Apol_Widget::setRegexpEntryState $widgets(regexp) 1
+ 
+@@ -126,7 +131,6 @@ proc Apol_Types::close {} {
+ 
+     _initializeVars
+     set Apol_Types::typelist {}
+-    set Apol_Types::permissivelist {}
+     set Apol_Types::attriblist {}
+     Apol_Widget::clearSearchResults $widgets(results)
+ }
+@@ -173,9 +177,6 @@ proc Apol_Types::isAttributeInPolicy {attrib} {
+ proc Apol_Types::getTypes {} {
+     variable typelist
+     set typelist
+-
+-    variable permissivelist
+-    set permissivelist
+ }
+ 
+ # Return a list of all attribute names within the current policy.  If
+@@ -193,6 +194,7 @@ proc Apol_Types::_initializeVars {} {
+         types 1    types:show_attribs 1  types:show_aliases 1
+         attribs 0  attribs:show_types 1  attribs:show_attribs 1
+         permissive 1  permissive:show_names 1  permissive:show_names 1
++        typebounds 1  typebounds:show_names 1  typebounds:show_names 1
+     }
+ }
+ 
+@@ -209,7 +211,7 @@ proc Apol_Types::_toggleCheckbuttons {w name1 name2 op} {
+             $x configure -state disabled
+         }
+     }
+-    if {!$opts(types) && !$opts(attribs) && !$opts(permissive)} {
++    if {!$opts(types) && !$opts(attribs) && !$opts(permissive) && !$opts(typebounds)} {
+         Apol_Widget::setRegexpEntryState $widgets(regexp) 0
+     } else {
+         Apol_Widget::setRegexpEntryState $widgets(regexp) 1
+@@ -224,7 +226,6 @@ proc Apol_Types::_popupTypeInfo {which ta} {
+         set entry_vector {}
+         set index_file_loaded 0
+     }
+-puts "AT POPUP"
+     if {$which == "type"} {
+         set info_ta [_renderType $ta 1 1]
+     } else {
+@@ -297,7 +298,7 @@ proc Apol_Types::_searchTypes {} {
+         tk_messageBox -icon error -type ok -title "Error" -message "No current policy file is opened."
+         return
+     }
+-    if {$opts(types) == 0 && $opts(attribs) == 0 && $opts(permissive) == 0} {
++    if {$opts(types) == 0 && $opts(attribs) == 0 && $opts(permissive) == 0 && $opts(typebounds) == 0} {
+         tk_messageBox -icon error -type ok -title "Error" -message "No search options provided."
+         return
+     }
+@@ -364,6 +365,34 @@ proc Apol_Types::_searchTypes {} {
+             append results "[_renderType $p 0 0]\n"
+         }
+     }
++    if {$opts(typebounds)} {
++        set bounds {}
++        set counter 0
++
++        set q [new_apol_typebounds_query_t]
++        $q set_name $::ApolTop::policy $regexp
++        $q set_regex $::ApolTop::policy $use_regexp
++
++        set v [$q run $::ApolTop::policy]
++        $q -acquire
++        $q -delete
++        for {set i 0} {$v != "NULL" && $i < [$v get_size]} {incr i} {
++            for {set i 0} {$v != "NULL" && $i < [$v get_size]} {incr i} {
++                set q [qpol_typebounds_from_void [$v get_element $i]]
++                set parent [$q get_parent_name $::ApolTop::qpolicy]
++                if {$parent != ""} {
++                    append bounds "typebounds $parent "
++                    append bounds "[$q get_child_name $::ApolTop::qpolicy];\n"
++                    set counter [expr $counter + 1]
++                }
++            }
++        }
++        if {$opts(types) || $opts(attribs) || $opts(permissive)} {
++            append results "\n\n"
++        }
++        append results "BOUNDED TYPES ($counter):\n\n"
++        append results "$bounds\n"
++    }
+     Apol_Widget::appendSearchResultText $widgets(results) $results
+ }
+ 
+diff --git a/libapol/include/apol/Makefile.am b/libapol/include/apol/Makefile.am
+index e398ff2afa1f..72b5ab0dd7be 100644
+--- a/libapol/include/apol/Makefile.am
++++ b/libapol/include/apol/Makefile.am
+@@ -3,6 +3,7 @@ apoldir = $(includedir)/apol
+ apol_HEADERS = \
+ 	avrule-query.h \
+ 	bool-query.h \
++	bounds-query.h \
+ 	bst.h \
+ 	class-perm-query.h \
+ 	condrule-query.h \
+diff --git a/libapol/include/apol/bounds-query.h b/libapol/include/apol/bounds-query.h
+new file mode 100644
+index 000000000000..5559ab46382c
+--- /dev/null
++++ b/libapol/include/apol/bounds-query.h
+@@ -0,0 +1,177 @@
++/**
++ * @file
++ *
++ * Routines to query policy capabilities in policy.
++ *
++ *  @author Richard Haines richard_c_haines@btinternet.com
++ *
++ * Copyright (C) 2006-2007 Tresys Technology, LLC
++ *
++ *  This library is free software; you can redistribute it and/or
++ *  modify it under the terms of the GNU Lesser General Public
++ *  License as published by the Free Software Foundation; either
++ *  version 2.1 of the License, or (at your option) any later version.
++ *
++ *  This library is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ *  Lesser General Public License for more details.
++ *
++ *  You should have received a copy of the GNU Lesser General Public
++ *  License along with this library; if not, write to the Free Software
++ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++ */
++
++#ifndef APOL_BOUNDS_QUERY_H
++#define APOL_BOUNDS_QUERY_H
++
++#ifdef	__cplusplus
++extern "C"
++{
++#endif
++
++#include "policy.h"
++#include "vector.h"
++#include <qpol/policy.h>
++
++			/************ TYPEBOUNDS *************/
++	typedef struct apol_typebounds_query apol_typebounds_query_t;
++/**
++ * Execute a query against all policy capabilities within the policy.
++ *
++ * @param p Policy within which to look up policy capabilities.
++ * @param t Structure containing parameters for query.	If this is
++ * NULL then return all policy capabilities.
++ * @param v Reference to a vector of qpol_typebounds_t.  The vector will be
++ * allocated by this function.  The caller must call
++ * apol_vector_destroy() afterwards.  This will be set to NULL upon no
++ * results or upon error.
++ *
++ * @return 0 on success (including none found), negative on error.
++ */
++	extern int apol_typebounds_get_by_query(const apol_policy_t * p, apol_typebounds_query_t * t, apol_vector_t ** v);
++
++/**
++ * Allocate and return a new typebounds query structure.  All fields are
++ * initialized, such that running this blank query results in
++ * returning all policy capabilities within the policy.  The caller must call
++ * apol_typebounds_query_destroy() upon the return value afterwards.
++ *
++ * @return An initialized typebounds query structure, or NULL upon error.
++ */
++	extern apol_typebounds_query_t *apol_typebounds_query_create(void);
++
++/**
++ * Deallocate all memory associated with the referenced typebounds query,
++ * and then set it to NULL.  This function does nothing if the query
++ * is already NULL.
++ *
++ * @param t Reference to a typebounds query structure to destroy.
++ */
++	extern void apol_typebounds_query_destroy(apol_typebounds_query_t ** t);
++
++/**
++ * Set a typebounds query to return only policy capabilities that match this name. This function
++ * duplicates the incoming name.
++ *
++ * @param p Policy handler, to report errors.
++ * @param t typebounds query to set.
++ * @param name Limit query to only policy capabilities with this name, or
++ * NULL to unset this field.
++ *
++ * @return 0 on success, negative on error.
++ */
++	extern int apol_typebounds_query_set_name(const apol_policy_t * p, apol_typebounds_query_t * t, const char *name);
++
++/**
++ * Set a typebounds query to use regular expression searching for all of its
++ * fields.  Strings will be treated as regexes instead of literals.
++ * Matching will occur against the policy capability name.
++ *
++ * @param p Policy handler, to report errors.
++ * @param t typebounds query to set.
++ * @param is_regex Non-zero to enable regex searching, 0 to disable.
++ *
++ * @return Always 0.
++ */
++	extern int apol_typebounds_query_set_regex(const apol_policy_t * p, apol_typebounds_query_t * t, int is_regex);
++
++
++			/************ ROLEBOUNDS *************/
++	typedef struct apol_rolebounds_query apol_rolebounds_query_t;
++/**
++ * Execute a query against all policy capabilities within the policy.
++ *
++ * @param p Policy within which to look up policy capabilities.
++ * @param t Structure containing parameters for query.	If this is
++ * NULL then return all policy capabilities.
++ * @param v Reference to a vector of qpol_rolebounds_t.  The vector will be
++ * allocated by this function.  The caller must call
++ * apol_vector_destroy() afterwards.  This will be set to NULL upon no
++ * results or upon error.
++ *
++ * @return 0 on success (including none found), negative on error.
++ */
++	extern int apol_rolebounds_get_by_query(const apol_policy_t * p, apol_rolebounds_query_t * t, apol_vector_t ** v);
++
++/**
++ * Allocate and return a new rolebounds query structure.  All fields are
++ * initialized, such that running this blank query results in
++ * returning all policy capabilities within the policy.  The caller must call
++ * apol_rolebounds_query_destroy() upon the return value afterwards.
++ *
++ * @return An initialized rolebounds query structure, or NULL upon error.
++ */
++	extern apol_rolebounds_query_t *apol_rolebounds_query_create(void);
++
++/**
++ * Deallocate all memory associated with the referenced rolebounds query,
++ * and then set it to NULL.  This function does nothing if the query
++ * is already NULL.
++ *
++ * @param t Reference to a rolebounds query structure to destroy.
++ */
++	extern void apol_rolebounds_query_destroy(apol_rolebounds_query_t ** t);
++
++			/************ USERBOUNDS *************/
++	typedef struct apol_userbounds_query apol_userbounds_query_t;
++/**
++ * Execute a query against all policy capabilities within the policy.
++ *
++ * @param p Policy within which to look up policy capabilities.
++ * @param t Structure containing parameters for query.	If this is
++ * NULL then return all policy capabilities.
++ * @param v Reference to a vector of qpol_userbounds_t.  The vector will be
++ * allocated by this function.  The caller must call
++ * apol_vector_destroy() afterwards.  This will be set to NULL upon no
++ * results or upon error.
++ *
++ * @return 0 on success (including none found), negative on error.
++ */
++	extern int apol_userbounds_get_by_query(const apol_policy_t * p, apol_userbounds_query_t * t, apol_vector_t ** v);
++
++/**
++ * Allocate and return a new userbounds query structure.  All fields are
++ * initialized, such that running this blank query results in
++ * returning all policy capabilities within the policy.  The caller must call
++ * apol_userbounds_query_destroy() upon the return value afterwards.
++ *
++ * @return An initialized userbounds query structure, or NULL upon error.
++ */
++	extern apol_userbounds_query_t *apol_userbounds_query_create(void);
++
++/**
++ * Deallocate all memory associated with the referenced userbounds query,
++ * and then set it to NULL.  This function does nothing if the query
++ * is already NULL.
++ *
++ * @param t Reference to a userbounds query structure to destroy.
++ */
++	extern void apol_userbounds_query_destroy(apol_userbounds_query_t ** t);
++
++
++#ifdef	__cplusplus
++}
++#endif
++
++#endif
+diff --git a/libapol/include/apol/policy-query.h b/libapol/include/apol/policy-query.h
+index 665e4cb3ac8e..cc1df9b8aba6 100644
+--- a/libapol/include/apol/policy-query.h
++++ b/libapol/include/apol/policy-query.h
+@@ -66,6 +66,7 @@ extern "C"
+ #include "context-query.h"
+ #include "permissive-query.h"
+ #include "polcap-query.h"
++#include "bounds-query.h"
+ 
+ #include "avrule-query.h"
+ #include "terule-query.h"
+diff --git a/libapol/src/Makefile.am b/libapol/src/Makefile.am
+index baaa4f6b4d12..c37233f52fcf 100644
+--- a/libapol/src/Makefile.am
++++ b/libapol/src/Makefile.am
+@@ -14,6 +14,7 @@ AM_LDFLAGS = @DEBUGLDFLAGS@ @WARNLDFLAGS@ @PROFILELDFLAGS@
+ libapol_a_SOURCES = \
+ 	avrule-query.c \
+ 	bool-query.c \
++	bounds-query.c \
+ 	bst.c \
+ 	class-perm-query.c \
+ 	condrule-query.c \
+diff --git a/libapol/src/bounds-query.c b/libapol/src/bounds-query.c
+new file mode 100644
+index 000000000000..de76bced4a14
+--- /dev/null
++++ b/libapol/src/bounds-query.c
+@@ -0,0 +1,216 @@
++/**
++ * @file
++ *
++ * Provides a way for setools to make queries about policy capabilities 
++ * within a policy.  The caller obtains a query object,
++ * fills in its parameters, and then runs the query; it obtains a
++ * vector of results.  Searches are conjunctive -- all fields of the
++ * search query must match for a datum to be added to the results
++ * query.
++ *
++ *  @author Richard Haines richard_c_haines@btinternet.com
++ *
++ * Copyright (C) 2006-2007 Tresys Technology, LLC
++ *
++ *  This library is free software; you can redistribute it and/or
++ *  modify it under the terms of the GNU Lesser General Public
++ *  License as published by the Free Software Foundation; either
++ *  version 2.1 of the License, or (at your option) any later version.
++ *
++ *  This library is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ *  Lesser General Public License for more details.
++ *
++ *  You should have received a copy of the GNU Lesser General Public
++ *  License along with this library; if not, write to the Free Software
++ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++ */
++
++#include "policy-query-internal.h"
++
++#include <errno.h>
++
++			/************ TYPEBOUNDS *************/
++struct apol_typebounds_query
++{
++	char *name;
++	unsigned int flags;
++	regex_t *regex;
++};
++
++int apol_typebounds_get_by_query(const apol_policy_t * p, apol_typebounds_query_t * q, apol_vector_t ** v)
++{
++	qpol_iterator_t *iter;
++	int retval = -1;
++	int compval = 6;
++	*v = NULL;
++	if (qpol_policy_get_typebounds_iter(p->p, &iter) < 0) {
++		return -1;
++	}
++	if ((*v = apol_vector_create(NULL)) == NULL) {
++		ERR(p, "%s", strerror(errno));
++		goto cleanup;
++	}
++	for (; !qpol_iterator_end(iter); qpol_iterator_next(iter)) {
++		const qpol_typebounds_t *typebounds;
++		if (qpol_iterator_get_item(iter, (void **)&typebounds) < 0) {
++			goto cleanup;
++		}
++		if (q != NULL) {
++			if (apol_compare_typebounds(p, typebounds, q->name,
++						q->flags, &(q->regex)) == 1) {
++				if (apol_vector_append(*v, (void *)typebounds)) {
++					ERR(p, "%s", strerror(ENOMEM));
++					goto cleanup;
++				}
++			}
++		}
++	}
++
++	retval = 0;
++cleanup:
++	if (retval != 0) {
++		apol_vector_destroy(v);
++	}
++	qpol_iterator_destroy(&iter);
++	return retval;
++}
++
++apol_typebounds_query_t *apol_typebounds_query_create(void)
++{
++	return calloc(1, sizeof(apol_typebounds_query_t));
++}
++
++void apol_typebounds_query_destroy(apol_typebounds_query_t ** q)
++{
++	if (*q != NULL) {
++		free((*q)->name);
++		apol_regex_destroy(&(*q)->regex);
++		free(*q);
++		*q = NULL;
++	}
++}
++
++int apol_typebounds_query_set_name(const apol_policy_t * p, apol_typebounds_query_t * q, const char *name)
++{
++	return apol_query_set(p, &q->name, &q->regex, name);
++}
++
++int apol_typebounds_query_set_regex(const apol_policy_t * p, apol_typebounds_query_t * q, int is_regex)
++{
++	return apol_query_set_regex(p, &q->flags, is_regex);
++}
++
++
++			/************ ROLEBOUNDS *************/
++struct apol_rolebounds_query
++{
++	char *name;
++};
++
++int apol_rolebounds_get_by_query(const apol_policy_t * p, apol_rolebounds_query_t * q, apol_vector_t ** v)
++{
++	qpol_iterator_t *iter;
++	int retval = -1;
++	int compval = 6;
++	*v = NULL;
++	if (qpol_policy_get_rolebounds_iter(p->p, &iter) < 0) {
++		return -1;
++	}
++	if ((*v = apol_vector_create(NULL)) == NULL) {
++		ERR(p, "%s", strerror(errno));
++		goto cleanup;
++	}
++	for (; !qpol_iterator_end(iter); qpol_iterator_next(iter)) {
++		const qpol_rolebounds_t *rolebounds;
++		if (qpol_iterator_get_item(iter, (void **)&rolebounds) < 0) {
++			goto cleanup;
++		}
++		if (q != NULL) {
++			if (apol_vector_append(*v, (void *)rolebounds)) {
++				ERR(p, "%s", strerror(ENOMEM));
++				goto cleanup;
++			}
++		}
++	}
++
++	retval = 0;
++cleanup:
++	if (retval != 0) {
++		apol_vector_destroy(v);
++	}
++	qpol_iterator_destroy(&iter);
++	return retval;
++}
++
++apol_rolebounds_query_t *apol_rolebounds_query_create(void)
++{
++	return calloc(1, sizeof(apol_rolebounds_query_t));
++}
++
++void apol_rolebounds_query_destroy(apol_rolebounds_query_t ** q)
++{
++	if (*q != NULL) {
++		free((*q)->name);
++		free(*q);
++		*q = NULL;
++	}
++}
++
++
++			/************ USERBOUNDS *************/
++struct apol_userbounds_query
++{
++	char *name;
++};
++
++int apol_userbounds_get_by_query(const apol_policy_t * p, apol_userbounds_query_t * q, apol_vector_t ** v)
++{
++	qpol_iterator_t *iter;
++	int retval = -1;
++	int compval = 6;
++	*v = NULL;
++	if (qpol_policy_get_userbounds_iter(p->p, &iter) < 0) {
++		return -1;
++	}
++	if ((*v = apol_vector_create(NULL)) == NULL) {
++		ERR(p, "%s", strerror(errno));
++		goto cleanup;
++	}
++	for (; !qpol_iterator_end(iter); qpol_iterator_next(iter)) {
++		const qpol_userbounds_t *userbounds;
++		if (qpol_iterator_get_item(iter, (void **)&userbounds) < 0) {
++			goto cleanup;
++		}
++		if (q != NULL) {
++			if (apol_vector_append(*v, (void *)userbounds)) {
++				ERR(p, "%s", strerror(ENOMEM));
++				goto cleanup;
++			}
++		}
++	}
++
++	retval = 0;
++cleanup:
++	if (retval != 0) {
++		apol_vector_destroy(v);
++	}
++	qpol_iterator_destroy(&iter);
++	return retval;
++}
++
++apol_userbounds_query_t *apol_userbounds_query_create(void)
++{
++	return calloc(1, sizeof(apol_userbounds_query_t));
++}
++
++void apol_userbounds_query_destroy(apol_userbounds_query_t ** q)
++{
++	if (*q != NULL) {
++		free((*q)->name);
++		free(*q);
++		*q = NULL;
++	}
++}
++
+diff --git a/libapol/src/libapol.map b/libapol/src/libapol.map
+index 7657a2d8c3ee..b64345d5278c 100644
+--- a/libapol/src/libapol.map
++++ b/libapol/src/libapol.map
+@@ -83,5 +83,8 @@ VERS_4.1{
+ VERS_4.2{
+ 	global:
+ 		apol_permissive_*;
++		apol_typebounds_*;
++		apol_rolebounds_*;
++		apol_userbounds_*;
+ 		apol_polcap_*;
+ } VERS_4.1;
+diff --git a/libapol/src/policy-query-internal.h b/libapol/src/policy-query-internal.h
+index 657c815700a3..d7e57e02747d 100644
+--- a/libapol/src/policy-query-internal.h
++++ b/libapol/src/policy-query-internal.h
+@@ -228,6 +228,25 @@ extern "C"
+ 			      regex_t ** type_regex);
+ 
+ /**
++ * Determines if a (partial) typebounds query matches a qpol_typebounds_t,
++ * by name.
++ *
++ * @param p Policy within which to look up types.
++ * @param type typebounds datum to compare against.
++ * @param name Source target from which to compare.
++ * @param flags If APOL_QUERY_REGEX bit is set, treat name as a
++ * regular expression.
++ * @param regex If using regexp comparison, the compiled regular
++ * expression to use; the pointer will be allocated space if regexp is
++ * legal.  If NULL, then compile the regexp pattern given by name and
++ * cache it here.
++ *
++ * @return 1 If comparison succeeds, 0 if not; < 0 on error.
++ */
++	int apol_compare_typebounds(const apol_policy_t * p, const qpol_typebounds_t * typebounds, const char *name, unsigned int flags,
++			      regex_t ** type_regex);
++
++/**
+  * Determines if a boolean is used within a particual conditional.
+  *
+  * @param p Policy within which to look up types.
+diff --git a/libapol/src/policy-query.c b/libapol/src/policy-query.c
+index 18152fba55b3..5ce52a2a4f4d 100644
+--- a/libapol/src/policy-query.c
++++ b/libapol/src/policy-query.c
+@@ -188,6 +188,29 @@ int apol_compare_polcap(const apol_policy_t * p, const qpol_polcap_t * polcap, c
+ 	return compval;
+ }
+ 
++int apol_compare_typebounds(const apol_policy_t * p, const qpol_typebounds_t * typebounds, const char *name, unsigned int flags,
++		      regex_t ** typebounds_regex)
++{
++	const char *typebounds_parent_name = NULL;
++	const char *typebounds_child_name = NULL;
++
++	int compval = 0;
++
++	qpol_typebounds_get_parent_name(p->p, typebounds, &typebounds_parent_name);
++	qpol_typebounds_get_child_name(p->p, typebounds, &typebounds_child_name);
++
++	if (typebounds_parent_name != NULL) {
++		compval = apol_compare(p, typebounds_parent_name, name, flags, typebounds_regex);
++	}
++	if (typebounds_child_name != NULL && compval == 0) {
++		compval = apol_compare(p, typebounds_child_name, name, flags, typebounds_regex);
++		return compval;
++	} else {
++		return compval;
++	}
++	return 0;
++}
++
+ int apol_compare_cond_expr(const apol_policy_t * p, const qpol_cond_t * cond, const char *name, unsigned int flags,
+ 			   regex_t ** bool_regex)
+ {
+diff --git a/libapol/swig/apol.i b/libapol/swig/apol.i
+index e440d534c03d..ae2038d126bc 100644
+--- a/libapol/swig/apol.i
++++ b/libapol/swig/apol.i
+@@ -2702,6 +2702,107 @@ typedef struct apol_polcap_query {} apol_polcap_query_t;
+ 	};
+ };
+ 
++/* apol typebounds query */
++typedef struct apol_typebounds_query {} apol_typebounds_query_t;
++%extend apol_typebounds_query_t {
++	apol_typebounds_query() {
++		apol_typebounds_query_t *arq;
++		BEGIN_EXCEPTION
++		arq = apol_typebounds_query_create();
++		if (!arq) {
++			SWIG_exception(SWIG_MemoryError, "Out of memory");
++		}
++		END_EXCEPTION
++	fail:
++		return arq;
++	};
++	~apol_typebounds_query() {
++		apol_typebounds_query_destroy(&self);
++	};
++	%newobject run(apol_policy_t*);
++	apol_vector_t *run(apol_policy_t *p) {
++		apol_vector_t *v;
++		BEGIN_EXCEPTION
++		if (apol_typebounds_get_by_query(p, self, &v)) {
++			SWIG_exception(SWIG_RuntimeError, "Could not run typebounds query");
++		}
++		END_EXCEPTION
++	fail:
++		return v;
++	};
++	void set_name(apol_policy_t *p, char *name) {
++		BEGIN_EXCEPTION
++		if (apol_typebounds_query_set_name(p, self, name)) {
++			SWIG_exception(SWIG_MemoryError, "Out of memory");
++		}
++		END_EXCEPTION
++	fail:
++		return;
++	};
++	void set_regex(apol_policy_t *p, int regex) {
++		apol_typebounds_query_set_regex(p, self, regex);
++	};
++};
++
++/* apol rolebounds query */
++typedef struct apol_rolebounds_query {} apol_rolebounds_query_t;
++%extend apol_rolebounds_query_t {
++	apol_rolebounds_query() {
++		apol_rolebounds_query_t *arq;
++		BEGIN_EXCEPTION
++		arq = apol_rolebounds_query_create();
++		if (!arq) {
++			SWIG_exception(SWIG_MemoryError, "Out of memory");
++		}
++		END_EXCEPTION
++	fail:
++		return arq;
++	};
++	~apol_rolebounds_query() {
++		apol_rolebounds_query_destroy(&self);
++	};
++	%newobject run(apol_policy_t*);
++	apol_vector_t *run(apol_policy_t *p) {
++		apol_vector_t *v;
++		BEGIN_EXCEPTION
++		if (apol_rolebounds_get_by_query(p, self, &v)) {
++			SWIG_exception(SWIG_RuntimeError, "Could not run rolebounds query");
++		}
++		END_EXCEPTION
++	fail:
++		return v;
++	};
++};
++
++/* apol userbounds query */
++typedef struct apol_userbounds_query {} apol_userbounds_query_t;
++%extend apol_userbounds_query_t {
++	apol_userbounds_query() {
++		apol_userbounds_query_t *arq;
++		BEGIN_EXCEPTION
++		arq = apol_userbounds_query_create();
++		if (!arq) {
++			SWIG_exception(SWIG_MemoryError, "Out of memory");
++		}
++		END_EXCEPTION
++	fail:
++		return arq;
++	};
++	~apol_userbounds_query() {
++		apol_userbounds_query_destroy(&self);
++	};
++	%newobject run(apol_policy_t*);
++	apol_vector_t *run(apol_policy_t *p) {
++		apol_vector_t *v;
++		BEGIN_EXCEPTION
++		if (apol_userbounds_get_by_query(p, self, &v)) {
++			SWIG_exception(SWIG_RuntimeError, "Could not run userbounds query");
++		}
++		END_EXCEPTION
++	fail:
++		return v;
++	};
++};
+ 
+ /* domain transition analysis */
+ #define APOL_DOMAIN_TRANS_DIRECTION_FORWARD 0x01
+diff --git a/libqpol/include/qpol/Makefile.am b/libqpol/include/qpol/Makefile.am
+index 9b570e13d18e..11009a0fe2d3 100644
+--- a/libqpol/include/qpol/Makefile.am
++++ b/libqpol/include/qpol/Makefile.am
+@@ -17,6 +17,7 @@ qpol_HEADERS = \
+ 	netifcon_query.h \
+ 	nodecon_query.h \
+ 	permissive_query.h \
++	bounds_query.h \
+ 	polcap_query.h \
+ 	policy.h \
+ 	policy_extend.h \
+diff --git a/libqpol/include/qpol/bounds_query.h b/libqpol/include/qpol/bounds_query.h
+new file mode 100644
+index 000000000000..da5e52569e3d
+--- /dev/null
++++ b/libqpol/include/qpol/bounds_query.h
+@@ -0,0 +1,162 @@
++/**
++ *  @file
++ *  Defines the public interface for searching and iterating over the permissive types.
++ *
++ *  @author Richard Haines richard_c_haines@btinternet.com
++ *
++ *  Copyright (C) 2006-2009 Tresys Technology, LLC
++ *
++ *  This library is free software; you can redistribute it and/or
++ *  modify it under the terms of the GNU Lesser General Public
++ *  License as published by the Free Software Foundation; either
++ *  version 2.1 of the License, or (at your option) any later version.
++ *
++ *  This library is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ *  Lesser General Public License for more details.
++ *
++ *  You should have received a copy of the GNU Lesser General Public
++ *  License along with this library; if not, write to the Free Software
++ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++ */
++
++#ifndef QPOL_BOUNDS_QUERY_H
++#define QPOL_BOUNDS_QUERY_H
++
++#ifdef	__cplusplus
++extern "C"
++{
++#endif
++
++#include <stddef.h>
++#include <stdint.h>
++#include <qpol/iterator.h>
++#include <qpol/policy.h>
++
++
++			/************ TYPEBOUNDS *************/
++	typedef struct qpol_typebounds qpol_typebounds_t;
++
++/**
++ *  Get an iterator for the typebounds types in a policy.
++ *  @param policy The policy from which to create the iterator.
++ *  @param iter Iterator over items of type qpol_isid_t returned.
++ *  The caller is responsible for calling qpol_iterator_destroy 
++ *  to free memory used by this iterator.
++ *  It is important to note that this iterator is only valid as long 
++ *  as the policy is unmodified.
++ *  @return 0 on success and < 0 on failure; if the call fails, 
++ *  errno will be set and *iter will be NULL.
++ */
++	extern int qpol_policy_get_typebounds_iter(const qpol_policy_t *policy, qpol_iterator_t **iter);
++
++
++/**
++ *  Get the name which identifies a typebounds type from its datum.
++ *  @param policy The policy with which the type bounds type is associated.
++ *  @param datum typebounds datum for which to get the name. Must be non-NULL.
++ *  @param name Pointer to the string in which to store the name.
++ *  Must be non-NULL. The caller should not free the string.
++ *  @return Returns 0 on success and < 0 on failure; if the call fails,
++ *  errno will be set and *name will be NULL.
++ */
++	extern int qpol_typebounds_get_parent_name(const qpol_policy_t *policy, const qpol_typebounds_t *datum, const char **name);
++
++/**
++ *  Get the name which identifies a typebounds type from its datum.
++ *  @param policy The policy with which the type bounds type is associated.
++ *  @param datum typebounds datum for which to get the name. Must be non-NULL.
++ *  @param name Pointer to the string in which to store the name.
++ *  Must be non-NULL. The caller should not free the string.
++ *  @return Returns 0 on success and < 0 on failure; if the call fails,
++ *  errno will be set and *name will be NULL.
++ */
++	extern int qpol_typebounds_get_child_name(const qpol_policy_t *policy, const qpol_typebounds_t *datum, const char **name);
++
++			/************ ROLEBOUNDS *************/
++	typedef struct qpol_rolebounds qpol_rolebounds_t;
++
++/**
++ *  Get an iterator for the rolebounds types in a policy.
++ *  @param policy The policy from which to create the iterator.
++ *  @param iter Iterator over items of type qpol_isid_t returned.
++ *  The caller is responsible for calling qpol_iterator_destroy 
++ *  to free memory used by this iterator.
++ *  It is important to note that this iterator is only valid as long 
++ *  as the policy is unmodified.
++ *  @return 0 on success and < 0 on failure; if the call fails, 
++ *  errno will be set and *iter will be NULL.
++ */
++	extern int qpol_policy_get_rolebounds_iter(const qpol_policy_t *policy, qpol_iterator_t **iter);
++
++
++/**
++ *  Get the name which identifies a rolebounds type from its datum.
++ *  @param policy The policy with which the type bounds type is associated.
++ *  @param datum rolebounds datum for which to get the name. Must be non-NULL.
++ *  @param name Pointer to the string in which to store the name.
++ *  Must be non-NULL. The caller should not free the string.
++ *  @return Returns 0 on success and < 0 on failure; if the call fails,
++ *  errno will be set and *name will be NULL.
++ */
++	extern int qpol_rolebounds_get_parent_name(const qpol_policy_t *policy, const qpol_rolebounds_t *datum, const char **name);
++
++/**
++ *  Get the name which identifies a rolebounds type from its datum.
++ *  @param policy The policy with which the type bounds type is associated.
++ *  @param datum rolebounds datum for which to get the name. Must be non-NULL.
++ *  @param name Pointer to the string in which to store the name.
++ *  Must be non-NULL. The caller should not free the string.
++ *  @return Returns 0 on success and < 0 on failure; if the call fails,
++ *  errno will be set and *name will be NULL.
++ */
++	extern int qpol_rolebounds_get_child_name(const qpol_policy_t *policy, const qpol_rolebounds_t *datum, const char **name);
++
++			/************ USERBOUNDS *************/
++	typedef struct qpol_userbounds qpol_userbounds_t;
++
++/**
++ *  Get an iterator for the userbounds types in a policy.
++ *  @param policy The policy from which to create the iterator.
++ *  @param iter Iterator over items of type qpol_isid_t returned.
++ *  The caller is responsible for calling qpol_iterator_destroy 
++ *  to free memory used by this iterator.
++ *  It is important to note that this iterator is only valid as long 
++ *  as the policy is unmodified.
++ *  @return 0 on success and < 0 on failure; if the call fails, 
++ *  errno will be set and *iter will be NULL.
++ */
++	extern int qpol_policy_get_userbounds_iter(const qpol_policy_t *policy, qpol_iterator_t **iter);
++
++
++/**
++ *  Get the name which identifies a userbounds type from its datum.
++ *  @param policy The policy with which the type bounds type is associated.
++ *  @param datum userbounds datum for which to get the name. Must be non-NULL.
++ *  @param name Pointer to the string in which to store the name.
++ *  Must be non-NULL. The caller should not free the string.
++ *  @return Returns 0 on success and < 0 on failure; if the call fails,
++ *  errno will be set and *name will be NULL.
++ */
++	extern int qpol_userbounds_get_parent_name(const qpol_policy_t *policy, const qpol_userbounds_t *datum, const char **name);
++
++/**
++ *  Get the name which identifies a userbounds type from its datum.
++ *  @param policy The policy with which the type bounds type is associated.
++ *  @param datum userbounds datum for which to get the name. Must be non-NULL.
++ *  @param name Pointer to the string in which to store the name.
++ *  Must be non-NULL. The caller should not free the string.
++ *  @return Returns 0 on success and < 0 on failure; if the call fails,
++ *  errno will be set and *name will be NULL.
++ */
++	extern int qpol_userbounds_get_child_name(const qpol_policy_t *policy, const qpol_userbounds_t *datum, const char **name);
++
++
++
++
++#ifdef	__cplusplus
++}
++#endif
++
++#endif				       /* QPOL_BOUNDS_QUERY_H */
+diff --git a/libqpol/include/qpol/policy.h b/libqpol/include/qpol/policy.h
+index bf85718b6024..9b90ed02a302 100644
+--- a/libqpol/include/qpol/policy.h
++++ b/libqpol/include/qpol/policy.h
+@@ -52,6 +52,7 @@ extern "C"
+ #include <qpol/netifcon_query.h>
+ #include <qpol/nodecon_query.h>
+ #include <qpol/permissive_query.h>
++#include <qpol/bounds_query.h>
+ #include <qpol/polcap_query.h>
+ #include <qpol/portcon_query.h>
+ #include <qpol/rbacrule_query.h>
+@@ -255,6 +256,15 @@ extern "C"
+  */
+ 	extern int qpol_policy_has_capability(const qpol_policy_t * policy, qpol_capability_e cap);
+ 
++/**
++ *  Get the handle_unknown classes/perms flag for the policy.
++ *  @param policy The policy for which to get the version.
++ *  @param handle_unknown Pointer to the integer to set to the version number.
++ *  @return Returns 0 on success and < 0 on failure; if the call fails,
++ *  errno will be set and *handle_unknown will be 0.
++ */
++	extern int qpol_policy_get_policy_handle_unknown(const qpol_policy_t * policy, unsigned int *handle_unknown);
++
+ #ifdef	__cplusplus
+ }
+ #endif
+diff --git a/libqpol/src/Makefile.am b/libqpol/src/Makefile.am
+index 0889a61c9f12..263897117bc6 100644
+--- a/libqpol/src/Makefile.am
++++ b/libqpol/src/Makefile.am
+@@ -35,6 +35,7 @@ libqpol_a_SOURCES = \
+ 	netifcon_query.c \
+ 	nodecon_query.c \
+ 	permissive_query.c \
++	bounds_query.c \
+ 	polcap_query.c \
+ 	policy.c \
+ 	policy_define.c policy_define.h \
+diff --git a/libqpol/src/bounds_query.c b/libqpol/src/bounds_query.c
+new file mode 100644
+index 000000000000..fe71ebf47c5b
+--- /dev/null
++++ b/libqpol/src/bounds_query.c
+@@ -0,0 +1,314 @@
++/**
++*  @file
++*  Defines the public interface for searching and iterating over the permissive types.
++*
++*  @author Richard Haines richard_c_haines@btinternet.com
++*
++*  Copyright (C) 2006-2007 Tresys Technology, LLC
++*
++*  This library is free software; you can redistribute it and/or
++*  modify it under the terms of the GNU Lesser General Public
++*  License as published by the Free Software Foundation; either
++*  version 2.1 of the License, or (at your option) any later version.
++*
++*  This library is distributed in the hope that it will be useful,
++*  but WITHOUT ANY WARRANTY; without even the implied warranty of
++*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++*  Lesser General Public License for more details.
++*
++*  You should have received a copy of the GNU Lesser General Public
++*  License along with this library; if not, write to the Free Software
++*  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++*/
++
++#include <stddef.h>
++#include <stdlib.h>
++#include <stdint.h>
++#include <qpol/iterator.h>
++#include <qpol/policy.h>
++#include <qpol/bounds_query.h>
++#include <sepol/policydb/policydb.h>
++#include "qpol_internal.h"
++#include "iterator_internal.h"
++
++			/************ TYPEBOUNDS *************/
++int qpol_typebounds_get_parent_name(const qpol_policy_t *policy, const qpol_typebounds_t * datum, const char **name)
++{
++	type_datum_t *internal_datum = NULL;
++	policydb_t *db = NULL;
++	
++	if (policy == NULL || datum == NULL || name == NULL) {
++		if (name != NULL)
++			*name = NULL;
++		ERR(policy, "%s", strerror(EINVAL));
++		errno = EINVAL;
++		return STATUS_ERR;
++	}
++
++	db = &policy->p->p;
++	internal_datum = (type_datum_t *)datum;
++
++	/* This will be zero if not a typebounds statement */
++	if (internal_datum->flavor == TYPE_TYPE && internal_datum->bounds != 0) {
++		*name = db->p_type_val_to_name[internal_datum->bounds - 1];
++	} else {
++		*name = NULL;
++	}
++	return STATUS_SUCCESS;
++}
++
++int qpol_typebounds_get_child_name(const qpol_policy_t *policy, const qpol_typebounds_t * datum, const char **name)
++{
++	type_datum_t *internal_datum = NULL;
++	policydb_t *db = NULL;
++	
++	if (policy == NULL || datum == NULL || name == NULL) {
++		if (name != NULL)
++			*name = NULL;
++		ERR(policy, "%s", strerror(EINVAL));
++		errno = EINVAL;
++		return STATUS_ERR;
++	}
++
++	db = &policy->p->p;
++	internal_datum = (type_datum_t *)datum;
++
++	if (internal_datum->flavor == TYPE_TYPE && internal_datum->bounds != 0) {
++		*name = db->p_type_val_to_name[internal_datum->s.value - 1];
++	} else {
++		*name = NULL;
++	}
++	return STATUS_SUCCESS;
++}
++
++/* As type bounds are in types use these, however will need to calc number of bounds manually in top.tcl*/
++int qpol_policy_get_typebounds_iter(const qpol_policy_t *policy, qpol_iterator_t **iter)
++{
++	policydb_t *db;
++	int error = 0;
++	hash_state_t *hs = NULL;
++
++	if (policy == NULL || iter == NULL) {
++		if (iter != NULL)
++			*iter = NULL;
++		ERR(policy, "%s", strerror(EINVAL));
++		errno = EINVAL;
++		return STATUS_ERR;
++	}
++
++	db = &policy->p->p;
++/*
++	struct type_datum *type;
++	size_t i;
++	int count = 0;
++
++	for (i = 0; i < db->p_types.nprim - 1; i++) {
++		type = db->type_val_to_struct[i];
++		if (type->flavor == TYPE_TYPE && type->bounds != 0) {
++			printf("PARENT DOMAIN: %s\n", db->p_type_val_to_name[type->bounds - 1]);
++			printf("CHILD NAME: %s\n", db->p_type_val_to_name[type->s.value - 1]);
++			count++;
++		}
++	}
++	printf("Type Bounds count: %d\n", count);
++*/
++	hs = calloc(1, sizeof(hash_state_t));
++	if (hs == NULL) {
++		error = errno;
++		ERR(policy, "%s", strerror(ENOMEM));
++		errno = error;
++		return STATUS_ERR;
++	}
++	hs->table = &db->p_types.table;
++	hs->node = (*(hs->table))->htable[0];
++
++	if (qpol_iterator_create(policy, (void *)hs, hash_state_get_cur,
++				 hash_state_next, hash_state_end, hash_state_size, free, iter)) {
++		free(hs);
++		return STATUS_ERR;
++	}
++
++	if (hs->node == NULL)
++		hash_state_next(*iter);
++
++	return STATUS_SUCCESS;
++}
++
++			/************ ROLEBOUNDS *************/
++int qpol_rolebounds_get_parent_name(const qpol_policy_t *policy, const qpol_rolebounds_t * datum, const char **name)
++{
++	role_datum_t *internal_datum = NULL;
++	policydb_t *db = NULL;
++	
++	if (policy == NULL || datum == NULL || name == NULL) {
++		if (name != NULL)
++			*name = NULL;
++		ERR(policy, "%s", strerror(EINVAL));
++		errno = EINVAL;
++		return STATUS_ERR;
++	}
++
++	db = &policy->p->p;
++	internal_datum = (role_datum_t *)datum;
++
++	/* This will be zero if not a rolebounds statement */
++	if (internal_datum->flavor == ROLE_ROLE && internal_datum->bounds != 0) {
++		*name = db->p_role_val_to_name[internal_datum->bounds - 1];
++	} else {
++		*name = NULL;
++	}
++	return STATUS_SUCCESS;
++}
++
++int qpol_rolebounds_get_child_name(const qpol_policy_t *policy, const qpol_rolebounds_t * datum, const char **name)
++{
++	role_datum_t *internal_datum = NULL;
++	policydb_t *db = NULL;
++	
++	if (policy == NULL || datum == NULL || name == NULL) {
++		if (name != NULL)
++			*name = NULL;
++		ERR(policy, "%s", strerror(EINVAL));
++		errno = EINVAL;
++		return STATUS_ERR;
++	}
++
++	db = &policy->p->p;
++	internal_datum = (role_datum_t *)datum;
++
++	if (internal_datum->flavor == ROLE_ROLE && internal_datum->bounds != 0) {
++		*name = db->p_role_val_to_name[internal_datum->s.value - 1];
++	} else {
++		*name = NULL;
++	}
++	return STATUS_SUCCESS;
++}
++
++/* As rolebounds are in roles use these, however will need to calc number of bounds manually in top.tcl*/
++int qpol_policy_get_rolebounds_iter(const qpol_policy_t *policy, qpol_iterator_t **iter)
++{
++	policydb_t *db;
++	int error = 0;
++	hash_state_t *hs = NULL;
++
++	if (policy == NULL || iter == NULL) {
++		if (iter != NULL)
++			*iter = NULL;
++		ERR(policy, "%s", strerror(EINVAL));
++		errno = EINVAL;
++		return STATUS_ERR;
++	}
++
++	db = &policy->p->p;
++
++	hs = calloc(1, sizeof(hash_state_t));
++	if (hs == NULL) {
++		error = errno;
++		ERR(policy, "%s", strerror(ENOMEM));
++		errno = error;
++		return STATUS_ERR;
++	}
++	hs->table = &db->p_roles.table;
++	hs->node = (*(hs->table))->htable[0];
++
++	if (qpol_iterator_create(policy, (void *)hs, hash_state_get_cur,
++				 hash_state_next, hash_state_end, hash_state_size, free, iter)) {
++		free(hs);
++		return STATUS_ERR;
++	}
++
++	if (hs->node == NULL)
++		hash_state_next(*iter);
++
++	return STATUS_SUCCESS;
++}
++
++			/************ USERBOUNDS *************/
++int qpol_userbounds_get_parent_name(const qpol_policy_t *policy, const qpol_userbounds_t * datum, const char **name)
++{
++	user_datum_t *internal_datum = NULL;
++	policydb_t *db = NULL;
++	
++	if (policy == NULL || datum == NULL || name == NULL) {
++		if (name != NULL)
++			*name = NULL;
++		ERR(policy, "%s", strerror(EINVAL));
++		errno = EINVAL;
++		return STATUS_ERR;
++	}
++
++	db = &policy->p->p;
++	internal_datum = (user_datum_t *)datum;
++
++	/* This will be zero if not a userbounds statement */
++	if (internal_datum->bounds != 0) {
++		*name = db->p_user_val_to_name[internal_datum->bounds - 1];
++	} else {
++		*name = NULL;
++	}
++	return STATUS_SUCCESS;
++}
++
++int qpol_userbounds_get_child_name(const qpol_policy_t *policy, const qpol_userbounds_t * datum, const char **name)
++{
++	user_datum_t *internal_datum = NULL;
++	policydb_t *db = NULL;
++	
++	if (policy == NULL || datum == NULL || name == NULL) {
++		if (name != NULL)
++			*name = NULL;
++		ERR(policy, "%s", strerror(EINVAL));
++		errno = EINVAL;
++		return STATUS_ERR;
++	}
++
++	db = &policy->p->p;
++	internal_datum = (user_datum_t *)datum;
++
++	if (internal_datum->bounds != 0) {
++		*name = db->p_user_val_to_name[internal_datum->s.value - 1];
++	} else {
++		*name = NULL;
++	}
++	return STATUS_SUCCESS;
++}
++
++/* As userbounds are in users use these, however will need to calc number of bounds manually in top.tcl*/
++int qpol_policy_get_userbounds_iter(const qpol_policy_t *policy, qpol_iterator_t **iter)
++{
++	policydb_t *db;
++	int error = 0;
++	hash_state_t *hs = NULL;
++
++	if (policy == NULL || iter == NULL) {
++		if (iter != NULL)
++			*iter = NULL;
++		ERR(policy, "%s", strerror(EINVAL));
++		errno = EINVAL;
++		return STATUS_ERR;
++	}
++
++	db = &policy->p->p;
++
++	hs = calloc(1, sizeof(hash_state_t));
++	if (hs == NULL) {
++		error = errno;
++		ERR(policy, "%s", strerror(ENOMEM));
++		errno = error;
++		return STATUS_ERR;
++	}
++	hs->table = &db->p_users.table;
++	hs->node = (*(hs->table))->htable[0];
++
++	if (qpol_iterator_create(policy, (void *)hs, hash_state_get_cur,
++				 hash_state_next, hash_state_end, hash_state_size, free, iter)) {
++		free(hs);
++		return STATUS_ERR;
++	}
++
++	if (hs->node == NULL)
++		hash_state_next(*iter);
++
++	return STATUS_SUCCESS;
++}
++
+diff --git a/libqpol/src/libqpol.map b/libqpol/src/libqpol.map
+index 6973cca45a3f..f05b6ca89c32 100644
+--- a/libqpol/src/libqpol.map
++++ b/libqpol/src/libqpol.map
+@@ -63,12 +63,16 @@ VERS_1.3 {
+ VERS_1.4 {
+ 	global:
+ 		qpol_type_get_ispermissive;
++		qpol_type_get_parent_name;
+ } VERS_1.3;
+ 
+ VERS_1.5 {
+ 	global:
+ 		qpol_policy_permissive_*;
+ 		qpol_permissive_*;
++		qpol_typebounds_*;
++		qpol_rolebounds_*;
++		qpol_userbounds_*;
+ 		qpol_policy_polcap_*;
+ 		qpol_polcap_*;
+ } VERS_1.4;
+diff --git a/libqpol/swig/qpol.i b/libqpol/swig/qpol.i
+index 4f14d2cc9d93..7bb92cf6f023 100644
+--- a/libqpol/swig/qpol.i
++++ b/libqpol/swig/qpol.i
+@@ -712,6 +712,18 @@ typedef enum qpol_capability
+ 	fail:
+ 		return NULL;
+ 	};
++	%newobject get_typebounds_iter();
++	qpol_iterator_t *get_typebounds_iter() {
++		BEGIN_EXCEPTION
++		qpol_iterator_t *iter;
++		if (qpol_policy_get_typebounds_iter(self, &iter)) {
++			SWIG_exception(SWIG_MemoryError, "Out of Memory");
++	}
++		return iter;
++		END_EXCEPTION
++	fail:
++		return NULL;
++	};
+ 	%newobject get_polcap_iter();
+ 	qpol_iterator_t *get_polcap_iter() {
+ 		BEGIN_EXCEPTION
+@@ -3032,4 +3044,127 @@ typedef struct qpol_polcap {} qpol_polcap_t;
+ 		return (qpol_polcap_t*)x;
+ 	};
+ %}
++
++/* qpol typebounds */
++typedef struct qpol_typebounds {} qpol_typebounds_t;
++%extend qpol_typebounds_t {
++	qpol_typebounds() {
++		BEGIN_EXCEPTION
++		SWIG_exception(SWIG_RuntimeError, "Cannot directly create qpol_typebounds_t objects");
++		END_EXCEPTION
++	fail:
++		return NULL;
++	};
++	~qpol_typebounds() {
++		/* no op */
++		return;
++	};
++	const char *get_parent_name(qpol_policy_t *p) {
++		const char *name;
++		BEGIN_EXCEPTION
++		if (qpol_typebounds_get_parent_name(p, self, &name)) {
++			SWIG_exception(SWIG_ValueError, "Could not get parent name");
++		}
++		END_EXCEPTION
++	fail:
++		return name;
++	};
++	const char *get_child_name(qpol_policy_t *p) {
++		const char *name;
++		BEGIN_EXCEPTION
++		if (qpol_typebounds_get_child_name(p, self, &name)) {
++			SWIG_exception(SWIG_ValueError, "Could not get child name");
++		}
++		END_EXCEPTION
++	fail:
++		return name;
++	};
++};
++%inline %{
++	qpol_typebounds_t *qpol_typebounds_from_void(void *x) {
++		return (qpol_typebounds_t*)x;
++	};
++%}
++
++/* qpol rolebounds */
++typedef struct qpol_rolebounds {} qpol_rolebounds_t;
++%extend qpol_rolebounds_t {
++	qpol_rolebounds() {
++		BEGIN_EXCEPTION
++		SWIG_exception(SWIG_RuntimeError, "Cannot directly create qpol_rolebounds_t objects");
++		END_EXCEPTION
++	fail:
++		return NULL;
++	};
++	~qpol_rolebounds() {
++		/* no op */
++		return;
++	};
++	const char *get_parent_name(qpol_policy_t *p) {
++		const char *name;
++		BEGIN_EXCEPTION
++		if (qpol_rolebounds_get_parent_name(p, self, &name)) {
++			SWIG_exception(SWIG_ValueError, "Could not get parent name");
++		}
++		END_EXCEPTION
++	fail:
++		return name;
++	};
++	const char *get_child_name(qpol_policy_t *p) {
++		const char *name;
++		BEGIN_EXCEPTION
++		if (qpol_rolebounds_get_child_name(p, self, &name)) {
++			SWIG_exception(SWIG_ValueError, "Could not get child name");
++		}
++		END_EXCEPTION
++	fail:
++		return name;
++	};
++};
++%inline %{
++	qpol_rolebounds_t *qpol_rolebounds_from_void(void *x) {
++		return (qpol_rolebounds_t*)x;
++	};
++%}
++
++/* qpol userbounds */
++typedef struct qpol_userbounds {} qpol_userbounds_t;
++%extend qpol_userbounds_t {
++	qpol_userbounds() {
++		BEGIN_EXCEPTION
++		SWIG_exception(SWIG_RuntimeError, "Cannot directly create qpol_userbounds_t objects");
++		END_EXCEPTION
++	fail:
++		return NULL;
++	};
++	~qpol_userbounds() {
++		/* no op */
++		return;
++	};
++	const char *get_parent_name(qpol_policy_t *p) {
++		const char *name;
++		BEGIN_EXCEPTION
++		if (qpol_userbounds_get_parent_name(p, self, &name)) {
++			SWIG_exception(SWIG_ValueError, "Could not get parent name");
++		}
++		END_EXCEPTION
++	fail:
++		return name;
++	};
++	const char *get_child_name(qpol_policy_t *p) {
++		const char *name;
++		BEGIN_EXCEPTION
++		if (qpol_userbounds_get_child_name(p, self, &name)) {
++			SWIG_exception(SWIG_ValueError, "Could not get child name");
++		}
++		END_EXCEPTION
++	fail:
++		return name;
++	};
++};
++%inline %{
++	qpol_userbounds_t *qpol_userbounds_from_void(void *x) {
++		return (qpol_userbounds_t*)x;
++	};
++%}
+ // vim:ft=c noexpandtab
+-- 
+2.3.0
+

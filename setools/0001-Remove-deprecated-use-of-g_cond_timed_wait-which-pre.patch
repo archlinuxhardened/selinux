@@ -1,0 +1,48 @@
+From 4560a00c872d0a664c1098585e5c1a209adf698b Mon Sep 17 00:00:00 2001
+From: Chris PeBenito <cpebenito@tresys.com>
+Date: Thu, 16 Jan 2014 16:28:50 +0000
+Subject: [PATCH 01/13] Remove deprecated use of g_cond_timed_wait which
+ prevented sediffx from starting.
+
+---
+ ChangeLog         | 3 +++
+ sediff/progress.c | 5 +++--
+ 2 files changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/ChangeLog b/ChangeLog
+index 1bce21d82e39..4d883f3a6df2 100644
+--- a/ChangeLog
++++ b/ChangeLog
+@@ -1,3 +1,6 @@
++2014-01-16
++	* Fix bug preventing sediffx from starting.
++
+ 2013-01-08 Steve Lawrence <slawrence@tresys.com>
+ 
+ 	* SETools 3.3.8
+diff --git a/sediff/progress.c b/sediff/progress.c
+index efaa12042f5f..09730dcf3f2a 100644
+--- a/sediff/progress.c
++++ b/sediff/progress.c
+@@ -99,7 +99,7 @@ void progress_hide(progress_t * progress)
+ 
+ int progress_wait(progress_t * progress)
+ {
+-	GTimeVal wait_time = { 0, 50000 };
++	gint64 wait_time;
+ 	g_mutex_lock(progress->mutex);
+ 	while (!progress->done) {
+ 		if (progress->s != NULL) {
+@@ -111,7 +111,8 @@ int progress_wait(progress_t * progress)
+ 		// still be loading, and this dialog should not block
+ 		// until the entire source has been read
+ 		gtk_main_iteration_do(FALSE);
+-		g_cond_timed_wait(progress->cond, progress->mutex, &wait_time);
++		wait_time = g_get_monotonic_time () + 50000;
++		g_cond_wait_until(progress->cond, progress->mutex, wait_time);
+ 	}
+ 	g_mutex_unlock(progress->mutex);
+ 	if (progress->done < 0) {
+-- 
+2.3.0
+

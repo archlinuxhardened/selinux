@@ -5,14 +5,13 @@
 
 pkgname=setools
 pkgver=3.3.8
-pkgrel=4
+pkgrel=5
 pkgdesc="Policy analysis tools for SELinux"
 groups=('selinux')
 arch=('i686' 'x86_64')
 url="http://oss.tresys.com/projects/setools/"
 license=('GPL' 'LGPL')
-depends=('flex' 'bison' 'libselinux>=2.2' 'sqlite3>=3.6.20' 'python2')
-#        'selinux-refpolicy-src')
+depends=('flex' 'bison' 'libselinux>=2.4' 'libsepol>=2.4' 'sqlite3>=3.6.20' 'python2')
 optdepends=('glib2: needed for graphical tools'
             'gtk2>=2.8: needed for graphical tools'
             'bwidget>=1.8: needed for graphical tools'
@@ -22,24 +21,55 @@ makedepends=('java-environment' 'bwidget>=1.8' 'gtk2>=2.8' 'glib2'
              'libglade>=2.6.4' 'tk>=8.4.9')
 conflicts=("selinux-${pkgname}")
 provides=("selinux-${pkgname}=${pkgver}-${pkgrel}")
+# Use patchs from git tree to be able to grab 0012-Make-the-SWIG-files-compatible-with-SWIG-3.patch
+# and 0013-Update-for-2015-02-02-Userspace-release-2.4.patch without conflicts,
+# which are needed to make setools build successfully.
 source=("https://raw.githubusercontent.com/wiki/TresysTechnology/setools3/files/dists/${pkgname}-${pkgver}/${pkgname}-${pkgver}.tar.bz2"
-        "http://dev.gentoo.org/~swift/patches/0008-fix_swig_build_failures_bug_430262.patch"
-        "0001-fix-compile-error.patch"
-        )
-md5sums=('d68d0d4e4da0f01da0f208782ff04b91'
-         '9740ed5b41860703b1083e0837289d8a'
-         '4d944e5f47ed1569584d0e1214755875')
+        "0001-Remove-deprecated-use-of-g_cond_timed_wait-which-pre.patch"
+        "0002-Fix-changelog-entry.patch"
+        "0003-setools-APOL-Add-constraints-and-filename-transition.patch"
+        "0004-setools-APOL-Add-support-for-permissive-types-polcap.patch"
+        "0005-setools-APOL-Add-type-user-role-bounds-support.patch"
+        "0006-setools-APOL-Add-default_objects-and-CIL-policy-name.patch"
+        "0007-setools-Update-to-load-v29-policy-source-files.patch"
+        "0008-Change-file-name-type_transition-class-member-functi.patch"
+        "0009-Switching-svn-references-to-git.patch"
+        "0010-Add-get_object_class-function-for-role-transition-ru.patch"
+        "0011-Fix-missing-parentheses-in-policy_define.c.patch"
+        "0012-Make-the-SWIG-files-compatible-with-SWIG-3.patch"
+        "0013-Update-for-2015-02-02-Userspace-release-2.4.patch")
 sha256sums=('44387ecc9a231ec536a937783440cd8960a72c51f14bffc1604b7525e341e999'
-            '2f314f9236bf4c5137e1e5b1dd5bc312c4ce84942238b98725468e75096eae8f'
-            '4848e31d918085871d08dcff4de4b3c0bbc60484f2afbad51535bf46b2a2e51f')
+            'ce86993a04b0e5e6118aea42ede2e5c6970808ad94c9c0fed635609e5e8134ee'
+            '9da638fae01f9506188ade86f85cd8d3f7ae4576dafa9efda0b3af54c15efd9d'
+            '52d221541f67f4de9d9aba6721e6f85786095470806619967399d13f6979bed6'
+            '1f24ce31b6dbd0dca2411e57c518761a0de33a81acbc72d4e67755a173dd9778'
+            'e1e20bc7641b6599ac6686d564610b0dde5158b7911e6c6a24dcab39c37aa5fa'
+            '5ab46780daaa229ac79cd7a42852e9e9642efe1c1259e01ac109610bd79c1153'
+            '35cc57bdc9b3080ef4fa0c8d760a7e587d38559cc6f71e674b586d779ab2c342'
+            '47c11ae528c18f61dd241b47444883ed658d511baad9a447290e17594154fd20'
+            '660b0ee1aa610852d475ff4b1e8605f0c1ca0695a79bf83c2a4485510029ecd0'
+            '1a1202f250afe89274a1fd34ee5b2c00fdd3aa8977e0866141c66bc259e33e00'
+            '9fe3b9e977b795ef3f5a83b9f292ebfd1e77e1820d716b0e4d568d35effddb29'
+            '6cf093e7af565face8813458b5dff72f1655267a9bb5639c13834ef8fac135cf'
+            '1b69d2f17e8fa245cfccbe72f6f7ce322b33be33e79953720ca1e4c9e4ce3f9c')
 
 prepare() {
   cd "${pkgname}-${pkgver}"
-  patch -Np1 -i ../0008-fix_swig_build_failures_bug_430262.patch
-  patch -Np1 -i ../0001-fix-compile-error.patch
+  patch -Np1 -i ../0001-Remove-deprecated-use-of-g_cond_timed_wait-which-pre.patch
+  patch -Np1 -i ../0002-Fix-changelog-entry.patch
+  patch -Np1 -i ../0003-setools-APOL-Add-constraints-and-filename-transition.patch
+  patch -Np1 -i ../0004-setools-APOL-Add-support-for-permissive-types-polcap.patch
+  patch -Np1 -i ../0005-setools-APOL-Add-type-user-role-bounds-support.patch
+  patch -Np1 -i ../0006-setools-APOL-Add-default_objects-and-CIL-policy-name.patch
+  patch -Np1 -i ../0007-setools-Update-to-load-v29-policy-source-files.patch
+  patch -Np1 -i ../0008-Change-file-name-type_transition-class-member-functi.patch
+  patch -Np1 -i ../0009-Switching-svn-references-to-git.patch
+  patch -Np1 -i ../0010-Add-get_object_class-function-for-role-transition-ru.patch
+  patch -Np1 -i ../0011-Fix-missing-parentheses-in-policy_define.c.patch
+  patch -Np1 -i ../0012-Make-the-SWIG-files-compatible-with-SWIG-3.patch
+  patch -Np1 -i ../0013-Update-for-2015-02-02-Userspace-release-2.4.patch
 
   # Disable broken check for SWIG version, to allow using swig 3
-  # http://sources.gentoo.org/cgi-bin/viewvc.cgi/gentoo-x86/app-admin/setools/setools-3.3.8-r4.ebuild
   sed -e "s/AC_PROG_SWIG(2.0.0)/AC_PROG_SWIG/" -i configure.ac
 }
 
@@ -63,8 +93,6 @@ build() {
     --sbindir=/usr/bin
   # work around issue with gcc 4.3 + gnu99 + swig-generated code:
   sed -i -e 's:$(CC):gcc -std=gnu89:' libseaudit/swig/python/Makefile
-  # qpol build fails due to this
-  sed -i -e '470d' libqpol/swig/java/Makefile
 
   make
 }

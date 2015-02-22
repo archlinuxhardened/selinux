@@ -1,0 +1,2184 @@
+From eefba53065bd522f3e053605d0c3a1d52a4aefbb Mon Sep 17 00:00:00 2001
+From: Steve Lawrence <slawrence@tresys.com>
+Date: Fri, 25 Apr 2014 16:21:29 +0000
+Subject: [PATCH 06/13] setools: APOL Add default_objects and CIL policy
+ namespaces tabs
+
+Add support for default_object rules and displaying CIL namespaces
+with any users, roles, types, classes, booleans, sens & cats declared.
+
+Fixed generating file index on File Contexts tab where it would hang
+forever if broken links/files (mainly when generating indexs for Android)
+
+Also enhanced the previous features in te_rules and types tabs.
+
+Signed-off-by: Richard Haines <richard_c_haines@btinternet.com>
+---
+ ChangeLog                                   |  26 ++
+ apol/Makefile.am                            |   2 +
+ apol/apol_help.txt                          |  35 ++-
+ apol/bounds_tab.tcl                         |   3 -
+ apol/default_objects_tab.tcl                | 370 ++++++++++++++++++++++++++++
+ apol/namespaces_tab.tcl                     | 206 ++++++++++++++++
+ apol/terules_tab.tcl                        |   4 +-
+ apol/top.tcl                                | 142 ++++++++---
+ apol/types_tab.tcl                          |  15 +-
+ libapol/include/apol/Makefile.am            |   1 +
+ libapol/include/apol/default-object-query.h |  78 ++++++
+ libapol/include/apol/policy-query.h         |   1 +
+ libapol/src/Makefile.am                     |   1 +
+ libapol/src/bounds-query.c                  |   6 +-
+ libapol/src/default-object-query.c          |  87 +++++++
+ libapol/src/libapol.map                     |   1 +
+ libapol/swig/apol.i                         |  30 +++
+ libqpol/include/qpol/Makefile.am            |   1 +
+ libqpol/include/qpol/default_object_query.h | 113 +++++++++
+ libqpol/include/qpol/policy.h               |  14 +-
+ libqpol/src/Makefile.am                     |   1 +
+ libqpol/src/bounds_query.c                  |  42 +++-
+ libqpol/src/default_object_query.c          | 290 ++++++++++++++++++++++
+ libqpol/src/libqpol.map                     |   1 +
+ libqpol/src/policy.c                        |  49 ++++
+ libqpol/swig/qpol.i                         |  81 +++++-
+ libsefs/src/db.cc                           |   9 +-
+ libsefs/src/new_ftw.c                       |   6 +-
+ 28 files changed, 1543 insertions(+), 72 deletions(-)
+ create mode 100644 apol/default_objects_tab.tcl
+ create mode 100644 apol/namespaces_tab.tcl
+ create mode 100644 libapol/include/apol/default-object-query.h
+ create mode 100644 libapol/src/default-object-query.c
+ create mode 100644 libqpol/include/qpol/default_object_query.h
+ create mode 100644 libqpol/src/default_object_query.c
+
+diff --git a/ChangeLog b/ChangeLog
+index df377ce748a9..2b62689ca05d 100644
+--- a/ChangeLog
++++ b/ChangeLog
+@@ -1,3 +1,29 @@
++2014-04-14 Richard Haines <richard_c_haines@btinternet.com>
++
++	* Updates to apol and the libapol/libqpol libraries to support
++	  new policy statements and rules to version 29 (Note the features
++	  for loading source code (policy.conf etc.) have not been updated
++	  to support the new statements and rules.
++	  These are the enhancements and bug fixes: 
++	* Add permissive type and typebound support to Types tab.
++	* Add new Constraints tab to search all constraint statements.
++	* Add new Bounds tab to search for userbound, rolebound and
++	  typebound statements.
++	* Add new policy capabilities tab.
++	* Add filename type_transition support on TE Rules tab.
++	* Add new Default Object tab to support defaultuser, defaultrole,
++	  defaulttype and defaultrange rules.
++	* Add new Namespaces tab to list CIL namespaces. This will also
++	  show any users, roles, types, classes, booleans, sensitivities
++	  and categories declared in each namespace.
++	* Update Query/Policy Summary page to show the number of new
++	  rules added plus the policy handle_unknown flag.
++	* Fixed File Contexts tab to stop hang when building the fc
++	  index when broken links/files found (libsefs).
++	* Fixed Booleans tab to display CIL namespace booleans.
++	* Updated apol_help.txt to reflect the changes made plus how to
++	  load the running policy.
++
+ 2014-01-16  Chris PeBenito <cpebenito@tresys.com>
+ 	* Fix bug preventing sediffx from starting.
+ 
+diff --git a/apol/Makefile.am b/apol/Makefile.am
+index 5b64d7dbb47a..4fc5562df0f9 100644
+--- a/apol/Makefile.am
++++ b/apol/Makefile.am
+@@ -35,6 +35,7 @@ EXTRA_DIST = \
+ 	constraints_tab.tcl \
+ 	context_dialog.tcl \
+ 	context_selector.tcl \
++	default_objects_tab.tcl \
+ 	directflow_module.tcl \
+ 	domaintrans_module.tcl \
+ 	file_contexts_tab.tcl \
+@@ -45,6 +46,7 @@ EXTRA_DIST = \
+ 	initial_sids_tab.tcl \
+ 	level_dialog.tcl \
+ 	mls_tab.tcl \
++	namespaces_tab.tcl \
+ 	netcontexts_tab.tcl \
+ 	open_policy_dialog.tcl \
+ 	perms_map.tcl \
+diff --git a/apol/apol_help.txt b/apol/apol_help.txt
+index 0ff674fa86c0..1ed5a9e65049 100644
+--- a/apol/apol_help.txt
++++ b/apol/apol_help.txt
+@@ -29,7 +29,7 @@ not report line numbers when searching monolithic binary polices.
+ 
+ Apol provides compatibility with the current and previous policy
+ syntax.  It supports analysis of monolithic policy versions 12 to the
+-current version 21 and modular policy versions 5 and 6.
++current version 29 and modular policy versions to 17.
+ 
+ See setools/ChangeLog for a list of new features in this release.  See
+ setools/KNOWN_BUGS for a list of current bugs.
+@@ -40,7 +40,12 @@ Menus
+ Use 'Open' from the File menu to open a valid policy.  The policy may
+ be monolithic or be composed of a base linked with multiple modules.
+ Only one policy can be open at a time; opening a second policy will
+-result in the first being closed.
++result in the first being closed. Note: If the kernel supports reading
++the currently loaded policy, then select "monolithic" and set the
++"Policy filename" path to either:
++    /selinux/policy
++  or
++    /sys/fs/selinux/policy
+ 
+ The Query menu allows the user to save or load a query for a TE Rules
+ search or for an analysis module listed on the Analysis tab.  Saving a
+@@ -85,6 +90,8 @@ relate the core components of an SELinux policy.
+   to search for types and/or attributes using a POSIX-style regular
+   expression.
+ 
++  Permissive and bound types may also be searched.
++
+   Classes/Perms tab
+   -----------------
+   Use the Classes/Perms tab to view and search object classes, common
+@@ -149,6 +156,23 @@ relate the core components of an SELinux policy.
+   Select the FS Contexts tab to search filesystem-based contexts
+   (fs_use_ and genfscon statements) defined in the policy.
+ 
++  Policy Capabilities tab
++  ---------------
++  Select the Policy Capabilities tab to display policy capabilities
++  defined in the policy.
++
++  Policy Namespaces tab
++  ---------------
++  Select the Policy Namespaces tab to display the namespaces defined
++  in the policy. For policies with a single namespace there will be
++  one namespace displayed: "GLOBAL-NS". For policies that can define
++  multiple namespaces (e.g CIL), all namespaces will be displayed
++  including "GLOBAL-NS".
++  If the namespace entry is double clicked then a list of Users, Roles,
++  Types, Attributes, Classes and Booleans applicable to that namespace
++  will be displayed (also if MLS enabled the Sensitivities and
++  Categories will also be shown).
++
+ 
+ Policy Rules tabs
+ -----------------
+@@ -326,13 +350,18 @@ rules in a policy based on selected search criteria.
+ 
+   Range Transition Rules tab
+   --------------------------
+-  Select the Range Transition Rules tab to search to search
++  Select the Range Transition Rules tab to search for
+   range_transition rules by source and target types and by the MLS
+   range.  There are three options when searching for ranges; find
+   exact matches to the entered range, find rules that have ranges
+   that contain the entered range, or find rules that have ranges 
+   within the entered range.
+ 
++  Bounds Rules tab
++  --------------------------
++  Select the Bounds Rules tab to search for userbound, rolebound or
++  typebound rules by parent or child types.
++
+   
+ File Contexts tab
+ -----------------
+diff --git a/apol/bounds_tab.tcl b/apol/bounds_tab.tcl
+index 73e32ac78829..906eaded11cc 100644
+--- a/apol/bounds_tab.tcl
++++ b/apol/bounds_tab.tcl
+@@ -95,7 +95,6 @@ proc Apol_Bounds::close {} {
+ 
+ proc Apol_Bounds::getTextWidget {} {
+     variable widgets
+-#    return $widgets(results).tb
+ }
+ 
+ #### private functions below ####
+@@ -237,7 +236,6 @@ proc Apol_Bounds::_toggleCheckbutton {cb w name1 name2 ops} {
+     }
+ }
+ 
+-
+ # callback invoked when the user changes which Bounds rule to search
+ proc Apol_Bounds::_ruleChanged {name1 name2 ops} {
+     variable vals
+@@ -256,7 +254,6 @@ proc Apol_Bounds::_searchBounds {} {
+         return
+     }
+ 
+-
+     if {$vals(rule_selection) == "user"} {
+         Apol_Bounds::_searchUserBounds
+         return
+diff --git a/apol/default_objects_tab.tcl b/apol/default_objects_tab.tcl
+new file mode 100644
+index 000000000000..6cf764b94dc5
+--- /dev/null
++++ b/apol/default_objects_tab.tcl
+@@ -0,0 +1,370 @@
++# Copyright (C) 2001-2007 Tresys Technology, LLC
++#  This program is free software; you can redistribute it and/or modify
++#  it under the terms of the GNU General Public License as published by
++#  the Free Software Foundation; either version 2 of the License, or
++#  (at your option) any later version.
++#
++#  This program is distributed in the hope that it will be useful,
++#  but WITHOUT ANY WARRANTY; without even the implied warranty of
++#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++#  GNU General Public License for more details.
++#
++#  You should have received a copy of the GNU General Public License
++#  along with this program; if not, write to the Free Software
++#  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++
++namespace eval Apol_DefaultObjects {
++    variable vals
++    variable widgets
++    variable mls_enabled {0}
++    variable statement_count
++}
++
++proc Apol_DefaultObjects::create {tab_name nb} {
++    variable vals
++    variable widgets
++
++    _initializeVars
++
++    set frame [$nb insert end $tab_name -text "Default Object Rules"]
++    set topf [frame $frame.top]
++    set bottomf [frame $frame.bottom]
++    pack $topf -expand 0 -fill both -pady 2
++    pack $bottomf -expand 1 -fill both -pady 2
++
++    set rsbox [TitleFrame $topf.rs -ipad 30 -text "Rule Selection"]
++    set obox [TitleFrame $topf.opts -text "Search Options"]
++    set dbox [TitleFrame $bottomf.results -text "Default Object Rules Display"]
++    pack $rsbox -side left -expand 0 -fill both -padx 2
++    pack $obox -side left -expand 1 -fill both -padx 2
++    pack $dbox -expand 1 -fill both -padx 2
++
++    # Rule selection subframe
++    set rs [$rsbox getframe]
++    checkbutton $rs.default_user -text "default_user" -onvalue 1 -offvalue 0 \
++        -variable Apol_DefaultObjects::vals(default_user_enabled)
++    trace add variable Apol_DefaultObjects::vals(default_user_enabled) write \
++        [list Apol_DefaultObjects::_ruleChanged]
++    checkbutton $rs.default_role -text "default_role" -onvalue 1 -offvalue 0 \
++        -variable Apol_DefaultObjects::vals(default_role_enabled)
++    trace add variable Apol_DefaultObjects::vals(default_role_enabled) write \
++        [list Apol_DefaultObjects::_ruleChanged]
++    checkbutton $rs.default_type -text "default_type" -onvalue 1 -offvalue 0 \
++        -variable Apol_DefaultObjects::vals(default_type_enabled)
++    trace add variable Apol_DefaultObjects::vals(default_type_enabled) write \
++        [list Apol_DefaultObjects::_ruleChanged]
++    checkbutton $rs.default_range -text "default_range" -onvalue 1 -offvalue 0 \
++        -variable Apol_DefaultObjects::vals(default_range_enabled)
++    trace add variable Apol_DefaultObjects::vals(default_range_enabled) write \
++        [list Apol_DefaultObjects::_ruleChanged]
++    pack $rs.default_user $rs.default_role $rs.default_type $rs.default_range -side top -anchor w
++
++    set widgets(options_pm) [PagesManager [$obox getframe].opts]
++
++    _defaultObjectCreate [$widgets(options_pm) add default_object]
++
++    $widgets(options_pm) compute_size
++    pack $widgets(options_pm) -expand 1 -fill both -side left
++    $widgets(options_pm) raise default_object
++
++    set ok [button [$obox getframe].ok -text OK -width 6 -command Apol_DefaultObjects::_searchDefaultObjects]
++    pack $ok -side right -padx 5 -pady 5 -anchor ne
++
++    set widgets(results) [Apol_Widget::makeSearchResults [$dbox getframe].results]
++    pack $widgets(results) -expand yes -fill both
++
++    return $frame
++}
++
++proc Apol_DefaultObjects::open {ppath} {
++    variable vals
++    variable widgets
++    variable mls_enabled
++
++    if {[ApolTop::is_capable "mls"]} {
++        set mls_enabled 1
++    } else {
++        set mls_enabled 0
++    }
++
++    $widgets(default_object:class) configure -values [Apol_Class_Perms::getClasses]
++    $widgets(default_object:default) configure -values {"source" "target"}
++    $widgets(default_object:range) configure -values {"low" "high" "low_high"}
++
++    set vals(default_range_enabled) $mls_enabled
++    set vals(default_type_enabled) [ApolTop::is_capable "default_type"]
++}
++
++proc Apol_DefaultObjects::close {} {
++    variable widgets
++    variable mls_enabled
++
++    _initializeVars
++    $widgets(default_object:class) configure -values {}
++    $widgets(default_object:default) configure -values {}
++    $widgets(default_object:range) configure -values {}
++    set mls_enabled 0
++}
++
++proc Apol_DefaultObjects::getTextWidget {} {
++    variable widgets
++}
++
++proc Apol_DefaultObjects::_initializeVars {} {
++    variable vals
++
++    array set vals {
++        class:use 0
++        class:sym {}
++        default:sym {}
++        default:use 0
++        range:sym {}
++        range:use 0
++
++        default_user_enabled 1
++        default_role_enabled 1
++        default_type_enabled 1
++        default_range_enabled 0
++    }
++}
++
++proc Apol_DefaultObjects::_defaultObjectCreate {r_c} {
++    variable vals
++    variable widgets
++
++    set class [frame $r_c.class]
++    set class_cb [checkbutton $class.enable -text "Object class" \
++                       -variable Apol_DefaultObjects::vals(class:use)]
++    set widgets(default_object:class) [ComboBox $class.cb -width 20 -state disabled \
++                                   -entrybg $ApolTop::default_bg_color \
++                                   -textvariable Apol_DefaultObjects::vals(class:sym)]
++
++    trace add variable Apol_DefaultObjects::vals(class:use) write \
++        [list Apol_DefaultObjects::_toggleCheckbutton $widgets(default_object:class) {}]
++    pack $class_cb -side top -anchor w
++    pack $widgets(default_object:class) -side top -expand 0 -fill x -padx 4
++    pack $class -side left -padx 4 -pady 2 -expand 0 -anchor nw
++
++    set default [frame $r_c.default]
++    set widgets(default_object:default_cb) [checkbutton $default.enable -text "Default" \
++                                      -variable Apol_DefaultObjects::vals(default:use)]
++    set widgets(default_object:default) [ComboBox $default.cb -width 20 -state disabled \
++                                   -entrybg $ApolTop::default_bg_color \
++                                   -textvariable Apol_DefaultObjects::vals(default:sym)]
++    trace add variable Apol_DefaultObjects::vals(default:use) write \
++        [list Apol_DefaultObjects::_toggleCheckbutton $widgets(default_object:default) {}]
++    pack $widgets(default_object:default_cb) -side top -anchor w
++    pack $widgets(default_object:default) -side top -expand 0 -fill x -padx 4
++    pack $default -side left -padx 4 -pady 2 -expand 0 -fill y
++
++    set range [frame $r_c.range]
++    set widgets(default_object:range_cb) [checkbutton $range.enable -text "Range" \
++                                      -variable Apol_DefaultObjects::vals(range:use)]
++    set widgets(default_object:range) [ComboBox $range.cb -width 20 -state disabled \
++                                   -entrybg $ApolTop::default_bg_color \
++                                   -textvariable Apol_DefaultObjects::vals(range:sym)]
++    trace add variable Apol_DefaultObjects::vals(range:use) write \
++        [list Apol_DefaultObjects::_toggleCheckbutton $widgets(default_object:range) {}]
++    pack $widgets(default_object:range_cb) -side top -anchor w
++    pack $widgets(default_object:range) -side top -expand 0 -fill x -padx 4
++    pack $range -side left -padx 4 -pady 2 -expand 0 -fill y
++}
++
++proc Apol_DefaultObjects::_toggleCheckbutton {cb w name1 name2 ops} {
++    variable vals
++    variable mls_enabled
++
++    if {$name2 == "range:use" && $mls_enabled == 0 || $vals(default_range_enabled) == 0} {
++        set vals(range:use) 0
++        $cb configure -state disabled
++    }
++
++    if {$vals($name2)} {
++        $cb configure -state normal -entrybg white
++        foreach x $w {
++            $x configure -state normal
++        }
++    } else {
++        $cb configure -state disabled -entrybg $ApolTop::default_bg_color
++        foreach x $w {
++            $x configure -state disabled
++        }
++    }
++}
++
++proc Apol_DefaultObjects::_ruleChanged {name1 name2 ops} {
++    variable vals
++    variable widgets
++    Apol_Widget::clearSearchResults $widgets(results)
++
++    if {$vals(default_user_enabled) == 0} {
++        set vals(user:use) 0
++    }
++    if {$vals(default_role_enabled) == 0} {
++        set vals(role:use) 0
++    }
++    if {$vals(default_type_enabled) == 0} {
++        set vals(type:use) 0
++    }
++    if {$vals(default_range_enabled) == 0} {
++        set vals(range:use) 0
++    }
++}
++
++proc Apol_DefaultObjects::_searchDefaultObjects {} {
++    variable vals
++    variable widgets
++    variable statement_count
++
++    Apol_Widget::clearSearchResults $widgets(results)
++    if {![ApolTop::is_policy_open]} {
++        tk_messageBox -icon error -type ok -title "Error" -message "No current policy file is opened."
++    }
++
++    if {$vals(class:use) == 1 && $vals(class:sym) == {}} {
++        tk_messageBox -icon error -type ok -title "Default object Rule Search" -message "No class selected."
++        return
++    }
++    if {$vals(default:use) == 1 && $vals(default:sym) == {}} {
++        tk_messageBox -icon error -type ok -title "Default object Rule Search" -message "No default selected."
++        return
++    }
++    if {$vals(range:use) == 1 && $vals(range:sym) == {}} {
++        tk_messageBox -icon error -type ok -title "Default object Rule Search" -message "No range selected."
++        return
++    }
++
++    set results {}
++    set header {}
++    set print_results {}
++
++    if {$vals(default_user_enabled) == 1} {
++        append results [Apol_DefaultObjects::searchForDefault "user" get_user_default]
++        append header "$statement_count default_user rules match the search criteria.\n"
++    }
++    if {$vals(default_role_enabled) == 1} {
++         append results [Apol_DefaultObjects::searchForDefault "role" get_role_default]
++        append header "$statement_count default_role rules match the search criteria.\n"
++    }
++    if {$vals(default_type_enabled) == 1} {
++        append results [Apol_DefaultObjects::searchForDefault "type" get_type_default]
++        append header "$statement_count default_type rules match the search criteria.\n"
++    }
++    if {$vals(default_range_enabled) == 1} {
++        append results [Apol_DefaultObjects::searchDefaultRange "range" get_range_default]
++        append header "$statement_count default_range rules match the search criteria.\n"
++    }
++    append print_results "$header\n$results"
++    Apol_Widget::appendSearchResultText $widgets(results) $print_results
++}
++
++proc Apol_DefaultObjects::searchForDefault {type type_cmd} {
++    variable vals
++    variable widgets
++    variable statement_count
++    set results {}
++    set printit 0
++    set class_regexp 0
++    set default_regexp 0
++    set statement_count 0
++
++    if {$vals(class:use)} {
++        set class_regexp 1
++    }
++    if {$vals(default:use)} {
++        set default_regexp 1
++    }
++ 
++    set q [new_apol_default_object_query_t]
++    set v [$q run $::ApolTop::policy]
++    $q -acquire
++    $q -delete
++    for {set i 0} {$v != "NULL" && $i < [$v get_size]} {incr i} {
++        for {set i 0} {$v != "NULL" && $i < [$v get_size]} {incr i} {
++            set q [qpol_default_object_from_void [$v get_element $i]]
++            set class [$q get_class $::ApolTop::qpolicy]
++            set default [$q $type_cmd $::ApolTop::qpolicy]
++            if {$default != ""} {
++                if {$class_regexp == 1 && $class == $vals(class:sym) && $default_regexp == 1 && $default == $vals(default:sym)} {
++                    set printit 1
++                } elseif {$class_regexp == 1 && $class == $vals(class:sym) && $default_regexp == 0} {
++                    set printit 1
++                } elseif {$default_regexp == 1 && $default == $vals(default:sym) && $class_regexp == 0} {
++                    set printit 1
++                } elseif {$class_regexp == 0 && $default_regexp == 0} {
++                    set printit 1
++                }
++                if {$printit == 1} {
++                    append results "default_$type $class $default;\n"
++                    set statement_count [expr $statement_count + 1]
++               }
++            }
++            set printit 0
++        }
++    }
++    return "$results\n"
++}
++
++proc Apol_DefaultObjects::searchDefaultRange {type type_cmd} {
++    variable vals
++    variable widgets
++    variable statement_count
++    set results {}
++    set printit 0
++    set class_regexp 0
++    set default_regexp 0
++    set range_regexp 0
++    set statement_count 0
++
++    if {$vals(class:use)} {
++        set class_regexp 1
++    }
++    if {$vals(default:use)} {
++        set default_regexp 1
++    }
++    if {$vals(range:use)} {
++        set range_regexp 1
++    }
++ 
++    set q [new_apol_default_object_query_t]
++    set v [$q run $::ApolTop::policy]
++    $q -acquire
++    $q -delete
++    for {set i 0} {$v != "NULL" && $i < [$v get_size]} {incr i} {
++        for {set i 0} {$v != "NULL" && $i < [$v get_size]} {incr i} {
++            set q [qpol_default_object_from_void [$v get_element $i]]
++            set class [$q get_class $::ApolTop::qpolicy]
++            set default [$q $type_cmd $::ApolTop::qpolicy]
++            if {$default != ""} {
++                # split into the two components
++                set entries [split $default " "]
++                lassign $entries src_tgt range
++
++                if {$class_regexp == 1 && $class == $vals(class:sym) && $default_regexp == 1 && \
++                        $src_tgt== $vals(default:sym) && $range_regexp == 1 && $range == $vals(range:sym)} {
++                    set printit 1
++                } elseif {$class_regexp == 1 && $class == $vals(class:sym) && $default_regexp == 0 && $range_regexp == 0} {
++                    set printit 1
++                } elseif {$class_regexp == 0 && $default_regexp == 1 && $src_tgt == $vals(default:sym) && $range_regexp == 0} {
++                    set printit 1
++                } elseif {$class_regexp == 0 && $default_regexp == 0 && $range_regexp == 1 && $range == $vals(range:sym)} {
++                    set printit 1
++                } elseif {$class_regexp == 0 && $default_regexp == 1 && $src_tgt == $vals(default:sym) && \
++                       $range_regexp == 1 && $range == $vals(range:sym)} {
++                    set printit 1
++                } elseif {$class_regexp == 1 && $class == $vals(class:sym) && $default_regexp == 0 && \
++                        $range_regexp == 1 && $range == $vals(range:sym)} {
++                    set printit 1
++                } elseif {$class_regexp == 0 && $default_regexp == 0 && $range_regexp == 0} {
++                    set printit 1
++                }
++                if {$printit == 1} {
++                    append results "default_$type $class $default;\n"
++                    set statement_count [expr $statement_count + 1]
++               }
++            }
++            set printit 0
++        }
++    }
++    return "$results\n"
++}
+diff --git a/apol/namespaces_tab.tcl b/apol/namespaces_tab.tcl
+new file mode 100644
+index 000000000000..da8a1afa3c41
+--- /dev/null
++++ b/apol/namespaces_tab.tcl
+@@ -0,0 +1,206 @@
++# Copyright (C) 2001-2007 Tresys Technology, LLC
++#  This program is free software; you can redistribute it and/or modify
++#  it under the terms of the GNU General Public License as published by
++#  the Free Software Foundation; either version 2 of the License, or
++#  (at your option) any later version.
++#
++#  This program is distributed in the hope that it will be useful,
++#  but WITHOUT ANY WARRANTY; without even the implied warranty of
++#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++#  GNU General Public License for more details.
++#
++#  You should have received a copy of the GNU General Public License
++#  along with this program; if not, write to the Free Software
++#  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++
++namespace eval Apol_Namespaces {
++    variable widgets
++    variable namespace_list {}
++}
++
++proc Apol_Namespaces::create {tab_name nb} {
++    variable widgets
++    variable namespace_list {}
++
++    set frame [$nb insert end $tab_name -text "Policy Namespaces"]
++    set pw [PanedWindow $frame.pw -side top]
++    set leftf [$pw add -weight 0]
++    set rightf [$pw add -weight 1]
++    pack $pw -fill both -expand yes
++
++    set namespaces_box [TitleFrame $leftf.namespaces_box -text "Policy Namespaces"]
++    pack $namespaces_box -fill both -expand yes
++
++    set nlistbox [Apol_Widget::makeScrolledListbox [$namespaces_box getframe].lb \
++                      -width 60 -listvar Apol_Namespaces::namespace_list]
++    Apol_Widget::setListboxCallbacks $nlistbox \
++        {{"Show Namespace Users, Roles, Types, Attributes and Classes Info" {Apol_Namespaces::popupNsInfo nfi}}}
++    pack $nlistbox -expand 1 -fill both
++    pack $nlistbox -fill both -expand yes
++
++    return $frame
++}
++
++proc Apol_Namespaces::open {ppath} {
++    variable namespace_list {}
++
++    append list1 "$Apol_Users::users_list $Apol_Roles::role_list $Apol_Types::typelist $Apol_Types::attriblist $Apol_Class_Perms::class_list"
++    set names [split $list1 " "]
++    # Split on the ns separator, chop off the end entry then add "." back
++    set list1 {}
++    foreach n $names {
++        set ns [split $n "."]
++        set ns [lreplace $ns end end]
++        set l [string length $ns]
++        if {$l > 0} {
++            regsub -all " " $ns "." ns
++            lappend list1 "$ns"
++        }
++    }
++    set list2 {}
++    set namespace_list "GLOBAL-NS\n"
++    lappend list2 [lsort -dictionary -unique $list1]
++
++    foreach entry $list2 {
++        append namespace_list "$entry\n"
++    }
++}
++
++proc Apol_Namespaces::close {} {
++    variable namespace_list {}
++
++    set namespace_list {}
++}
++
++proc Apol_Namespaces::getTextWidget {} {
++    variable widgets
++}
++
++
++proc Apol_Namespaces::popupNsInfo {which ns} {
++
++    set w .ns_infobox
++    destroy $w
++
++    set w [Dialog .ns_infobox -cancel 0 -default 0 -modal none -parent . -separator 1 -title $ns]
++    $w add -text "Close" -command [list destroy $w]
++
++    set notebook [NoteBook [$w getframe].nb]
++    pack $notebook -expand 1 -fill both
++
++    set user_info_tab [$notebook insert end user_info_tab -text "Users"]
++    set role_info_tab [$notebook insert end role_info_tab -text "Roles"]
++    set type_info_tab [$notebook insert end type_info_tab -text "Types"]
++    set attrib_info_tab [$notebook insert end attrib_info_tab -text "Attributes"]
++    set class_info_tab [$notebook insert end class_info_tab -text "Classes"]
++    set boolean_info_tab [$notebook insert end boolean_info_tab -text "Booleans"]
++
++    if {[ApolTop::is_capable "mls"]} {
++        set sensitivity_info_tab [$notebook insert end sensitivity_info_tab -text "Sensitivities"]
++        set category_info_tab [$notebook insert end category_info_tab -text "Categories"]
++    }
++
++    # Display users
++    set sw [ScrolledWindow [$notebook getframe user_info_tab].sw -scrollbar both -auto both]
++    set user_text [text [$sw getframe].text -wrap none -font {helvetica 10} -bg white]
++    $sw setwidget $user_text
++    pack $sw -expand 1 -fill both
++    Apol_Namespaces::DisplayMatches $Apol_Users::users_list $user_text $ns "users"
++
++    # Display roles
++    set sw [ScrolledWindow [$notebook getframe role_info_tab].sw -scrollbar both -auto both]
++    set role_text [text [$sw getframe].text -wrap none -font {helvetica 10} -bg white]
++    $sw setwidget $role_text
++    pack $sw -expand 1 -fill both
++    Apol_Namespaces::DisplayMatches $Apol_Roles::role_list $role_text $ns "roles"
++
++    # Display types
++    set sw [ScrolledWindow [$notebook getframe type_info_tab].sw -scrollbar both -auto both]
++    set type_text [text [$sw getframe].text -wrap none -font {helvetica 10} -bg white]
++    $sw setwidget $type_text
++    pack $sw -expand 1 -fill both
++    Apol_Namespaces::DisplayMatches $Apol_Types::typelist $type_text $ns "types"
++
++    # Display attributes
++    set sw [ScrolledWindow [$notebook getframe attrib_info_tab].sw -scrollbar both -auto both]
++    set attrib_text [text [$sw getframe].text -wrap none -font {helvetica 10} -bg white]
++    $sw setwidget $attrib_text
++    pack $sw -expand 1 -fill both
++    Apol_Namespaces::DisplayMatches $Apol_Types::attriblist $attrib_text $ns "attributes"
++
++    # Display classes
++    set sw [ScrolledWindow [$notebook getframe class_info_tab].sw -scrollbar both -auto both]
++    set class_text [text [$sw getframe].text -wrap none -font {helvetica 10} -bg white]
++    $sw setwidget $class_text
++    pack $sw -expand 1 -fill both
++    Apol_Namespaces::DisplayMatches $Apol_Class_Perms::class_list $class_text $ns "classes"
++
++    # Display booleans
++    set sw [ScrolledWindow [$notebook getframe boolean_info_tab].sw -scrollbar both -auto both]
++    set boolean_text [text [$sw getframe].text -wrap none -font {helvetica 10} -bg white]
++    $sw setwidget $boolean_text
++    pack $sw -expand 1 -fill both
++    Apol_Namespaces::DisplayMatches $Apol_Cond_Bools::cond_bools_list $boolean_text $ns "booleans"
++
++    if {[ApolTop::is_capable "mls"]} {
++        # Display sensitivities
++        set sw [ScrolledWindow [$notebook getframe sensitivity_info_tab].sw -scrollbar both -auto both]
++        set sensitivity_text [text [$sw getframe].text -wrap none -font {helvetica 10} -bg white]
++        $sw setwidget $sensitivity_text
++        pack $sw -expand 1 -fill both
++        Apol_Namespaces::DisplayMatches $Apol_MLS::vals(senslist) $sensitivity_text $ns "sensitivities"
++
++        # Display categories
++        set sw [ScrolledWindow [$notebook getframe category_info_tab].sw -scrollbar both -auto both]
++        set category_text [text [$sw getframe].text -wrap none -font {helvetica 10} -bg white]
++        $sw setwidget $category_text
++        pack $sw -expand 1 -fill both
++        Apol_Namespaces::DisplayMatches $Apol_MLS::vals(catslist) $category_text $ns "categories"
++    }
++
++    $notebook raise [$notebook page 0]
++    $w draw {} 0 600x400
++}
++
++proc Apol_Namespaces::DisplayMatches {item_list display_entry ns text} {
++    set counter 0
++    set print_list {}
++
++    if {$ns == "GLOBAL-NS"} {
++        set ns {}
++        set off_set 0
++    } else {
++        set off_set 1
++    }
++    # Get len of the ns selected
++    set l [string length $ns]
++    #For each entry check if in this ns
++    foreach t $item_list {
++        set i [string compare -length $l $t $ns]
++        # kludge to get round a problem.
++        # If $z is same as $ns, but no . in $t then ignore as $t just
++        # happens to begin with a match to $ns. So reset $i
++        set z [string range $t 0 $l-1]
++        if {![regexp -nocase {[.]} $t] && $z == $ns && $ns != ""} {
++            set i 1
++        }
++
++        if {$i == 0} {
++            set x [string range $t $l+$off_set end]
++            if {![regexp -nocase {[.]} $x]} {
++                append print_list "    $x\n"
++                set counter [expr $counter + 1]
++            }
++        }
++    }
++    if {$counter == 0} {
++        $display_entry insert end "No entries\n"
++    } else {
++        if {$ns == ""} {
++            set ns "global"
++        }
++        $display_entry insert end "$ns namespace ($counter $text)\n$print_list"
++    }
++    $display_entry configure -state disabled
++
++}
+diff --git a/apol/terules_tab.tcl b/apol/terules_tab.tcl
+index c36e206ad3e6..3b51c64173b4 100644
+--- a/apol/terules_tab.tcl
++++ b/apol/terules_tab.tcl
+@@ -139,6 +139,7 @@ proc Apol_TE::open {ppath} {
+     set vals(cp:classes) [Apol_Class_Perms::getClasses]
+     set enabled(cp:classes) 1
+     set enabled(cp:perms) 1
++    set vals(ta:use_filename) 0
+ }
+ 
+ proc Apol_TE::close {} {
+@@ -625,7 +626,8 @@ proc Apol_TE::_maybe_enable_filename {col name1 name2 op} {
+             break
+         }
+     }
+-    if {$typerule_set} {
++
++    if {$typerule_set && [ApolTop::is_capable "filename_trans"]} {
+         set enabled(ta:use_filename) 1
+     } else {
+         set enabled(ta:use_filename) 0
+diff --git a/apol/top.tcl b/apol/top.tcl
+index 3a1f42c25a11..a267dde62cc1 100644
+--- a/apol/top.tcl
++++ b/apol/top.tcl
+@@ -69,13 +69,15 @@ namespace eval ApolTop {
+         {Apol_Initial_SIDS components {}}
+         {Apol_NetContexts components {}}
+         {Apol_FSContexts components {}}
+-        {Apol_Polcaps components {}}
++        {Apol_Polcaps components {tag_polcap}}
++        {Apol_Namespaces components {}}
+         {Apol_TE rules {tag_query_saveable}}
+         {Apol_Cond_Rules rules {tag_conditionals}}
+         {Apol_Constraint rules {tag_query_saveable}}
+         {Apol_RBAC rules {}}
+         {Apol_Range rules {tag_mls}}
+-        {Apol_Bounds rules {}}
++        {Apol_Bounds rules {tag_bounds}}
++        {Apol_DefaultObjects rules {tag_default_objects}}
+         {Apol_File_Contexts {} {}}
+         {Apol_Analysis {} {tag_query_saveable}}
+         {Apol_PolicyConf {} {tag_source}}
+@@ -112,6 +114,12 @@ proc ApolTop::is_capable {capability} {
+         "neverallow" { set cap $::QPOL_CAP_NEVERALLOW }
+         "source" { set cap $::QPOL_CAP_SOURCE }
+         "syntactic rules" { set cap $::QPOL_CAP_SYN_RULES }
++        "polcap" { set cap $::QPOL_CAP_POLCAPS }
++        "bounds" { set cap $::QPOL_CAP_BOUNDS }
++        "default_objects" { set cap $::QPOL_CAP_DEFAULT_OBJECTS }
++        "default_type" { set cap $::QPOL_CAP_DEFAULT_TYPE }
++        "permissive" { set cap $::QPOL_CAP_PERMISSIVE }
++        "filename_trans" { set cap $::QPOL_CAP_FILENAME_TRANS }
+         default { return 0 }
+     }
+     variable qpolicy
+@@ -372,6 +380,15 @@ proc ApolTop::_toplevel_policy_open {ppath} {
+     if {![is_capable "source"]} {
+         _toplevel_enable_tabs tag_source disabled
+     }
++    if {![is_capable "polcap"]} {
++        _toplevel_enable_tabs tag_polcap disabled
++    }
++    if {![is_capable "bounds"]} {
++        _toplevel_enable_tabs tag_bounds disabled
++    }
++    if {![is_capable "default_objects"]} {
++        _toplevel_enable_tabs tag_default_objects disabled
++    }
+     _toplevel_tab_switched
+ 
+     variable mainframe
+@@ -559,56 +576,93 @@ proc ApolTop::_toplevel_update_stats {} {
+         set policy_stats(mlsvalidatetrans) 0
+     }
+ 
+-    # Determine number of typebounds statements
+-    set q [new_apol_typebounds_query_t]
+-    set v [$q run $::ApolTop::policy]
+-    $q -acquire
+-    $q -delete
+-    set counter 0
+-    for {set i 0} {$v != "NULL" && $i < [$v get_size]} {incr i} {
++    # Determine number of bounds statements
++    set policy_stats(userbounds) 0
++    set policy_stats(rolebounds) 0
++    set policy_stats(typebounds) 0
++
++    if {[is_capable "bounds"]} {
++        # Determine number of userbounds statements
++        set q [new_apol_userbounds_query_t]
++        set v [$q run $::ApolTop::policy]
++        $q -acquire
++        $q -delete
+         for {set i 0} {$v != "NULL" && $i < [$v get_size]} {incr i} {
+-            set q [qpol_typebounds_from_void [$v get_element $i]]
+-            set parent [$q get_parent_name $::ApolTop::qpolicy]
+-            if {$parent != ""} {
+-                set counter [expr $counter + 1]
++            for {set i 0} {$v != "NULL" && $i < [$v get_size]} {incr i} {
++                set q [qpol_userbounds_from_void [$v get_element $i]]
++                set parent [$q get_parent_name $::ApolTop::qpolicy]
++                if {$parent != ""} {
++                    set policy_stats(userbounds) [expr $policy_stats(userbounds) + 1]
++                }
+             }
+         }
+-    }
+-    set policy_stats(typebounds) $counter
+ 
+-    # Determine number of rolebounds statements
+-    set q [new_apol_rolebounds_query_t]
+-    set v [$q run $::ApolTop::policy]
+-    $q -acquire
+-    $q -delete
+-    set counter 0
+-    for {set i 0} {$v != "NULL" && $i < [$v get_size]} {incr i} {
++        # Determine number of rolebounds statements
++        set q [new_apol_rolebounds_query_t]
++        set v [$q run $::ApolTop::policy]
++        $q -acquire
++        $q -delete
+         for {set i 0} {$v != "NULL" && $i < [$v get_size]} {incr i} {
+-            set q [qpol_rolebounds_from_void [$v get_element $i]]
+-            set parent [$q get_parent_name $::ApolTop::qpolicy]
+-            if {$parent != ""} {
+-                set counter [expr $counter + 1]
++            for {set i 0} {$v != "NULL" && $i < [$v get_size]} {incr i} {
++                set q [qpol_rolebounds_from_void [$v get_element $i]]
++                set parent [$q get_parent_name $::ApolTop::qpolicy]
++                if {$parent != ""} {
++                    set policy_stats(rolebounds) [expr $policy_stats(rolebounds) + 1]
++                }
++            }
++        }
++
++        # Determine number of typebounds statements
++        set q [new_apol_typebounds_query_t]
++        set v [$q run $::ApolTop::policy]
++        $q -acquire
++        $q -delete
++        for {set i 0} {$v != "NULL" && $i < [$v get_size]} {incr i} {
++            for {set i 0} {$v != "NULL" && $i < [$v get_size]} {incr i} {
++                set q [qpol_typebounds_from_void [$v get_element $i]]
++                set parent [$q get_parent_name $::ApolTop::qpolicy]
++                if {$parent != ""} {
++                    set policy_stats(typebounds) [expr $policy_stats(typebounds) + 1]
++                }
+             }
+         }
+     }
+-    set policy_stats(rolebounds) $counter
+ 
+-    # Determine number of userbounds statements
+-    set q [new_apol_userbounds_query_t]
+-    set v [$q run $::ApolTop::policy]
+-    $q -acquire
+-    $q -delete
+-    set counter 0
+-    for {set i 0} {$v != "NULL" && $i < [$v get_size]} {incr i} {
++    # Determine number of default_object statements
++    set policy_stats(default_user) 0
++    set policy_stats(default_role) 0
++    set policy_stats(default_type) 0
++    set policy_stats(default_range) 0
++
++    if {[is_capable "default_objects"]} {
++        set q [new_apol_default_object_query_t]
++        set v [$q run $::ApolTop::policy]
++        $q -acquire
++        $q -delete
+         for {set i 0} {$v != "NULL" && $i < [$v get_size]} {incr i} {
+-            set q [qpol_userbounds_from_void [$v get_element $i]]
+-            set parent [$q get_parent_name $::ApolTop::qpolicy]
+-            if {$parent != ""} {
+-                set counter [expr $counter + 1]
++            for {set i 0} {$v != "NULL" && $i < [$v get_size]} {incr i} {
++                set q [qpol_default_object_from_void [$v get_element $i]]
++                set default [$q get_user_default $::ApolTop::qpolicy]
++                if {$default != ""} {
++                    set policy_stats(default_user) [expr $policy_stats(default_user) + 1]
++                }
++                set default [$q get_role_default $::ApolTop::qpolicy]
++                if {$default != ""} {
++                    set policy_stats(default_role) [expr $policy_stats(default_role) + 1]
++                }
++                if {[is_capable "default_type"]} {
++                    set default [$q get_type_default $::ApolTop::qpolicy]
++                    if {$default != ""} {
++                        set policy_stats(default_type) [expr $policy_stats(default_type) + 1]
++                    }
++                }
++                set default [$q get_range_default $::ApolTop::qpolicy]
++                if {$default != ""} {
++                    set policy_stats(default_range) [expr $policy_stats(default_range) + 1]
++                }
+             }
+         }
+     }
+-    set policy_stats(userbounds) $counter
+ 
+     set policy_stats_summary ""
+     append policy_stats_summary "Classes: $policy_stats(classes)   "
+@@ -672,7 +726,9 @@ proc ApolTop::_close_policy {} {
+ 
+     _toplevel_enable_tabs tag_conditionals normal
+     _toplevel_enable_tabs tag_mls normal
+-    _toplevel_enable_tabs tag_source normal
++    _toplevel_enable_tabs tag_polcap normal
++    _toplevel_enable_tabs tag_bounds normal
++    _toplevel_enable_tabs tag_default_objects normal
+ }
+ 
+ proc ApolTop::_exit {} {
+@@ -830,6 +886,12 @@ proc ApolTop::_show_policy_summary {} {
+             "allows" role_allow
+             "role_transitions" role_trans
+         }
++        "Number of Default Object Rules" {
++            "default_user" default_user
++            "default_role" default_role
++            "default_type" default_type
++            "default_range" default_range
++        }
+     } {
+         set ltext "$title:"
+         set rtext {}
+diff --git a/apol/types_tab.tcl b/apol/types_tab.tcl
+index 34b131f78576..fed82fac5ca2 100644
+--- a/apol/types_tab.tcl
++++ b/apol/types_tab.tcl
+@@ -109,6 +109,11 @@ proc Apol_Types::create {tab_name nb} {
+ }
+ 
+ proc Apol_Types::open {ppath} {
++    variable opts
++
++    set opts(permissive:show_names) [ApolTop::is_capable "permissive"]
++    set opts(typebounds:show_names) [ApolTop::is_capable "bounds"]
++
+     set q [new_apol_type_query_t]
+     set v [$q run $::ApolTop::policy]
+     $q -acquire
+@@ -193,8 +198,8 @@ proc Apol_Types::_initializeVars {} {
+     array set opts {
+         types 1    types:show_attribs 1  types:show_aliases 1
+         attribs 0  attribs:show_types 1  attribs:show_attribs 1
+-        permissive 1  permissive:show_names 1  permissive:show_names 1
+-        typebounds 1  typebounds:show_names 1  typebounds:show_names 1
++        permissive 1 permissive:show_names 0
++        typebounds 1  typebounds:show_names 0
+     }
+ }
+ 
+@@ -211,7 +216,7 @@ proc Apol_Types::_toggleCheckbuttons {w name1 name2 op} {
+             $x configure -state disabled
+         }
+     }
+-    if {!$opts(types) && !$opts(attribs) && !$opts(permissive) && !$opts(typebounds)} {
++    if {!$opts(types) && !$opts(attribs) && !$opts(typebounds)} {
+         Apol_Widget::setRegexpEntryState $widgets(regexp) 0
+     } else {
+         Apol_Widget::setRegexpEntryState $widgets(regexp) 1
+@@ -347,7 +352,7 @@ proc Apol_Types::_searchTypes {} {
+             append results "[_renderAttrib $a $opts(attribs:show_types) $opts(attribs:show_attribs)]\n"
+         }
+     }
+-    if {$opts(permissive)} {
++    if {$opts(permissive) && [ApolTop::is_capable "permissive"]} {
+         set q [new_apol_permissive_query_t]
+         $q set_name $::ApolTop::policy $regexp
+         $q set_regex $::ApolTop::policy $use_regexp
+@@ -365,7 +370,7 @@ proc Apol_Types::_searchTypes {} {
+             append results "[_renderType $p 0 0]\n"
+         }
+     }
+-    if {$opts(typebounds)} {
++    if {$opts(typebounds) && [ApolTop::is_capable "bounds"]} {
+         set bounds {}
+         set counter 0
+ 
+diff --git a/libapol/include/apol/Makefile.am b/libapol/include/apol/Makefile.am
+index 72b5ab0dd7be..dd94452a402a 100644
+--- a/libapol/include/apol/Makefile.am
++++ b/libapol/include/apol/Makefile.am
+@@ -9,6 +9,7 @@ apol_HEADERS = \
+ 	condrule-query.h \
+ 	constraint-query.h \
+ 	context-query.h \
++	default-object-query.h \
+ 	domain-trans-analysis.h \
+ 	fscon-query.h \
+ 	infoflow-analysis.h \
+diff --git a/libapol/include/apol/default-object-query.h b/libapol/include/apol/default-object-query.h
+new file mode 100644
+index 000000000000..d30e0024a6c0
+--- /dev/null
++++ b/libapol/include/apol/default-object-query.h
+@@ -0,0 +1,78 @@
++/**
++ * @file
++ *
++ * Routines to query default objects in policy.
++ *
++ *  @author Richard Haines richard_c_haines@btinternet.com
++ *
++ * Copyright (C) 2006-2007 Tresys Technology, LLC
++ *
++ *  This library is free software; you can redistribute it and/or
++ *  modify it under the terms of the GNU Lesser General Public
++ *  License as published by the Free Software Foundation; either
++ *  version 2.1 of the License, or (at your option) any later version.
++ *
++ *  This library is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ *  Lesser General Public License for more details.
++ *
++ *  You should have received a copy of the GNU Lesser General Public
++ *  License along with this library; if not, write to the Free Software
++ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++ */
++
++#ifndef APOL_DEFAULT_OBJECT_QUERY_H
++#define APOL_DEFAULT_OBJECT_QUERY_H
++
++#ifdef	__cplusplus
++extern "C"
++{
++#endif
++
++#include "policy.h"
++#include "vector.h"
++#include <qpol/policy.h>
++
++	typedef struct apol_default_object_query apol_default_object_query_t;
++/**
++ * Execute a query against all policy capabilities within the policy.
++ *
++ * @param p Policy within which to look up policy capabilities.
++ * @param t Structure containing parameters for query.	If this is
++ * NULL then return all policy capabilities.
++ * @param v Reference to a vector of qpol_default_object_t.  The vector will be
++ * allocated by this function.  The caller must call
++ * apol_vector_destroy() afterwards.  This will be set to NULL upon no
++ * results or upon error.
++ *
++ * @return 0 on success (including none found), negative on error.
++ */
++	extern int apol_default_object_get_by_query(const apol_policy_t * p, apol_default_object_query_t * t, apol_vector_t ** v);
++
++/**
++ * Allocate and return a new default_object query structure.  All fields are
++ * initialized, such that running this blank query results in
++ * returning all policy capabilities within the policy.  The caller must call
++ * apol_default_object_query_destroy() upon the return value afterwards.
++ *
++ * @return An initialized default_object query structure, or NULL upon error.
++ */
++	extern apol_default_object_query_t *apol_default_object_query_create(void);
++
++/**
++ * Deallocate all memory associated with the referenced default_object query,
++ * and then set it to NULL.  This function does nothing if the query
++ * is already NULL.
++ *
++ * @param t Reference to a default_object query structure to destroy.
++ */
++	extern void apol_default_object_query_destroy(apol_default_object_query_t ** t);
++
++
++
++#ifdef	__cplusplus
++}
++#endif
++
++#endif
+diff --git a/libapol/include/apol/policy-query.h b/libapol/include/apol/policy-query.h
+index cc1df9b8aba6..f1a5c291df56 100644
+--- a/libapol/include/apol/policy-query.h
++++ b/libapol/include/apol/policy-query.h
+@@ -67,6 +67,7 @@ extern "C"
+ #include "permissive-query.h"
+ #include "polcap-query.h"
+ #include "bounds-query.h"
++#include "default-object-query.h"
+ 
+ #include "avrule-query.h"
+ #include "terule-query.h"
+diff --git a/libapol/src/Makefile.am b/libapol/src/Makefile.am
+index c37233f52fcf..22c80cfbe14a 100644
+--- a/libapol/src/Makefile.am
++++ b/libapol/src/Makefile.am
+@@ -20,6 +20,7 @@ libapol_a_SOURCES = \
+ 	condrule-query.c \
+ 	constraint-query.c \
+ 	context-query.c \
++	default-object-query.c \
+ 	domain-trans-analysis.c domain-trans-analysis-internal.h \
+ 	fscon-query.c \
+ 	infoflow-analysis.c infoflow-analysis-internal.h \
+diff --git a/libapol/src/bounds-query.c b/libapol/src/bounds-query.c
+index de76bced4a14..06662f484d25 100644
+--- a/libapol/src/bounds-query.c
++++ b/libapol/src/bounds-query.c
+@@ -43,7 +43,7 @@ int apol_typebounds_get_by_query(const apol_policy_t * p, apol_typebounds_query_
+ {
+ 	qpol_iterator_t *iter;
+ 	int retval = -1;
+-	int compval = 6;
++
+ 	*v = NULL;
+ 	if (qpol_policy_get_typebounds_iter(p->p, &iter) < 0) {
+ 		return -1;
+@@ -113,7 +113,7 @@ int apol_rolebounds_get_by_query(const apol_policy_t * p, apol_rolebounds_query_
+ {
+ 	qpol_iterator_t *iter;
+ 	int retval = -1;
+-	int compval = 6;
++
+ 	*v = NULL;
+ 	if (qpol_policy_get_rolebounds_iter(p->p, &iter) < 0) {
+ 		return -1;
+@@ -169,7 +169,7 @@ int apol_userbounds_get_by_query(const apol_policy_t * p, apol_userbounds_query_
+ {
+ 	qpol_iterator_t *iter;
+ 	int retval = -1;
+-	int compval = 6;
++
+ 	*v = NULL;
+ 	if (qpol_policy_get_userbounds_iter(p->p, &iter) < 0) {
+ 		return -1;
+diff --git a/libapol/src/default-object-query.c b/libapol/src/default-object-query.c
+new file mode 100644
+index 000000000000..3724e69bf9e1
+--- /dev/null
++++ b/libapol/src/default-object-query.c
+@@ -0,0 +1,87 @@
++/**
++ * @file
++ *
++ * Provides a way for setools to make queries about policy capabilities 
++ * within a policy.  The caller obtains a query object,
++ * fills in its parameters, and then runs the query; it obtains a
++ * vector of results.  Searches are conjunctive -- all fields of the
++ * search query must match for a datum to be added to the results
++ * query.
++ *
++ *  @author Richard Haines richard_c_haines@btinternet.com
++ *
++ * Copyright (C) 2006-2007 Tresys Technology, LLC
++ *
++ *  This library is free software; you can redistribute it and/or
++ *  modify it under the terms of the GNU Lesser General Public
++ *  License as published by the Free Software Foundation; either
++ *  version 2.1 of the License, or (at your option) any later version.
++ *
++ *  This library is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ *  Lesser General Public License for more details.
++ *
++ *  You should have received a copy of the GNU Lesser General Public
++ *  License along with this library; if not, write to the Free Software
++ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++ */
++
++#include "policy-query-internal.h"
++
++#include <errno.h>
++
++struct apol_default_object_query
++{
++	char *name;
++};
++
++int apol_default_object_get_by_query(const apol_policy_t * p, apol_default_object_query_t * q, apol_vector_t ** v)
++{
++	qpol_iterator_t *iter;
++	int retval = -1;
++
++	*v = NULL;
++	if (qpol_policy_get_default_object_iter(p->p, &iter) < 0) {
++		return -1;
++	}
++	if ((*v = apol_vector_create(NULL)) == NULL) {
++		ERR(p, "%s", strerror(errno));
++		goto cleanup;
++	}
++	for (; !qpol_iterator_end(iter); qpol_iterator_next(iter)) {
++		const qpol_default_object_t *default_object;
++		if (qpol_iterator_get_item(iter, (void **)&default_object) < 0) {
++			goto cleanup;
++		}
++		if (q != NULL) {
++			if (apol_vector_append(*v, (void *)default_object)) {
++				ERR(p, "%s", strerror(ENOMEM));
++				goto cleanup;
++			}
++		}
++	}
++
++	retval = 0;
++cleanup:
++	if (retval != 0) {
++		apol_vector_destroy(v);
++	}
++	qpol_iterator_destroy(&iter);
++	return retval;
++}
++
++apol_default_object_query_t *apol_default_object_query_create(void)
++{
++	return calloc(1, sizeof(apol_default_object_query_t));
++}
++
++void apol_default_object_query_destroy(apol_default_object_query_t ** q)
++{
++	if (*q != NULL) {
++		free((*q)->name);
++		free(*q);
++		*q = NULL;
++	}
++}
++
+diff --git a/libapol/src/libapol.map b/libapol/src/libapol.map
+index b64345d5278c..8741bf42de5f 100644
+--- a/libapol/src/libapol.map
++++ b/libapol/src/libapol.map
+@@ -87,4 +87,5 @@ VERS_4.2{
+ 		apol_rolebounds_*;
+ 		apol_userbounds_*;
+ 		apol_polcap_*;
++		apol_default_object_*;
+ } VERS_4.1;
+diff --git a/libapol/swig/apol.i b/libapol/swig/apol.i
+index ae2038d126bc..53172e4b2f5b 100644
+--- a/libapol/swig/apol.i
++++ b/libapol/swig/apol.i
+@@ -2804,6 +2804,36 @@ typedef struct apol_userbounds_query {} apol_userbounds_query_t;
+ 	};
+ };
+ 
++/* apol default_object query */
++typedef struct apol_default_object_query {} apol_default_object_query_t;
++%extend apol_default_object_query_t {
++	apol_default_object_query() {
++		apol_default_object_query_t *arq;
++		BEGIN_EXCEPTION
++		arq = apol_default_object_query_create();
++		if (!arq) {
++			SWIG_exception(SWIG_MemoryError, "Out of memory");
++		}
++		END_EXCEPTION
++	fail:
++		return arq;
++	};
++	~apol_default_object_query() {
++		apol_default_object_query_destroy(&self);
++	};
++	%newobject run(apol_policy_t*);
++	apol_vector_t *run(apol_policy_t *p) {
++		apol_vector_t *v;
++		BEGIN_EXCEPTION
++		if (apol_default_object_get_by_query(p, self, &v)) {
++			SWIG_exception(SWIG_RuntimeError, "Could not run default object query");
++		}
++		END_EXCEPTION
++	fail:
++		return v;
++	};
++};
++
+ /* domain transition analysis */
+ #define APOL_DOMAIN_TRANS_DIRECTION_FORWARD 0x01
+ #define APOL_DOMAIN_TRANS_DIRECTION_REVERSE 0x02
+diff --git a/libqpol/include/qpol/Makefile.am b/libqpol/include/qpol/Makefile.am
+index 11009a0fe2d3..cfd4b1230751 100644
+--- a/libqpol/include/qpol/Makefile.am
++++ b/libqpol/include/qpol/Makefile.am
+@@ -7,6 +7,7 @@ qpol_HEADERS = \
+ 	cond_query.h \
+ 	constraint_query.h \
+ 	context_query.h \
++	default_object_query.h \
+ 	fs_use_query.h \
+ 	genfscon_query.h \
+ 	isid_query.h \
+diff --git a/libqpol/include/qpol/default_object_query.h b/libqpol/include/qpol/default_object_query.h
+new file mode 100644
+index 000000000000..cd40b55b7ee2
+--- /dev/null
++++ b/libqpol/include/qpol/default_object_query.h
+@@ -0,0 +1,113 @@
++/**
++ *  @file
++ *  Defines the public interface for searching and iterating over default objects.
++ *
++ *  @author Richard Haines richard_c_haines@btinternet.com
++ *
++ *  Copyright (C) 2006-2009 Tresys Technology, LLC
++ *
++ *  This library is free software; you can redistribute it and/or
++ *  modify it under the terms of the GNU Lesser General Public
++ *  License as published by the Free Software Foundation; either
++ *  version 2.1 of the License, or (at your option) any later version.
++ *
++ *  This library is distributed in the hope that it will be useful,
++ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
++ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ *  Lesser General Public License for more details.
++ *
++ *  You should have received a copy of the GNU Lesser General Public
++ *  License along with this library; if not, write to the Free Software
++ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++ */
++
++#ifndef QPOL_DEFAULT_OBJECT_QUERY_H
++#define QPOL_DEFAULT_OBJECT_QUERY_H
++
++#ifdef	__cplusplus
++extern "C"
++{
++#endif
++
++#include <stddef.h>
++#include <stdint.h>
++#include <qpol/iterator.h>
++#include <qpol/policy.h>
++
++
++	typedef struct qpol_default_object qpol_default_object_t;
++
++/**
++ *  Get an iterator for the default_object types in a policy.
++ *  @param policy The policy from which to create the iterator.
++ *  @param iter Iterator over items of type qpol_isid_t returned.
++ *  The caller is responsible for calling qpol_iterator_destroy 
++ *  to free memory used by this iterator.
++ *  It is important to note that this iterator is only valid as long 
++ *  as the policy is unmodified.
++ *  @return 0 on success and < 0 on failure; if the call fails, 
++ *  errno will be set and *iter will be NULL.
++ */
++	extern int qpol_policy_get_default_object_iter(const qpol_policy_t *policy, qpol_iterator_t **iter);
++
++/**
++ *  Get the name which identifies a default_object class from its datum.
++ *  @param policy The policy with which class is associated.
++ *  @param datum default_object datum for which to get the name. Must be non-NULL.
++ *  @param name Pointer to the string in which to store the name.
++ *  Must be non-NULL. The caller should not free the string.
++ *  @return Returns 0 on success and < 0 on failure; if the call fails,
++ *  errno will be set and *name will be NULL.
++ */
++	extern int qpol_default_object_get_class(const qpol_policy_t *policy, const qpol_default_object_t *datum, const char **name);
++
++/**
++ *  Get the value of a default user source/dest from its datum.
++ *  @param policy The policy with which the default object is associated.
++ *  @param datum default_object datum for which to get the value. Must be non-NULL.
++ *  @param default Pointer to the value in which to store the default.
++ *  Must be non-NULL. The caller should not free the string.
++ *  @return Returns 0 on success and < 0 on failure; if the call fails,
++ *  errno will be set and *default will be 0.
++ */
++	extern int qpol_default_object_get_user_default(const qpol_policy_t *policy, const qpol_default_object_t *datum, const char **value);
++
++/**
++ *  Get the value of a default role source/dest from its datum.
++ *  @param policy The policy with which the default object type is associated.
++ *  @param datum default_object datum for which to get the value. Must be non-NULL.
++ *  @param default Pointer to the value in which to store the default.
++ *  Must be non-NULL. The caller should not free the string.
++ *  @return Returns 0 on success and < 0 on failure; if the call fails,
++ *  errno will be set and *default will be 0.
++ */
++	extern int qpol_default_object_get_role_default(const qpol_policy_t *policy, const qpol_default_object_t *datum, const char **value);
++
++/**
++ *  Get the value of a default type source/dest from its datum.
++ *  @param policy The policy with which the default object type is associated.
++ *  @param datum default_object datum for which to get the value. Must be non-NULL.
++ *  @param default Pointer to the value in which to store the default.
++ *  Must be non-NULL. The caller should not free the string.
++ *  @return Returns 0 on success and < 0 on failure; if the call fails,
++ *  errno will be set and *default will be 0.
++ */
++	extern int qpol_default_object_get_type_default(const qpol_policy_t *policy, const qpol_default_object_t *datum, const char **value);
++
++/**
++ *  Get the value of a default range source/dest from its datum.
++ *  @param policy The policy with which the default object type is associated.
++ *  @param datum default_object datum for which to get the value. Must be non-NULL.
++ *  @param default Pointer to the value in which to store the default.
++ *  Must be non-NULL. The caller should not free the string.
++ *  @return Returns 0 on success and < 0 on failure; if the call fails,
++ *  errno will be set and *default will be 0.
++ */
++	extern int qpol_default_object_get_range_default(const qpol_policy_t *policy, const qpol_default_object_t *datum, const char **value_1, const char **value_2);
++
++
++#ifdef	__cplusplus
++}
++#endif
++
++#endif				       
+diff --git a/libqpol/include/qpol/policy.h b/libqpol/include/qpol/policy.h
+index 9b90ed02a302..4e01cdbe6730 100644
+--- a/libqpol/include/qpol/policy.h
++++ b/libqpol/include/qpol/policy.h
+@@ -53,6 +53,7 @@ extern "C"
+ #include <qpol/nodecon_query.h>
+ #include <qpol/permissive_query.h>
+ #include <qpol/bounds_query.h>
++#include <qpol/default_object_query.h>
+ #include <qpol/polcap_query.h>
+ #include <qpol/portcon_query.h>
+ #include <qpol/rbacrule_query.h>
+@@ -118,7 +119,18 @@ extern "C"
+ 		/** The policy source may be displayed. */
+ 		QPOL_CAP_SOURCE,
+ 		/** The policy supports and was loaded with neverallow rules. */
+-		QPOL_CAP_NEVERALLOW
++		QPOL_CAP_NEVERALLOW,
++		/** The policy supports bounds rules. */
++		QPOL_CAP_BOUNDS,
++		/** The policy supports default object rules. */
++		QPOL_CAP_DEFAULT_OBJECTS,
++		QPOL_CAP_DEFAULT_TYPE,
++		/** The policy supports permissive types. */
++		QPOL_CAP_PERMISSIVE,
++		/** The policy supports filename type_transition rules. */
++		QPOL_CAP_FILENAME_TRANS,
++		/** The policy supports role transition rules. */
++		QPOL_CAP_ROLETRANS
+ 	} qpol_capability_e;
+ 
+ /**
+diff --git a/libqpol/src/Makefile.am b/libqpol/src/Makefile.am
+index 263897117bc6..77213f4d0442 100644
+--- a/libqpol/src/Makefile.am
++++ b/libqpol/src/Makefile.am
+@@ -21,6 +21,7 @@ libqpol_a_SOURCES = \
+ 	cond_query.c \
+ 	constraint_query.c \
+ 	context_query.c \
++	default_object_query.c \
+ 	expand.c \
+ 	expand.h \
+ 	fs_use_query.c \
+diff --git a/libqpol/src/bounds_query.c b/libqpol/src/bounds_query.c
+index fe71ebf47c5b..c3eb020c9a5b 100644
+--- a/libqpol/src/bounds_query.c
++++ b/libqpol/src/bounds_query.c
+@@ -44,6 +44,11 @@ int qpol_typebounds_get_parent_name(const qpol_policy_t *policy, const qpol_type
+ 		errno = EINVAL;
+ 		return STATUS_ERR;
+ 	}
++	*name = NULL;
++
++	/* The bounds rules started in ver 24 */
++	if (!qpol_policy_has_capability(policy, QPOL_CAP_BOUNDS))
++		return STATUS_SUCCESS;
+ 
+ 	db = &policy->p->p;
+ 	internal_datum = (type_datum_t *)datum;
+@@ -51,8 +56,6 @@ int qpol_typebounds_get_parent_name(const qpol_policy_t *policy, const qpol_type
+ 	/* This will be zero if not a typebounds statement */
+ 	if (internal_datum->flavor == TYPE_TYPE && internal_datum->bounds != 0) {
+ 		*name = db->p_type_val_to_name[internal_datum->bounds - 1];
+-	} else {
+-		*name = NULL;
+ 	}
+ 	return STATUS_SUCCESS;
+ }
+@@ -69,14 +72,17 @@ int qpol_typebounds_get_child_name(const qpol_policy_t *policy, const qpol_typeb
+ 		errno = EINVAL;
+ 		return STATUS_ERR;
+ 	}
++	*name = NULL;
++
++	/* The bounds rules started in ver 24 */
++	if (!qpol_policy_has_capability(policy, QPOL_CAP_BOUNDS))
++		return STATUS_SUCCESS;
+ 
+ 	db = &policy->p->p;
+ 	internal_datum = (type_datum_t *)datum;
+ 
+ 	if (internal_datum->flavor == TYPE_TYPE && internal_datum->bounds != 0) {
+ 		*name = db->p_type_val_to_name[internal_datum->s.value - 1];
+-	} else {
+-		*name = NULL;
+ 	}
+ 	return STATUS_SUCCESS;
+ }
+@@ -147,6 +153,11 @@ int qpol_rolebounds_get_parent_name(const qpol_policy_t *policy, const qpol_role
+ 		errno = EINVAL;
+ 		return STATUS_ERR;
+ 	}
++	*name = NULL;
++
++	/* The bounds rules started in ver 24 */
++	if (!qpol_policy_has_capability(policy, QPOL_CAP_BOUNDS))
++		return STATUS_SUCCESS;
+ 
+ 	db = &policy->p->p;
+ 	internal_datum = (role_datum_t *)datum;
+@@ -154,8 +165,6 @@ int qpol_rolebounds_get_parent_name(const qpol_policy_t *policy, const qpol_role
+ 	/* This will be zero if not a rolebounds statement */
+ 	if (internal_datum->flavor == ROLE_ROLE && internal_datum->bounds != 0) {
+ 		*name = db->p_role_val_to_name[internal_datum->bounds - 1];
+-	} else {
+-		*name = NULL;
+ 	}
+ 	return STATUS_SUCCESS;
+ }
+@@ -172,14 +181,17 @@ int qpol_rolebounds_get_child_name(const qpol_policy_t *policy, const qpol_roleb
+ 		errno = EINVAL;
+ 		return STATUS_ERR;
+ 	}
++	*name = NULL;
++
++	/* The bounds rules started in ver 24 */
++	if (!qpol_policy_has_capability(policy, QPOL_CAP_BOUNDS))
++		return STATUS_SUCCESS;
+ 
+ 	db = &policy->p->p;
+ 	internal_datum = (role_datum_t *)datum;
+ 
+ 	if (internal_datum->flavor == ROLE_ROLE && internal_datum->bounds != 0) {
+ 		*name = db->p_role_val_to_name[internal_datum->s.value - 1];
+-	} else {
+-		*name = NULL;
+ 	}
+ 	return STATUS_SUCCESS;
+ }
+@@ -236,6 +248,11 @@ int qpol_userbounds_get_parent_name(const qpol_policy_t *policy, const qpol_user
+ 		errno = EINVAL;
+ 		return STATUS_ERR;
+ 	}
++	*name = NULL;
++
++	/* The bounds rules started in ver 24 */
++	if (!qpol_policy_has_capability(policy, QPOL_CAP_BOUNDS))
++		return STATUS_SUCCESS;
+ 
+ 	db = &policy->p->p;
+ 	internal_datum = (user_datum_t *)datum;
+@@ -243,8 +260,6 @@ int qpol_userbounds_get_parent_name(const qpol_policy_t *policy, const qpol_user
+ 	/* This will be zero if not a userbounds statement */
+ 	if (internal_datum->bounds != 0) {
+ 		*name = db->p_user_val_to_name[internal_datum->bounds - 1];
+-	} else {
+-		*name = NULL;
+ 	}
+ 	return STATUS_SUCCESS;
+ }
+@@ -261,14 +276,17 @@ int qpol_userbounds_get_child_name(const qpol_policy_t *policy, const qpol_userb
+ 		errno = EINVAL;
+ 		return STATUS_ERR;
+ 	}
++	*name = NULL;
++
++	/* The bounds rules started in ver 24 */
++	if (!qpol_policy_has_capability(policy, QPOL_CAP_BOUNDS))
++		return STATUS_SUCCESS;
+ 
+ 	db = &policy->p->p;
+ 	internal_datum = (user_datum_t *)datum;
+ 
+ 	if (internal_datum->bounds != 0) {
+ 		*name = db->p_user_val_to_name[internal_datum->s.value - 1];
+-	} else {
+-		*name = NULL;
+ 	}
+ 	return STATUS_SUCCESS;
+ }
+diff --git a/libqpol/src/default_object_query.c b/libqpol/src/default_object_query.c
+new file mode 100644
+index 000000000000..f4bea8aa0805
+--- /dev/null
++++ b/libqpol/src/default_object_query.c
+@@ -0,0 +1,290 @@
++/**
++*  @file
++*  Defines the public interface for searching and iterating over default objects.
++*
++*  @author Richard Haines richard_c_haines@btinternet.com
++*
++*  Copyright (C) 2006-2007 Tresys Technology, LLC
++*
++*  This library is free software; you can redistribute it and/or
++*  modify it under the terms of the GNU Lesser General Public
++*  License as published by the Free Software Foundation; either
++*  version 2.1 of the License, or (at your option) any later version.
++*
++*  This library is distributed in the hope that it will be useful,
++*  but WITHOUT ANY WARRANTY; without even the implied warranty of
++*  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++*  Lesser General Public License for more details.
++*
++*  You should have received a copy of the GNU Lesser General Public
++*  License along with this library; if not, write to the Free Software
++*  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
++*/
++
++#include <stddef.h>
++#include <stdlib.h>
++#include <stdint.h>
++#include <qpol/iterator.h>
++#include <qpol/policy.h>
++#include <qpol/default_object_query.h>
++#include <sepol/policydb/policydb.h>
++#include "qpol_internal.h"
++#include "iterator_internal.h"
++
++int qpol_default_object_get_class(const qpol_policy_t *policy, const qpol_default_object_t * datum, const char **name)
++{
++	class_datum_t *internal_datum = NULL;
++	policydb_t *db = NULL;
++	
++	if (policy == NULL || datum == NULL || name == NULL) {
++		if (name != NULL)
++			*name = NULL;
++		ERR(policy, "%s", strerror(EINVAL));
++		errno = EINVAL;
++		return STATUS_ERR;
++	}
++	*name = NULL;
++
++	db = &policy->p->p;
++	internal_datum = (class_datum_t *)datum;
++
++	/* These will be zero if no default_objects set */
++	if (internal_datum->default_user || internal_datum->default_role ||
++				internal_datum->default_type ||
++				 internal_datum->default_range) {
++		*name = db->p_class_val_to_name[internal_datum->s.value - 1];
++	}
++	return STATUS_SUCCESS;
++}
++
++int qpol_default_object_get_user_default(const qpol_policy_t *policy, const qpol_default_object_t * datum, const char **value)
++{
++	class_datum_t *internal_datum = NULL;
++	policydb_t *db = NULL;
++	
++	if (policy == NULL || datum == NULL || value == NULL) {
++		if (value != NULL)
++			*value = NULL;
++		ERR(policy, "%s", strerror(EINVAL));
++		errno = EINVAL;
++		return STATUS_ERR;
++	}
++	*value = NULL;
++
++	/* The user default started in ver 27 */
++	if (!qpol_policy_has_capability(policy, QPOL_CAP_DEFAULT_OBJECTS))
++		return STATUS_SUCCESS;
++
++	db = &policy->p->p;
++	internal_datum = (class_datum_t *)datum;
++
++	if (internal_datum->default_user == DEFAULT_SOURCE) {
++		*value = "source";
++	} else if (internal_datum->default_user == DEFAULT_TARGET) {
++		*value = "target";
++	}
++	return STATUS_SUCCESS;
++}
++
++int qpol_default_object_get_role_default(const qpol_policy_t *policy, const qpol_default_object_t * datum, const char **value)
++{
++	class_datum_t *internal_datum = NULL;
++	policydb_t *db = NULL;
++	
++	if (policy == NULL || datum == NULL || value == NULL) {
++		if (value != NULL)
++			*value = NULL;
++		ERR(policy, "%s", strerror(EINVAL));
++		errno = EINVAL;
++		return STATUS_ERR;
++	}
++	*value = NULL;
++
++	/* The role default started in ver 27 */
++	if (!qpol_policy_has_capability(policy, QPOL_CAP_DEFAULT_OBJECTS))
++		return STATUS_SUCCESS;
++
++	db = &policy->p->p;
++	internal_datum = (class_datum_t *)datum;
++
++	if (internal_datum->default_role == DEFAULT_SOURCE) {
++		*value = "source";
++	} else if (internal_datum->default_role == DEFAULT_TARGET) {
++		*value = "target";
++	}
++	return STATUS_SUCCESS;
++}
++
++int qpol_default_object_get_type_default(const qpol_policy_t *policy, const qpol_default_object_t * datum, const char **value)
++{
++	class_datum_t *internal_datum = NULL;
++	policydb_t *db = NULL;
++	
++	if (policy == NULL || datum == NULL || value == NULL) {
++		if (value != NULL)
++			*value = NULL;
++		ERR(policy, "%s", strerror(EINVAL));
++		errno = EINVAL;
++		return STATUS_ERR;
++	}
++	*value = NULL;
++
++	/* The type default started in ver 28 */
++	if (!qpol_policy_has_capability(policy, QPOL_CAP_DEFAULT_TYPE))
++		return STATUS_SUCCESS;
++
++	db = &policy->p->p;
++	internal_datum = (class_datum_t *)datum;
++
++	if (internal_datum->default_type == DEFAULT_SOURCE) {
++		*value = "source";
++	} else if (internal_datum->default_type == DEFAULT_TARGET) {
++		*value = "target";
++	}
++	return STATUS_SUCCESS;
++}
++
++int qpol_default_object_get_range_default(const qpol_policy_t *policy, const qpol_default_object_t * datum, const char **value_1, const char **value_2)
++{
++	class_datum_t *internal_datum = NULL;
++	policydb_t *db = NULL;
++	
++	if (policy == NULL || datum == NULL || value_1 == NULL || value_2 == NULL) {
++		if (value_1 != NULL)
++			*value_1 = NULL;
++		if (value_2 != NULL)
++			*value_2 = NULL;
++		ERR(policy, "%s", strerror(EINVAL));
++		errno = EINVAL;
++		return STATUS_ERR;
++	}
++	*value_1 = NULL;
++	*value_2 = NULL;
++
++	/* The range default started in ver 27 */
++	int policy_version;
++	if (!qpol_policy_has_capability(policy, QPOL_CAP_DEFAULT_OBJECTS))
++		return STATUS_SUCCESS;
++
++	db = &policy->p->p;
++	internal_datum = (class_datum_t *)datum;
++
++	switch (internal_datum->default_range) {
++		case DEFAULT_SOURCE_LOW:
++			*value_1 = "source";
++			*value_2 = "low";
++			break;
++		case DEFAULT_SOURCE_HIGH:
++			*value_1 = "source";
++			*value_2 = "high";
++			break;
++		case DEFAULT_SOURCE_LOW_HIGH:
++			*value_1 = "source";
++			*value_2 = "low_high";
++			break;
++		case DEFAULT_TARGET_LOW:
++			*value_1 = "target";
++			*value_2 = "low";
++			break;
++		case DEFAULT_TARGET_HIGH:
++			*value_1 = "target";
++			*value_2 = "high";
++			break;
++		case DEFAULT_TARGET_LOW_HIGH:
++			*value_1 = "target";
++			*value_2 = "low_high";
++			break;
++		default:
++			break;
++	}
++	return STATUS_SUCCESS;
++}
++
++/* As default objects are in classes use these, however will need to calc number of default objects manually in top.tcl*/
++int qpol_policy_get_default_object_iter(const qpol_policy_t *policy, qpol_iterator_t **iter)
++{
++	policydb_t *db;
++	int error = 0;
++	hash_state_t *hs = NULL;
++
++	if (policy == NULL || iter == NULL) {
++		if (iter != NULL)
++			*iter = NULL;
++		ERR(policy, "%s", strerror(EINVAL));
++		errno = EINVAL;
++		return STATUS_ERR;
++	}
++
++	db = &policy->p->p;
++/*
++	class_datum_t *cladatum;
++	sepol_security_class_t tclass;
++	char *class;
++
++	for (tclass = 1; tclass <= db->p_classes.nprim; tclass++) {
++		cladatum = db->class_val_to_struct[tclass - 1];
++		class = db->p_class_val_to_name[tclass - 1];
++
++		if (cladatum->default_user == DEFAULT_SOURCE) {
++			printf("default_user %s source;\n", class);
++		} else if (cladatum->default_user == DEFAULT_TARGET) {
++			printf("default_user %s target;\n", class);
++		}
++
++		if (cladatum->default_role == DEFAULT_SOURCE) {
++			printf("default_role %s source;\n", class);
++		} else if (cladatum->default_role == DEFAULT_TARGET) {
++			printf("default_role %s target;\n", class);
++		}
++
++		if (cladatum->default_type == DEFAULT_SOURCE) {
++			printf("default_type %s source;\n", class);
++		} else if (cladatum->default_type == DEFAULT_TARGET) {
++			printf("default_type %s target;\n", class);
++		}
++
++		switch (cladatum->default_range) {
++			case DEFAULT_SOURCE_LOW:
++				printf("default_range %s source low;\n", class);
++				break;
++			case DEFAULT_SOURCE_HIGH:
++				printf("default_range %s source high;\n", class);
++				break;
++			case DEFAULT_SOURCE_LOW_HIGH:
++				printf("default_range %s source low_high;\n", class);
++				break;
++			case DEFAULT_TARGET_LOW:
++				printf("default_range %s target low;\n", class);
++				break;
++			case DEFAULT_TARGET_HIGH:
++				printf("default_range %s target high;\n", class);
++				break;
++			case DEFAULT_TARGET_LOW_HIGH:
++				printf("default_range %s target low_high;\n", class);
++				break;
++			default:
++				break;
++		}
++	}
++*/
++	hs = calloc(1, sizeof(hash_state_t));
++	if (hs == NULL) {
++		error = errno;
++		ERR(policy, "%s", strerror(ENOMEM));
++		errno = error;
++		return STATUS_ERR;
++	}
++	hs->table = &db->p_classes.table;
++	hs->node = (*(hs->table))->htable[0];
++
++	if (qpol_iterator_create(policy, (void *)hs, hash_state_get_cur,
++				 hash_state_next, hash_state_end, hash_state_size, free, iter)) {
++		free(hs);
++		return STATUS_ERR;
++	}
++
++	if (hs->node == NULL)
++		hash_state_next(*iter);
++
++	return STATUS_SUCCESS;
++}
+diff --git a/libqpol/src/libqpol.map b/libqpol/src/libqpol.map
+index f05b6ca89c32..1e8030829b8f 100644
+--- a/libqpol/src/libqpol.map
++++ b/libqpol/src/libqpol.map
+@@ -75,4 +75,5 @@ VERS_1.5 {
+ 		qpol_userbounds_*;
+ 		qpol_policy_polcap_*;
+ 		qpol_polcap_*;
++		qpol_default_object_*;
+ } VERS_1.4;
+diff --git a/libqpol/src/policy.c b/libqpol/src/policy.c
+index 2bf7fbaa83b4..916482381165 100644
+--- a/libqpol/src/policy.c
++++ b/libqpol/src/policy.c
+@@ -1553,6 +1553,55 @@ int qpol_policy_has_capability(const qpol_policy_t * policy, qpol_capability_e c
+ 			return 1;
+ 		break;
+ 	}
++	case QPOL_CAP_BOUNDS:
++	{
++		if (version >= 24 && policy->type != QPOL_POLICY_MODULE_BINARY)
++			return 1;
++		if (version >= 9 && policy->type == QPOL_POLICY_MODULE_BINARY)
++			return 1;
++		break;
++	}
++	case QPOL_CAP_PERMISSIVE:
++	{
++		if (version >= 23 && policy->type != QPOL_POLICY_MODULE_BINARY)
++			return 1;
++		if (version >= 8 && policy->type == QPOL_POLICY_MODULE_BINARY)
++			return 1;
++		break;
++	}
++	case QPOL_CAP_FILENAME_TRANS:
++	{
++		if (version >= 25 && policy->type != QPOL_POLICY_MODULE_BINARY)
++			return 1;
++		if (version >= 11 && policy->type == QPOL_POLICY_MODULE_BINARY)
++			return 1;
++		break;
++	}
++	case QPOL_CAP_ROLETRANS:
++	{
++		if (version >= 26 && policy->type != QPOL_POLICY_MODULE_BINARY)
++			return 1;
++		if (version >= 12 && policy->type == QPOL_POLICY_MODULE_BINARY)
++			return 1;
++		break;
++	}
++	/* This indicates the user, role and range - types were ate 28/16 */
++	case QPOL_CAP_DEFAULT_OBJECTS:
++	{
++		if (version >= 27 && policy->type != QPOL_POLICY_MODULE_BINARY)
++			return 1;
++		if (version >= 15 && policy->type == QPOL_POLICY_MODULE_BINARY)
++			return 1;
++		break;
++	}
++	case QPOL_CAP_DEFAULT_TYPE:
++	{
++		if (version >= 28 && policy->type != QPOL_POLICY_MODULE_BINARY)
++			return 1;
++		if (version >= 16 && policy->type == QPOL_POLICY_MODULE_BINARY)
++			return 1;
++		break;
++	}
+ 	case QPOL_CAP_RULES_LOADED:
+ 	{
+ 		if (!(policy->options & QPOL_POLICY_OPTION_NO_RULES))
+diff --git a/libqpol/swig/qpol.i b/libqpol/swig/qpol.i
+index 7bb92cf6f023..98ea70be7c8f 100644
+--- a/libqpol/swig/qpol.i
++++ b/libqpol/swig/qpol.i
+@@ -326,7 +326,14 @@ typedef enum qpol_capability
+ 	QPOL_CAP_MODULES,
+ 	QPOL_CAP_RULES_LOADED,
+ 	QPOL_CAP_SOURCE,
+-	QPOL_CAP_NEVERALLOW
++	QPOL_CAP_NEVERALLOW,
++	QPOL_CAP_POLCAPS,
++	QPOL_CAP_BOUNDS,
++	QPOL_CAP_DEFAULT_OBJECTS,
++	QPOL_CAP_DEFAULT_TYPE,
++	QPOL_CAP_PERMISSIVE,
++	QPOL_CAP_FILENAME_TRANS,
++	QPOL_CAP_ROLETRANS
+ } qpol_capability_e;
+ 
+ %extend qpol_policy_t {
+@@ -3167,4 +3174,76 @@ typedef struct qpol_userbounds {} qpol_userbounds_t;
+ 		return (qpol_userbounds_t*)x;
+ 	};
+ %}
++
++/* qpol default_object */
++typedef struct qpol_default_object {} qpol_default_object_t;
++%extend qpol_default_object_t {
++	qpol_default_object() {
++		BEGIN_EXCEPTION
++		SWIG_exception(SWIG_RuntimeError, "Cannot directly create qpol_default_object_t objects");
++		END_EXCEPTION
++	fail:
++		return NULL;
++	};
++	~qpol_default_object() {
++		/* no op */
++		return;
++	};
++	const char *get_class(qpol_policy_t *p) {
++		const char *name;
++		BEGIN_EXCEPTION
++		if (qpol_default_object_get_class(p, self, &name)) {
++			SWIG_exception(SWIG_ValueError, "Could not get class name");
++		}
++		END_EXCEPTION
++	fail:
++		return name;
++	};
++	const char *get_user_default(qpol_policy_t *p) {
++		const char *value;
++		BEGIN_EXCEPTION
++		if (qpol_default_object_get_user_default(p, self, &value)) {
++			SWIG_exception(SWIG_ValueError, "Could not get user default");
++		}
++		END_EXCEPTION
++	fail:
++		return value;
++	};
++	const char *get_role_default(qpol_policy_t *p) {
++		const char *value;
++		BEGIN_EXCEPTION
++		if (qpol_default_object_get_role_default(p, self, &value)) {
++			SWIG_exception(SWIG_ValueError, "Could not get role default");
++		}
++		END_EXCEPTION
++	fail:
++		return value;
++	};
++	const char *get_type_default(qpol_policy_t *p) {
++		const char *value;
++		BEGIN_EXCEPTION
++		if (qpol_default_object_get_type_default(p, self, &value)) {
++			SWIG_exception(SWIG_ValueError, "Could not get type default");
++		}
++		END_EXCEPTION
++	fail:
++		return value;
++	};
++	const char *get_range_default(qpol_policy_t *p) {
++		const char *value_1;
++		const char *value_2;
++		BEGIN_EXCEPTION
++		if (qpol_default_object_get_range_default(p, self, &value_1, &value_2)) {
++			SWIG_exception(SWIG_ValueError, "Could not get range defaults");
++		}
++		END_EXCEPTION
++	fail:
++		return value_1;
++	};
++};
++%inline %{
++	qpol_default_object_t *qpol_default_object_from_void(void *x) {
++		return (qpol_default_object_t*)x;
++	};
++%}
+ // vim:ft=c noexpandtab
+diff --git a/libsefs/src/db.cc b/libsefs/src/db.cc
+index 88ad58815dda..191d796b945b 100644
+--- a/libsefs/src/db.cc
++++ b/libsefs/src/db.cc
+@@ -479,8 +479,13 @@ int db_create_from_filesystem(sefs_fclist * fclist __attribute__ ((unused)), con
+ 		struct stat64 sb;
+ 		if (stat64(path, &sb) == -1)
+ 		{
+-			SEFS_ERR(dbc->_db, "%s", strerror(errno));
+-			throw std::bad_alloc();
++			/* If sym link broken/file not found, then ignore as this will allow
++			   the index to be built. Useful when investigating broken systems.
++			   Also see new_ftw.c comment regarding "lstat calls go through the
++			   wrapper function" to stop index hanging on broken files. */
++			link_target[127] = '\0';
++			sb.st_mode = 0;
++			SEFS_WARN(dbc->_db, "Could not stat file: %s - ignoring", path);
+ 		}
+ 		if (S_ISLNK(sb.st_mode))
+ 		{
+diff --git a/libsefs/src/new_ftw.c b/libsefs/src/new_ftw.c
+index 5ebaf299292e..10eb78fde3e2 100644
+--- a/libsefs/src/new_ftw.c
++++ b/libsefs/src/new_ftw.c
+@@ -131,7 +131,11 @@ extern char *xgetcwd(void);
+ /* Arrange to make lstat calls go through the wrapper function
+    on systems with an lstat function that does not dereference symlinks
+    that are specified with a trailing slash.  */
+-#if ! _LIBC && ! LSTAT_FOLLOWS_SLASHED_SYMLINK
++/* If this is used on Linux (Fedora) when a sym link or file is broken,
++   the file context function will hang forever:
++       #if ! _LIBC && ! LSTAT_FOLLOWS_SLASHED_SYMLINK
++   Therefore changed to this so uses Linux lstat function. */
++#if _LIBC && ! LSTAT_FOLLOWS_SLASHED_SYMLINK
+ int rpl_lstat(const char *, struct stat *);
+ # undef lstat
+ # define lstat(Name, Stat_buf) rpl_lstat(Name, Stat_buf)
+-- 
+2.3.0
+

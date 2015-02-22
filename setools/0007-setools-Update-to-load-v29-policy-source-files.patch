@@ -1,0 +1,4905 @@
+From 02bb44767963b38c0cd8f07c4ad55c23c67ebe9b Mon Sep 17 00:00:00 2001
+From: Steve Lawrence <slawrence@tresys.com>
+Date: Fri, 25 Apr 2014 19:16:14 +0000
+Subject: [PATCH 07/13] setools: Update to load v29 policy source files.
+
+This uses the policy build files from checkpolicy-2.1.12-5.fc20 that
+are then modified to be used in setools for source policy expansion.
+The files have comments /* Required for SETools libqpol */ added to
+allow for easier patching next time.
+
+This patch should now enable all policy features up to policy version 29.
+
+There are #defines in policy.c infer_policy_version() to determine the
+max version the policy should support when being built, however they
+have not been fully tested.
+
+The source policy expansion has been tested using apol on Fedora 20.
+
+There is one bug where filename type_transition rules are added twice.
+This is a problem in libsepol (expand.c copy_and_expand_avrule_block())
+that adds these rules again - have a fix for this - probably.
+
+There are two bug fixes:
+1) Add range field to default_range.
+2) Toggle apol "Policy Source" tab correctly.
+
+This patch MUST be applied on top of the four patches available from:
+http://marc.info/?l=selinux&m=139696911602613&w=2
+
+or (the preferred approach), a fully patched version of setools is
+available from: https://github.com/QuarkSecurity/setools
+
+With RPMs at: https://quarksecurity.com/files/RPMS/
+
+Signed-off-by: Richard Haines <richard_c_haines@btinternet.com>
+---
+ ChangeLog                                   |    8 +
+ apol/policyconf.tcl                         |    2 +
+ apol/terules_tab.tcl                        |    4 +-
+ configure.ac                                |   45 +
+ libqpol/include/qpol/default_object_query.h |    2 +-
+ libqpol/src/default_object_query.c          |   31 +-
+ libqpol/src/module_compiler.c               |  691 ++++++++------
+ libqpol/src/module_compiler.h               |   14 +-
+ libqpol/src/policy.c                        |   39 +
+ libqpol/src/policy_define.c                 | 1358 ++++++++++++++++++---------
+ libqpol/src/policy_define.h                 |   33 +-
+ libqpol/src/policy_parse.y                  |  112 ++-
+ libqpol/src/policy_scan.l                   |   38 +-
+ libqpol/src/queue.c                         |    6 +-
+ libqpol/src/queue.h                         |   12 +-
+ libqpol/swig/qpol.i                         |   11 +-
+ 16 files changed, 1617 insertions(+), 789 deletions(-)
+
+diff --git a/ChangeLog b/ChangeLog
+index 2b62689ca05d..c13a4dc6ae5d 100644
+--- a/ChangeLog
++++ b/ChangeLog
+@@ -1,3 +1,11 @@
++2014-04-15 Richard Haines <richard_c_haines@btinternet.com>
++
++	* Updates to libqpol to support policy source file expansion
++	  to version 29. Source policies with the filename transition
++	  rule will have their entries expanded twice, this is a bug
++	  in libsepol.
++	  Fixed bug in default_range to now diplay range component.
++
+ 2014-04-14 Richard Haines <richard_c_haines@btinternet.com>
+ 
+ 	* Updates to apol and the libapol/libqpol libraries to support
+diff --git a/apol/policyconf.tcl b/apol/policyconf.tcl
+index 8f7e9c1275fb..161f959abf34 100644
+--- a/apol/policyconf.tcl
++++ b/apol/policyconf.tcl
+@@ -63,7 +63,9 @@ proc Apol_PolicyConf::open {ppath} {
+     $textbox fakedelete 0.0 end
+     if {![ApolTop::is_capable "source"]} {
+         $textbox fakeinsert end "The currently loaded policy is not a source policy."
++        ApolTop::_toplevel_enable_tabs tag_source disabled
+     } else {
++        ApolTop::_toplevel_enable_tabs tag_source normal
+         set primary_file [$ppath get_primary]
+         if {[catch {::open $primary_file r} f]} {
+             $textbox fakeinsert end "$primary_file does not exist or could not be read by the user."
+diff --git a/apol/terules_tab.tcl b/apol/terules_tab.tcl
+index 3b51c64173b4..266d670c3024 100644
+--- a/apol/terules_tab.tcl
++++ b/apol/terules_tab.tcl
+@@ -661,7 +661,7 @@ proc Apol_TE::Get_FileNames {} {
+     for {set i 0} {$v != "NULL" && $i < [$v get_size]} {incr i} {
+         for {set i 0} {$v != "NULL" && $i < [$v get_size]} {incr i} {
+             set q [qpol_filename_trans_from_void [$v get_element $i]]
+-            lappend filenames [$q get_trans_filename $::ApolTop::qpolicy]
++            lappend filenames [$q get_filename $::ApolTop::qpolicy]
+         }
+     }
+     return $filenames
+@@ -682,7 +682,7 @@ proc Apol_TE::appendFilenameSearchResultRules {path indent rule_list cast filena
+ 
+     for {set i 0} {$i < [$rule_list get_size]} {incr i} {
+         set rule [$cast [$rule_list get_element $i]]
+-        if {$filename == "" || [$rule get_trans_filename $::ApolTop::qpolicy] == $filename} {
++        if {$filename == "" || [$rule get_filename $::ApolTop::qpolicy] == $filename} {
+             $path.tb insert end [string repeat " " $indent]
+             $path.tb insert end [apol_filename_trans_render $::ApolTop::policy $rule]
+             incr num_rules
+diff --git a/configure.ac b/configure.ac
+index 577ce4877150..80395e69a443 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -548,6 +548,36 @@ int main () {
+     fi
+ fi
+ 
++dnl check for constraint names, added in libsepol version ??
++AC_CHECK_DECL([POLICYDB_VERSION_CONSTRAINT_NAMES],
++                sepol_new_constraint_names="yes",
++                sepol_new_constraint_names="no",
++                [#include <sepol/policydb/policydb.h>])
++
++dnl check for default object type, added in libsepol version ??
++AC_CHECK_DECL([POLICYDB_VERSION_DEFAULT_TYPE],
++                sepol_new_default_type="yes",
++                sepol_new_default_type="no",
++                [#include <sepol/policydb/policydb.h>])
++
++dnl check for default object user/role/range added in libsepol version ??
++AC_CHECK_DECL([POLICYDB_VERSION_NEW_OBJECT_DEFAULTS],
++                sepol_new_object_defaults="yes",
++                sepol_new_object_defaults="no",
++                [#include <sepol/policydb/policydb.h>])
++
++dnl check for filename trans rule, added in libsepol version ??
++AC_CHECK_DECL([POLICYDB_VERSION_FILENAME_TRANS],
++                sepol_new_filename_trans="yes",
++                sepol_new_filename_trans="no",
++                [#include <sepol/policydb/policydb.h>])
++
++dnl check for user/role/type bounds, added in libsepol version ??
++AC_CHECK_DECL([POLICYDB_VERSION_BOUNDARY],
++                sepol_new_bounds="yes",
++                sepol_new_bounds="no",
++                [#include <sepol/policydb/policydb.h>])
++
+ dnl check for permissive types, added in libsepol version 2.0.26
+ AC_CHECK_DECL([TYPE_FLAGS_PERMISSIVE],
+                 sepol_new_permissive_types="yes",
+@@ -855,6 +885,21 @@ fi
+ if test ${sepol_new_permissive_types} == "yes"; then
+    AC_DEFINE(HAVE_SEPOL_PERMISSIVE_TYPES, 1, [if types can be marked as permissive])
+ fi
++if test ${sepol_new_constraint_names} == "yes"; then
++   AC_DEFINE(HAVE_SEPOL_CONSTRAINT_NAMES, 1, [if source policy types/attributes are present])
++fi
++if test ${sepol_new_default_type} == "yes"; then
++   AC_DEFINE(HAVE_SEPOL_DEFAULT_TYPE, 1, [if default_user rule present])
++fi
++if test ${sepol_new_object_defaults} == "yes"; then
++   AC_DEFINE(HAVE_SEPOL_NEW_OBJECT_DEFAULTS, 1, [if default_user/role/range rules are present])
++fi
++if test ${sepol_new_filename_trans} == "yes"; then
++   AC_DEFINE(HAVE_SEPOL_FILENAME_TRANS, 1, [if the filename transition rule present])
++fi
++if test ${sepol_new_bounds} == "yes"; then
++   AC_DEFINE(HAVE_SEPOL_BOUNDARY, 1, [if bounds rules are present])
++fi
+ if test ${sepol_new_user_role_mapping} == "yes"; then
+    AC_DEFINE(HAVE_SEPOL_USER_ROLE_MAPPING, 1, [if users and roles are mapped during policy expansion])
+ fi
+diff --git a/libqpol/include/qpol/default_object_query.h b/libqpol/include/qpol/default_object_query.h
+index cd40b55b7ee2..e077287ce786 100644
+--- a/libqpol/include/qpol/default_object_query.h
++++ b/libqpol/include/qpol/default_object_query.h
+@@ -103,7 +103,7 @@ extern "C"
+  *  @return Returns 0 on success and < 0 on failure; if the call fails,
+  *  errno will be set and *default will be 0.
+  */
+-	extern int qpol_default_object_get_range_default(const qpol_policy_t *policy, const qpol_default_object_t *datum, const char **value_1, const char **value_2);
++	extern int qpol_default_object_get_range_default(const qpol_policy_t *policy, const qpol_default_object_t *datum, const char **value);
+ 
+ 
+ #ifdef	__cplusplus
+diff --git a/libqpol/src/default_object_query.c b/libqpol/src/default_object_query.c
+index f4bea8aa0805..4143674d22ff 100644
+--- a/libqpol/src/default_object_query.c
++++ b/libqpol/src/default_object_query.c
+@@ -144,22 +144,19 @@ int qpol_default_object_get_type_default(const qpol_policy_t *policy, const qpol
+ 	return STATUS_SUCCESS;
+ }
+ 
+-int qpol_default_object_get_range_default(const qpol_policy_t *policy, const qpol_default_object_t * datum, const char **value_1, const char **value_2)
++int qpol_default_object_get_range_default(const qpol_policy_t *policy, const qpol_default_object_t * datum, const char **value)
+ {
+ 	class_datum_t *internal_datum = NULL;
+ 	policydb_t *db = NULL;
+ 	
+-	if (policy == NULL || datum == NULL || value_1 == NULL || value_2 == NULL) {
+-		if (value_1 != NULL)
+-			*value_1 = NULL;
+-		if (value_2 != NULL)
+-			*value_2 = NULL;
++	if (policy == NULL || datum == NULL || value == NULL) {
++		if (value != NULL)
++			*value = NULL;
+ 		ERR(policy, "%s", strerror(EINVAL));
+ 		errno = EINVAL;
+ 		return STATUS_ERR;
+ 	}
+-	*value_1 = NULL;
+-	*value_2 = NULL;
++	*value = NULL;
+ 
+ 	/* The range default started in ver 27 */
+ 	int policy_version;
+@@ -171,28 +168,22 @@ int qpol_default_object_get_range_default(const qpol_policy_t *policy, const qpo
+ 
+ 	switch (internal_datum->default_range) {
+ 		case DEFAULT_SOURCE_LOW:
+-			*value_1 = "source";
+-			*value_2 = "low";
++			*value = "source low";
+ 			break;
+ 		case DEFAULT_SOURCE_HIGH:
+-			*value_1 = "source";
+-			*value_2 = "high";
++			*value = "source high";
+ 			break;
+ 		case DEFAULT_SOURCE_LOW_HIGH:
+-			*value_1 = "source";
+-			*value_2 = "low_high";
++			*value = "source low_high";
+ 			break;
+ 		case DEFAULT_TARGET_LOW:
+-			*value_1 = "target";
+-			*value_2 = "low";
++			*value = "target low";
+ 			break;
+ 		case DEFAULT_TARGET_HIGH:
+-			*value_1 = "target";
+-			*value_2 = "high";
++			*value = "target high";
+ 			break;
+ 		case DEFAULT_TARGET_LOW_HIGH:
+-			*value_1 = "target";
+-			*value_2 = "low_high";
++			*value = "target low_high";
+ 			break;
+ 		default:
+ 			break;
+diff --git a/libqpol/src/module_compiler.c b/libqpol/src/module_compiler.c
+index b06e285703ee..b00d97e6b2f9 100644
+--- a/libqpol/src/module_compiler.c
++++ b/libqpol/src/module_compiler.c
+@@ -14,6 +14,7 @@
+  *	the Free Software Foundation, version 2.
+  */
+ 
++/* Required for SETools libqpol services */
+ #include <config.h>
+ 
+ #include <assert.h>
+@@ -28,21 +29,19 @@
+ #include "queue.h"
+ #include "module_compiler.h"
+ 
+-union stack_item_u
+-{
++union stack_item_u {
+ 	avrule_block_t *avrule;
+ 	cond_list_t *cond_list;
+ };
+ 
+-typedef struct scope_stack
+-{
++typedef struct scope_stack {
+ 	union stack_item_u u;
+-	int type;		       /* for above union: 1 = avrule block, 2 = conditional */
+-	avrule_decl_t *decl;	       /* if in an avrule block, which
+-				        * declaration is current */
++	int type;		/* for above union: 1 = avrule block, 2 = conditional */
++	avrule_decl_t *decl;	/* if in an avrule block, which
++				 * declaration is current */
+ 	avrule_t *last_avrule;
+-	int in_else;		       /* if in an avrule block, within ELSE branch */
+-	int require_given;	       /* 1 if this block had at least one require */
++	int in_else;		/* if in an avrule block, within ELSE branch */
++	int require_given;	/* 1 if this block had at least one require */
+ 	struct scope_stack *parent, *child;
+ } scope_stack_t;
+ 
+@@ -65,7 +64,8 @@ int define_policy(int pass, int module_header_given)
+ 
+ 	if (module_header_given) {
+ 		if (policydbp->policy_type != POLICY_MOD) {
+-			yyerror("Module specification found while not building a policy module.\n");
++			yyerror
++			    ("Module specification found while not building a policy module.\n");
+ 			return -1;
+ 		}
+ 
+@@ -79,14 +79,17 @@ int define_policy(int pass, int module_header_given)
+ 				return -1;
+ 			}
+ 			policydbp->name = id;
+-			if ((policydbp->version = queue_remove(id_queue)) == NULL) {
+-				yyerror("Expected a module version but none was found.");
++			if ((policydbp->version =
++			     queue_remove(id_queue)) == NULL) {
++				yyerror
++				    ("Expected a module version but none was found.");
+ 				return -1;
+ 			}
+ 		}
+ 	} else {
+ 		if (policydbp->policy_type == POLICY_MOD) {
+-			yyerror("Building a policy module, but no module specification found.\n");
++			yyerror
++			    ("Building a policy module, but no module specification found.\n");
+ 			return -1;
+ 		}
+ 	}
+@@ -98,7 +101,8 @@ int define_policy(int pass, int module_header_given)
+ 	while (stack_top != NULL) {
+ 		pop_stack();
+ 	}
+-	if (push_stack(1, policydbp->global, policydbp->global->branch_list) == -1) {
++	if (push_stack(1, policydbp->global, policydbp->global->branch_list) ==
++	    -1) {
+ 		return -1;
+ 	}
+ 	last_block = policydbp->global;
+@@ -127,7 +131,9 @@ static int is_declaration_allowed(void)
+  * For duplicate declarations return -2.  For all else, including out
+  * of memory, return -3.  Note that dest_value and datum_value might
+  * not be restricted pointers. */
+-int declare_symbol(uint32_t symbol_type, hashtab_key_t key, hashtab_datum_t datum, uint32_t * dest_value, uint32_t * datum_value)
++int declare_symbol(uint32_t symbol_type,
++		   hashtab_key_t key, hashtab_datum_t datum,
++		   uint32_t * dest_value, uint32_t * datum_value)
+ {
+ 	avrule_decl_t *decl = stack_top->decl;
+ 	int retval;
+@@ -136,14 +142,17 @@ int declare_symbol(uint32_t symbol_type, hashtab_key_t key, hashtab_datum_t datu
+ 	if (!is_declaration_allowed()) {
+ 		return -1;
+ 	}
+-	retval = symtab_insert(policydbp, symbol_type, key, datum, SCOPE_DECL, decl->decl_id, dest_value);
++	retval = symtab_insert(policydbp, symbol_type, key, datum,
++			       SCOPE_DECL, decl->decl_id, dest_value);
+ 	if (retval == 1 && dest_value) {
+-		symtab_datum_t *s = (symtab_datum_t *) hashtab_search(policydbp->symtab[symbol_type].table,
+-								      key);
++		symtab_datum_t *s =
++		    (symtab_datum_t *) hashtab_search(policydbp->
++						      symtab[symbol_type].table,
++						      key);
+ 		assert(s != NULL);
+-
++		
+ 		if (symbol_type == SYM_LEVELS) {
+-			*dest_value = ((level_datum_t *) s)->level->sens;
++			*dest_value = ((level_datum_t *)s)->level->sens;
+ 		} else {
+ 			*dest_value = s->value;
+ 		}
+@@ -151,35 +160,38 @@ int declare_symbol(uint32_t symbol_type, hashtab_key_t key, hashtab_datum_t datu
+ 		return -2;
+ 	} else if (retval < 0) {
+ 		return -3;
+-	} else {		       /* fall through possible if retval is 0 */
++	} else {		/* fall through possible if retval is 0 */
+ 	}
+ 	if (datum_value != NULL) {
+-		if (ebitmap_set_bit(decl->declared.scope + symbol_type, *datum_value - 1, 1)) {
++		if (ebitmap_set_bit(decl->declared.scope + symbol_type,
++				    *datum_value - 1, 1)) {
+ 			return -3;
+ 		}
+ 	}
+ 	return retval;
+ }
+ 
+-static int role_implicit_bounds(hashtab_t roles_tab, char *role_id, role_datum_t * role)
++static int role_implicit_bounds(hashtab_t roles_tab,
++				char *role_id, role_datum_t *role)
+ {
+ 	role_datum_t *bounds;
+ 	char *bounds_id, *delim;
+ 
+ 	delim = strrchr(role_id, '.');
+ 	if (!delim)
+-		return 0;	       /* no implicit boundary */
++		return 0;	/* no implicit boundary */
+ 
+ 	bounds_id = strdup(role_id);
+ 	if (!bounds_id) {
+ 		yyerror("out of memory");
+ 		return -1;
+ 	}
+-	bounds_id[(size_t) (delim - role_id)] = '\0';
++	bounds_id[(size_t)(delim - role_id)] = '\0';
+ 
+ 	bounds = hashtab_search(roles_tab, bounds_id);
+ 	if (!bounds) {
+-		yyerror2("role %s doesn't exist, is implicit bounds of %s", bounds_id, role_id);
++		yyerror2("role %s doesn't exist, is implicit bounds of %s",
++			 bounds_id, role_id);
+ 		return -1;
+ 	}
+ 
+@@ -187,7 +199,8 @@ static int role_implicit_bounds(hashtab_t roles_tab, char *role_id, role_datum_t
+ 		role->bounds = bounds->s.value;
+ 	else if (role->bounds != bounds->s.value) {
+ 		yyerror2("role %s has inconsistent bounds %s/%s",
+-			 role_id, bounds_id, policydbp->p_role_val_to_name[role->bounds - 1]);
++			 role_id, bounds_id,
++			 policydbp->p_role_val_to_name[role->bounds - 1]);
+ 		return -1;
+ 	}
+ 	free(bounds_id);
+@@ -195,7 +208,7 @@ static int role_implicit_bounds(hashtab_t roles_tab, char *role_id, role_datum_t
+ 	return 0;
+ }
+ 
+-role_datum_t *declare_role(void)
++role_datum_t *declare_role(unsigned char isattr)
+ {
+ 	char *id = queue_remove(id_queue), *dest_id = NULL;
+ 	role_datum_t *role = NULL, *dest_role = NULL;
+@@ -212,8 +225,10 @@ role_datum_t *declare_role(void)
+ 		return NULL;
+ 	}
+ 	role_datum_init(role);
+-
+-	retval = declare_symbol(SYM_ROLES, id, (hashtab_datum_t *) role, &value, &value);
++	role->flavor = isattr ? ROLE_ATTRIB : ROLE_ROLE;
++	retval =
++	    declare_symbol(SYM_ROLES, id, (hashtab_datum_t *) role, &value,
++			   &value);
+ 	if (retval == 0) {
+ 		role->s.value = value;
+ 		if ((dest_id = strdup(id)) == NULL) {
+@@ -238,13 +253,16 @@ role_datum_t *declare_role(void)
+ 		}
+ 		dest_role = (role_datum_t *) hashtab_search(roles_tab, dest_id);
+ 		if (dest_role == NULL) {
+-			if ((dest_role = (role_datum_t *) malloc(sizeof(*dest_role))) == NULL) {
++			if ((dest_role =
++			     (role_datum_t *) malloc(sizeof(*dest_role))) ==
++			    NULL) {
+ 				yyerror("Out of memory!");
+ 				free(dest_id);
+ 				return NULL;
+ 			}
+ 			role_datum_init(dest_role);
+ 			dest_role->s.value = value;
++			dest_role->flavor = isattr ? ROLE_ATTRIB : ROLE_ROLE;
+ 			if (role_implicit_bounds(roles_tab, dest_id, dest_role)) {
+ 				free(dest_id);
+ 				role_datum_destroy(dest_role);
+@@ -266,30 +284,31 @@ role_datum_t *declare_role(void)
+ 	}
+ 	switch (retval) {
+ 	case -3:{
+-		yyerror("Out of memory!");
+-		return NULL;
+-	}
++			yyerror("Out of memory!");
++			return NULL;
++		}
+ 	case -2:{
+-		yyerror("duplicate declaration of role");
+-		return NULL;
+-	}
++			yyerror("duplicate declaration of role");
++			return NULL;
++		}
+ 	case -1:{
+-		yyerror("could not declare role here");
+-		return NULL;
+-	}
+-	case 0:{
+-		if (ebitmap_set_bit(&dest_role->dominates, role->s.value - 1, 1)) {
+-			yyerror("out of memory");
++			yyerror("could not declare role here");
+ 			return NULL;
+ 		}
+-		return dest_role;
+-	}
++	case 0:{
++			if (ebitmap_set_bit
++			    (&dest_role->dominates, role->s.value - 1, 1)) {
++				yyerror("out of memory");
++				return NULL;
++			}
++			return dest_role;
++		}
+ 	case 1:{
+-		return dest_role;      /* role already declared for this block */
+-	}
++			return dest_role;	/* role already declared for this block */
++		}
+ 	default:{
+-		assert(0);	       /* should never get here */
+-	}
++			assert(0);	/* should never get here */
++		}
+ 	}
+ }
+ 
+@@ -306,7 +325,8 @@ type_datum_t *declare_type(unsigned char primary, unsigned char isattr)
+ 		return NULL;
+ 	}
+ 	if (strcmp(id, "self") == 0) {
+-		yyerror("'self' is a reserved type name and may not be declared.");
++		yyerror
++		    ("'self' is a reserved type name and may not be declared.");
+ 		free(id);
+ 		return NULL;
+ 	}
+@@ -334,46 +354,48 @@ type_datum_t *declare_type(unsigned char primary, unsigned char isattr)
+ 	}
+ 	switch (retval) {
+ 	case -3:{
+-		yyerror("Out of memory!");
+-		return NULL;
+-	}
++			yyerror("Out of memory!");
++			return NULL;
++		}
+ 	case -2:{
+-		yyerror2("duplicate declaration of type/attribute");
+-		return NULL;
+-	}
++			yyerror2("duplicate declaration of type/attribute");
++			return NULL;
++		}
+ 	case -1:{
+-		yyerror("could not declare type/attribute here");
+-		return NULL;
+-	}
++			yyerror("could not declare type/attribute here");
++			return NULL;
++		}
+ 	case 0:
+ 	case 1:{
+-		return typdatum;
+-	}
++			return typdatum;
++		}
+ 	default:{
+-		assert(0);	       /* should never get here */
+-	}
++			assert(0);	/* should never get here */
++		}
+ 	}
+ }
+ 
+-static int user_implicit_bounds(hashtab_t users_tab, char *user_id, user_datum_t * user)
++static int user_implicit_bounds(hashtab_t users_tab,
++				char *user_id, user_datum_t *user)
+ {
+ 	user_datum_t *bounds;
+ 	char *bounds_id, *delim;
+ 
+ 	delim = strrchr(user_id, '.');
+ 	if (!delim)
+-		return 0;	       /* no implicit boundary */
++		return 0;	/* no implicit boundary */
+ 
+ 	bounds_id = strdup(user_id);
+ 	if (!bounds_id) {
+ 		yyerror("out of memory");
+ 		return -1;
+ 	}
+-	bounds_id[(size_t) (delim - user_id)] = '\0';
++	bounds_id[(size_t)(delim - user_id)] = '\0';
+ 
+ 	bounds = hashtab_search(users_tab, bounds_id);
+ 	if (!bounds) {
+-		yyerror2("user %s doesn't exist, is implicit bounds of %s", bounds_id, user_id);
++		yyerror2("user %s doesn't exist, is implicit bounds of %s",
++			 bounds_id, user_id);
+ 		return -1;
+ 	}
+ 
+@@ -381,7 +403,8 @@ static int user_implicit_bounds(hashtab_t users_tab, char *user_id, user_datum_t
+ 		user->bounds = bounds->s.value;
+ 	else if (user->bounds != bounds->s.value) {
+ 		yyerror2("user %s has inconsistent bounds %s/%s",
+-			 user_id, bounds_id, policydbp->p_role_val_to_name[user->bounds - 1]);
++			 user_id, bounds_id,
++			 policydbp->p_role_val_to_name[user->bounds - 1]);
+ 		return -1;
+ 	}
+ 	free(bounds_id);
+@@ -407,7 +430,9 @@ user_datum_t *declare_user(void)
+ 	}
+ 	user_datum_init(user);
+ 
+-	retval = declare_symbol(SYM_USERS, id, (hashtab_datum_t *) user, &value, &value);
++	retval =
++	    declare_symbol(SYM_USERS, id, (hashtab_datum_t *) user, &value,
++			   &value);
+ 
+ 	if (retval == 0) {
+ 		user->s.value = value;
+@@ -433,7 +458,9 @@ user_datum_t *declare_user(void)
+ 		}
+ 		dest_user = (user_datum_t *) hashtab_search(users_tab, dest_id);
+ 		if (dest_user == NULL) {
+-			if ((dest_user = (user_datum_t *) malloc(sizeof(*dest_user))) == NULL) {
++			if ((dest_user =
++			     (user_datum_t *) malloc(sizeof(*dest_user))) ==
++			    NULL) {
+ 				yyerror("Out of memory!");
+ 				free(dest_id);
+ 				return NULL;
+@@ -461,26 +488,26 @@ user_datum_t *declare_user(void)
+ 	}
+ 	switch (retval) {
+ 	case -3:{
+-		yyerror("Out of memory!");
+-		return NULL;
+-	}
++			yyerror("Out of memory!");
++			return NULL;
++		}
+ 	case -2:{
+-		yyerror("duplicate declaration of user");
+-		return NULL;
+-	}
++			yyerror("duplicate declaration of user");
++			return NULL;
++		}
+ 	case -1:{
+-		yyerror("could not declare user here");
+-		return NULL;
+-	}
++			yyerror("could not declare user here");
++			return NULL;
++		}
+ 	case 0:{
+-		return dest_user;
+-	}
++			return dest_user;
++		}
+ 	case 1:{
+-		return dest_user;      /* user already declared for this block */
+-	}
++			return dest_user;	/* user already declared for this block */
++		}
+ 	default:{
+-		assert(0);	       /* should never get here */
+-	}
++			assert(0);	/* should never get here */
++		}
+ 	}
+ }
+ 
+@@ -530,6 +557,55 @@ type_datum_t *get_local_type(char *id, uint32_t value, unsigned char isattr)
+ 	return dest_typdatum;
+ }
+ 
++/* Return a role_datum_t for the local avrule_decl with the given ID.
++ * If it does not exist, create one with the same value as 'value'.
++ * This function assumes that the ID is within scope.  c.f.,
++ * is_id_in_scope().
++ *
++ * NOTE: this function usurps ownership of id afterwards.  The caller
++ * shall not reference it nor free() it afterwards.
++ */
++role_datum_t *get_local_role(char *id, uint32_t value, unsigned char isattr)
++{
++	role_datum_t *dest_roledatum;
++	hashtab_t roles_tab;
++
++	assert(stack_top->type == 1);
++
++	if (stack_top->parent == NULL) {
++		/* in global, so use global symbol table */
++		roles_tab = policydbp->p_roles.table;
++	} else {
++		roles_tab = stack_top->decl->p_roles.table;
++	}
++
++	dest_roledatum = hashtab_search(roles_tab, id);
++	if (!dest_roledatum) {
++		dest_roledatum = (role_datum_t *)malloc(sizeof(role_datum_t));
++		if (dest_roledatum == NULL) {
++			free(id);
++			return NULL;
++		}
++
++		role_datum_init(dest_roledatum);
++		dest_roledatum->s.value = value;
++		dest_roledatum->flavor = isattr ? ROLE_ATTRIB : ROLE_ROLE;
++
++		if (hashtab_insert(roles_tab, id, dest_roledatum)) {
++			free(id);
++			role_datum_destroy(dest_roledatum);
++			free(dest_roledatum);
++			return NULL;
++		}
++	} else {
++		free(id);
++		if (dest_roledatum->flavor != isattr ? ROLE_ATTRIB : ROLE_ROLE)
++			return NULL;
++	}
++	
++	return dest_roledatum;
++}
++
+ /* Given the current parse stack, returns 1 if a requirement would be
+  * allowed here or 0 if not.  For example, the ELSE branch may never
+  * have its own requirements.
+@@ -550,7 +626,9 @@ static int is_require_allowed(void)
+  * return -3..  Note that dest_value and datum_value might not be
+  * restricted pointers.
+  */
+-int require_symbol(uint32_t symbol_type, hashtab_key_t key, hashtab_datum_t datum, uint32_t * dest_value, uint32_t * datum_value)
++int require_symbol(uint32_t symbol_type,
++		   hashtab_key_t key, hashtab_datum_t datum,
++		   uint32_t * dest_value, uint32_t * datum_value)
+ {
+ 	avrule_decl_t *decl = stack_top->decl;
+ 	int retval;
+@@ -559,14 +637,17 @@ int require_symbol(uint32_t symbol_type, hashtab_key_t key, hashtab_datum_t datu
+ 	if (!is_require_allowed()) {
+ 		return -1;
+ 	}
+-	retval = symtab_insert(policydbp, symbol_type, key, datum, SCOPE_REQ, decl->decl_id, dest_value);
++	retval = symtab_insert(policydbp, symbol_type, key, datum,
++			       SCOPE_REQ, decl->decl_id, dest_value);
+ 	if (retval == 1) {
+-		symtab_datum_t *s = (symtab_datum_t *) hashtab_search(policydbp->symtab[symbol_type].table,
+-								      key);
++		symtab_datum_t *s =
++		    (symtab_datum_t *) hashtab_search(policydbp->
++						      symtab[symbol_type].table,
++						      key);
+ 		assert(s != NULL);
+-
++		
+ 		if (symbol_type == SYM_LEVELS) {
+-			*dest_value = ((level_datum_t *) s)->level->sens;
++			*dest_value = ((level_datum_t *)s)->level->sens;
+ 		} else {
+ 			*dest_value = s->value;
+ 		}
+@@ -578,11 +659,17 @@ int require_symbol(uint32_t symbol_type, hashtab_key_t key, hashtab_datum_t datu
+ 			if (symbol_type == SYM_TYPES) {
+ 				/* check that previous symbol has same
+ 				 * type/attribute-ness */
+-				unsigned char new_isattr = ((type_datum_t *) datum)->flavor;
+-				type_datum_t *old_datum = (type_datum_t *) hashtab_search(policydbp->symtab[SYM_TYPES].table, key);
++				unsigned char new_isattr =
++				    ((type_datum_t *) datum)->flavor;
++				type_datum_t *old_datum =
++				    (type_datum_t *) hashtab_search(policydbp->
++								    symtab
++								    [SYM_TYPES].
++								    table, key);
+ 				assert(old_datum != NULL);
+ 				unsigned char old_isattr = old_datum->flavor;
+-				prev_declaration_ok = (old_isattr == new_isattr ? 1 : 0);
++				prev_declaration_ok =
++				    (old_isattr == new_isattr ? 1 : 0);
+ 			} else {
+ 				prev_declaration_ok = 1;
+ 			}
+@@ -600,10 +687,11 @@ int require_symbol(uint32_t symbol_type, hashtab_key_t key, hashtab_datum_t datu
+ 		}
+ 	} else if (retval < 0) {
+ 		return -3;
+-	} else {		       /* fall through possible if retval is 0 or 1 */
++	} else {		/* fall through possible if retval is 0 or 1 */
+ 	}
+ 	if (datum_value != NULL) {
+-		if (ebitmap_set_bit(decl->required.scope + symbol_type, *datum_value - 1, 1)) {
++		if (ebitmap_set_bit(decl->required.scope + symbol_type,
++				    *datum_value - 1, 1)) {
+ 			return -3;
+ 		}
+ 	}
+@@ -632,13 +720,15 @@ int add_perm_to_class(uint32_t perm_value, uint32_t class_value)
+ 		}
+ 		scope->class_perms_len = class_value;
+ 	}
+-	if (ebitmap_set_bit(scope->class_perms_map + class_value - 1, perm_value - 1, 1)) {
++	if (ebitmap_set_bit(scope->class_perms_map + class_value - 1,
++			    perm_value - 1, 1)) {
+ 		return -1;
+ 	}
+ 	return 0;
+ }
+ 
+-static int perm_destroy(hashtab_key_t key, hashtab_datum_t datum, void *p __attribute__ ((unused)))
++static int perm_destroy(hashtab_key_t key, hashtab_datum_t datum, void *p
++			__attribute__ ((unused)))
+ {
+ 	if (key)
+ 		free(key);
+@@ -676,48 +766,53 @@ int require_class(int pass)
+ 		return -1;
+ 	}
+ 
+-	if ((datum = calloc(1, sizeof(*datum))) == NULL || symtab_init(&datum->permissions, PERM_SYMTAB_SIZE)) {
++	if ((datum = calloc(1, sizeof(*datum))) == NULL ||
++	    symtab_init(&datum->permissions, PERM_SYMTAB_SIZE)) {
+ 		yyerror("Out of memory!");
+ 		goto cleanup;
+ 	}
+-	ret = require_symbol(SYM_CLASSES, class_id, datum, &datum->s.value, &datum->s.value);
++	ret =
++	    require_symbol(SYM_CLASSES, class_id, datum, &datum->s.value,
++			   &datum->s.value);
+ 	switch (ret) {
+ 	case -3:{
+-		yyerror("Out of memory!");
+-		free(class_id);
+-		class_datum_destroy(datum);
+-		goto cleanup;
+-	}
++			yyerror("Out of memory!");
++			free(class_id);
++			class_datum_destroy(datum);
++			goto cleanup;
++		}
+ 	case -2:{
+-		yyerror("duplicate declaration of class");
+-		free(class_id);
+-		class_datum_destroy(datum);
+-		goto cleanup;
+-	}
++			yyerror("duplicate declaration of class");
++			free(class_id);
++			class_datum_destroy(datum);
++			goto cleanup;
++		}
+ 	case -1:{
+-		yyerror("could not require class here");
+-		free(class_id);
+-		class_datum_destroy(datum);
+-		goto cleanup;
+-	}
+-	case 0:{
+-		/* a new class was added; reindex everything */
+-		if (policydb_index_classes(policydbp)) {
+-			yyerror("Out of memory!");
++			yyerror("could not require class here");
++			free(class_id);
++			class_datum_destroy(datum);
+ 			goto cleanup;
+ 		}
+-		break;
+-	}
++	case 0:{
++			/* a new class was added; reindex everything */
++			if (policydb_index_classes(policydbp)) {
++				yyerror("Out of memory!");
++				goto cleanup;
++			}
++			break;
++		}
+ 	case 1:{
+-		class_datum_destroy(datum);
+-		datum = hashtab_search(policydbp->p_classes.table, class_id);
+-		assert(datum);	       /* the class datum should have existed */
+-		free(class_id);
+-		break;
+-	}
++			class_datum_destroy(datum);
++			datum =
++			    hashtab_search(policydbp->p_classes.table,
++					   class_id);
++			assert(datum);	/* the class datum should have existed */
++			free(class_id);
++			break;
++		}
+ 	default:{
+-		assert(0);	       /* should never get here */
+-	}
++			assert(0);	/* should never get here */
++		}
+ 	}
+ 
+ 	/* now add each of the permissions to this class's requirements */
+@@ -727,14 +822,18 @@ int require_class(int pass)
+ 		/* Is the permission already in the table? */
+ 		perm = hashtab_search(datum->permissions.table, perm_id);
+ 		if (!perm && datum->comdatum)
+-			perm = hashtab_search(datum->comdatum->permissions.table, perm_id);
++			perm =
++			    hashtab_search(datum->comdatum->permissions.table,
++					   perm_id);
+ 		if (perm) {
+ 			/* Yes, drop the name. */
+ 			free(perm_id);
+ 		} else {
+ 			/* No - allocate and insert an entry for it. */
+ 			if (policydbp->policy_type == POLICY_BASE) {
+-				yyerror2("Base policy - require of permission %s without prior declaration.", perm_id);
++				yyerror2
++				    ("Base policy - require of permission %s without prior declaration.",
++				     perm_id);
+ 				free(perm_id);
+ 				goto cleanup;
+ 			}
+@@ -745,7 +844,9 @@ int require_class(int pass)
+ 				goto cleanup;
+ 			}
+ 			memset(perm, 0, sizeof(*perm));
+-			ret = hashtab_insert(datum->permissions.table, perm_id, perm);
++			ret =
++			    hashtab_insert(datum->permissions.table, perm_id,
++					   perm);
+ 			if (ret) {
+ 				yyerror("Out of memory!");
+ 				free(perm_id);
+@@ -769,7 +870,7 @@ int require_class(int pass)
+ 	return -1;
+ }
+ 
+-int require_role(int pass)
++static int require_role_or_attribute(int pass, unsigned char isattr)
+ {
+ 	char *id = queue_remove(id_queue);
+ 	role_datum_t *role = NULL;
+@@ -788,7 +889,10 @@ int require_role(int pass)
+ 		return -1;
+ 	}
+ 	role_datum_init(role);
+-	retval = require_symbol(SYM_ROLES, id, (hashtab_datum_t *) role, &role->s.value, &role->s.value);
++	role->flavor = isattr ? ROLE_ATTRIB : ROLE_ROLE;
++	retval =
++	    require_symbol(SYM_ROLES, id, (hashtab_datum_t *) role,
++			   &role->s.value, &role->s.value);
+ 	if (retval != 0) {
+ 		free(id);
+ 		role_datum_destroy(role);
+@@ -796,34 +900,45 @@ int require_role(int pass)
+ 	}
+ 	switch (retval) {
+ 	case -3:{
+-		yyerror("Out of memory!");
+-		return -1;
+-	}
++			yyerror("Out of memory!");
++			return -1;
++		}
+ 	case -2:{
+-		yyerror("duplicate declaration of role");
+-		return -1;
+-	}
++			yyerror("duplicate declaration of role");
++			return -1;
++		}
+ 	case -1:{
+-		yyerror("could not require role here");
+-		return -1;
+-	}
+-	case 0:{
+-		/* all roles dominate themselves */
+-		if (ebitmap_set_bit(&role->dominates, role->s.value - 1, 1)) {
+-			yyerror("Out of memory");
++			yyerror("could not require role here");
+ 			return -1;
+ 		}
+-		return 0;
+-	}
++	case 0:{
++			/* all roles dominate themselves */
++			if (ebitmap_set_bit
++			    (&role->dominates, role->s.value - 1, 1)) {
++				yyerror("Out of memory");
++				return -1;
++			}
++			return 0;
++		}
+ 	case 1:{
+-		return 0;	       /* role already required */
+-	}
++			return 0;	/* role already required */
++		}
+ 	default:{
+-		assert(0);	       /* should never get here */
+-	}
++			assert(0);	/* should never get here */
++		}
+ 	}
+ }
+ 
++int require_role(int pass)
++{
++	return require_role_or_attribute(pass, 0);
++}
++
++int require_attribute_role(int pass)
++{
++	return require_role_or_attribute(pass, 1);
++}
++
+ static int require_type_or_attribute(int pass, unsigned char isattr)
+ {
+ 	char *id = queue_remove(id_queue);
+@@ -845,33 +960,35 @@ static int require_type_or_attribute(int pass, unsigned char isattr)
+ 	type_datum_init(type);
+ 	type->primary = 1;
+ 	type->flavor = isattr ? TYPE_ATTRIB : TYPE_TYPE;
+-	retval = require_symbol(SYM_TYPES, id, (hashtab_datum_t *) type, &type->s.value, &type->s.value);
++	retval =
++	    require_symbol(SYM_TYPES, id, (hashtab_datum_t *) type,
++			   &type->s.value, &type->s.value);
+ 	if (retval != 0) {
+ 		free(id);
+ 		free(type);
+ 	}
+ 	switch (retval) {
+ 	case -3:{
+-		yyerror("Out of memory!");
+-		return -1;
+-	}
++			yyerror("Out of memory!");
++			return -1;
++		}
+ 	case -2:{
+-		yyerror("duplicate declaration of type/attribute");
+-		return -1;
+-	}
++			yyerror("duplicate declaration of type/attribute");
++			return -1;
++		}
+ 	case -1:{
+-		yyerror("could not require type/attribute here");
+-		return -1;
+-	}
++			yyerror("could not require type/attribute here");
++			return -1;
++		}
+ 	case 0:{
+-		return 0;
+-	}
++			return 0;
++		}
+ 	case 1:{
+-		return 0;	       /* type already required */
+-	}
++			return 0;	/* type already required */
++		}
+ 	default:{
+-		assert(0);	       /* should never get here */
+-	}
++			assert(0);	/* should never get here */
++		}
+ 	}
+ }
+ 
+@@ -904,37 +1021,39 @@ int require_user(int pass)
+ 		return -1;
+ 	}
+ 	user_datum_init(user);
+-	retval = require_symbol(SYM_USERS, id, (hashtab_datum_t *) user, &user->s.value, &user->s.value);
++	retval =
++	    require_symbol(SYM_USERS, id, (hashtab_datum_t *) user,
++			   &user->s.value, &user->s.value);
+ 	if (retval != 0) {
+ 		free(id);
+ 		user_datum_destroy(user);
+ 	}
+ 	switch (retval) {
+ 	case -3:{
+-		yyerror("Out of memory!");
+-		return -1;
+-	}
++			yyerror("Out of memory!");
++			return -1;
++		}
+ 	case -2:{
+-		yyerror("duplicate declaration of user");
+-		return -1;
+-	}
++			yyerror("duplicate declaration of user");
++			return -1;
++		}
+ 	case -1:{
+-		yyerror("could not require user here");
+-		return -1;
+-	}
++			yyerror("could not require user here");
++			return -1;
++		}
+ 	case 0:{
+-		return 0;
+-	}
++			return 0;
++		}
+ 	case 1:{
+-		return 0;	       /* user already required */
+-	}
++			return 0;	/* user already required */
++		}
+ 	default:{
+-		assert(0);	       /* should never get here */
+-	}
++			assert(0);	/* should never get here */
++		}
+ 	}
+ }
+ 
+-int require_bool(int pass)
++static int require_bool_tunable(int pass, int is_tunable)
+ {
+ 	char *id = queue_remove(id_queue);
+ 	cond_bool_datum_t *booldatum = NULL;
+@@ -952,35 +1071,49 @@ int require_bool(int pass)
+ 		yyerror("Out of memory!");
+ 		return -1;
+ 	}
+-	retval = require_symbol(SYM_BOOLS, id, (hashtab_datum_t *) booldatum, &booldatum->s.value, &booldatum->s.value);
++	if (is_tunable)
++		booldatum->flags |= COND_BOOL_FLAGS_TUNABLE;
++	retval =
++	    require_symbol(SYM_BOOLS, id, (hashtab_datum_t *) booldatum,
++			   &booldatum->s.value, &booldatum->s.value);
+ 	if (retval != 0) {
+ 		cond_destroy_bool(id, booldatum, NULL);
+ 	}
+ 	switch (retval) {
+ 	case -3:{
+-		yyerror("Out of memory!");
+-		return -1;
+-	}
++			yyerror("Out of memory!");
++			return -1;
++		}
+ 	case -2:{
+-		yyerror("duplicate declaration of boolean");
+-		return -1;
+-	}
++			yyerror("duplicate declaration of boolean");
++			return -1;
++		}
+ 	case -1:{
+-		yyerror("could not require boolean here");
+-		return -1;
+-	}
++			yyerror("could not require boolean here");
++			return -1;
++		}
+ 	case 0:{
+-		return 0;
+-	}
++			return 0;
++		}
+ 	case 1:{
+-		return 0;	       /* boolean already required */
+-	}
++			return 0;	/* boolean already required */
++		}
+ 	default:{
+-		assert(0);	       /* should never get here */
+-	}
++			assert(0);	/* should never get here */
++		}
+ 	}
+ }
+ 
++int require_bool(int pass)
++{
++	return require_bool_tunable(pass, 0);
++}
++
++int require_tunable(int pass)
++{
++	return require_bool_tunable(pass, 1);
++}
++
+ int require_sens(int pass)
+ {
+ 	char *id = queue_remove(id_queue);
+@@ -1010,7 +1143,8 @@ int require_sens(int pass)
+ 		return -1;
+ 	}
+ 	mls_level_init(level->level);
+-	retval = require_symbol(SYM_LEVELS, id, (hashtab_datum_t *) level, &level->level->sens, &level->level->sens);
++	retval = require_symbol(SYM_LEVELS, id, (hashtab_datum_t *) level,
++				&level->level->sens, &level->level->sens);
+ 	if (retval != 0) {
+ 		free(id);
+ 		mls_level_destroy(level->level);
+@@ -1020,26 +1154,26 @@ int require_sens(int pass)
+ 	}
+ 	switch (retval) {
+ 	case -3:{
+-		yyerror("Out of memory!");
+-		return -1;
+-	}
++			yyerror("Out of memory!");
++			return -1;
++		}
+ 	case -2:{
+-		yyerror("duplicate declaration of sensitivity");
+-		return -1;
+-	}
++			yyerror("duplicate declaration of sensitivity");
++			return -1;
++		}
+ 	case -1:{
+-		yyerror("could not require sensitivity here");
+-		return -1;
+-	}
++			yyerror("could not require sensitivity here");
++			return -1;
++		}
+ 	case 0:{
+-		return 0;
+-	}
++			return 0;
++		}
+ 	case 1:{
+-		return 0;	       /* sensitivity already required */
+-	}
++			return 0;	/* sensitivity already required */
++		}
+ 	default:{
+-		assert(0);	       /* should never get here */
+-	}
++			assert(0);	/* should never get here */
++		}
+ 	}
+ }
+ 
+@@ -1064,7 +1198,8 @@ int require_cat(int pass)
+ 	}
+ 	cat_datum_init(cat);
+ 
+-	retval = require_symbol(SYM_CATS, id, (hashtab_datum_t *) cat, &cat->s.value, &cat->s.value);
++	retval = require_symbol(SYM_CATS, id, (hashtab_datum_t *) cat,
++				&cat->s.value, &cat->s.value);
+ 	if (retval != 0) {
+ 		free(id);
+ 		cat_datum_destroy(cat);
+@@ -1072,26 +1207,26 @@ int require_cat(int pass)
+ 	}
+ 	switch (retval) {
+ 	case -3:{
+-		yyerror("Out of memory!");
+-		return -1;
+-	}
++			yyerror("Out of memory!");
++			return -1;
++		}
+ 	case -2:{
+-		yyerror("duplicate declaration of category");
+-		return -1;
+-	}
++			yyerror("duplicate declaration of category");
++			return -1;
++		}
+ 	case -1:{
+-		yyerror("could not require category here");
+-		return -1;
+-	}
++			yyerror("could not require category here");
++			return -1;
++		}
+ 	case 0:{
+-		return 0;
+-	}
++			return 0;
++		}
+ 	case 1:{
+-		return 0;	       /* category already required */
+-	}
++			return 0;	/* category already required */
++		}
+ 	default:{
+-		assert(0);	       /* should never get here */
+-	}
++			assert(0);	/* should never get here */
++		}
+ 	}
+ }
+ 
+@@ -1099,7 +1234,7 @@ static int is_scope_in_stack(scope_datum_t * scope, scope_stack_t * stack)
+ {
+ 	int i;
+ 	if (stack == NULL) {
+-		return 0;	       /* no matching scope found */
++		return 0;	/* no matching scope found */
+ 	}
+ 	if (stack->type == 1) {
+ 		avrule_decl_t *decl = stack->decl;
+@@ -1119,33 +1254,40 @@ static int is_scope_in_stack(scope_datum_t * scope, scope_stack_t * stack)
+ 
+ int is_id_in_scope(uint32_t symbol_type, hashtab_key_t id)
+ {
+-	scope_datum_t *scope = (scope_datum_t *) hashtab_search(policydbp->scope[symbol_type].table, id);
++	scope_datum_t *scope =
++	    (scope_datum_t *) hashtab_search(policydbp->scope[symbol_type].
++					     table, id);
+ 	if (scope == NULL) {
+-		return 1;	       /* id is not known, so return success */
++		return 1;	/* id is not known, so return success */
+ 	}
+ 	return is_scope_in_stack(scope, stack_top);
+ }
+ 
+-static int is_perm_in_scope_index(uint32_t perm_value, uint32_t class_value, scope_index_t * scope)
++static int is_perm_in_scope_index(uint32_t perm_value, uint32_t class_value,
++				  scope_index_t * scope)
+ {
+ 	if (class_value > scope->class_perms_len) {
+ 		return 1;
+ 	}
+-	if (ebitmap_get_bit(scope->class_perms_map + class_value - 1, perm_value - 1)) {
++	if (ebitmap_get_bit(scope->class_perms_map + class_value - 1,
++			    perm_value - 1)) {
+ 		return 1;
+ 	}
+ 	return 0;
+ }
+ 
+-static int is_perm_in_stack(uint32_t perm_value, uint32_t class_value, scope_stack_t * stack)
++static int is_perm_in_stack(uint32_t perm_value, uint32_t class_value,
++			    scope_stack_t * stack)
+ {
+ 	if (stack == NULL) {
+-		return 0;	       /* no matching scope found */
++		return 0;	/* no matching scope found */
+ 	}
+ 	if (stack->type == 1) {
+ 		avrule_decl_t *decl = stack->decl;
+-		if (is_perm_in_scope_index(perm_value, class_value, &decl->required)
+-		    || is_perm_in_scope_index(perm_value, class_value, &decl->declared)) {
++		if (is_perm_in_scope_index
++		    (perm_value, class_value, &decl->required)
++		    || is_perm_in_scope_index(perm_value, class_value,
++					      &decl->declared)) {
+ 			return 1;
+ 		}
+ 	} else {
+@@ -1159,17 +1301,20 @@ static int is_perm_in_stack(uint32_t perm_value, uint32_t class_value, scope_sta
+ 
+ int is_perm_in_scope(hashtab_key_t perm_id, hashtab_key_t class_id)
+ {
+-	class_datum_t *cladatum = (class_datum_t *) hashtab_search(policydbp->p_classes.table,
+-								   class_id);
++	class_datum_t *cladatum =
++	    (class_datum_t *) hashtab_search(policydbp->p_classes.table,
++					     class_id);
+ 	perm_datum_t *perdatum;
+ 	if (cladatum == NULL) {
+ 		return 1;
+ 	}
+-	perdatum = (perm_datum_t *) hashtab_search(cladatum->permissions.table, perm_id);
++	perdatum = (perm_datum_t *) hashtab_search(cladatum->permissions.table,
++						   perm_id);
+ 	if (perdatum == NULL) {
+ 		return 1;
+ 	}
+-	return is_perm_in_stack(perdatum->s.value, cladatum->s.value, stack_top);
++	return is_perm_in_stack(perdatum->s.value, cladatum->s.value,
++				stack_top);
+ }
+ 
+ cond_list_t *get_current_cond_list(cond_list_t * cond)
+@@ -1188,19 +1333,23 @@ void append_cond_list(cond_list_t * cond)
+ {
+ 	cond_list_t *old_cond = get_current_cond_list(cond);
+ 	avrule_t *tmp;
+-	assert(old_cond != NULL);      /* probably out of memory */
++	assert(old_cond != NULL);	/* probably out of memory */
+ 	if (old_cond->avtrue_list == NULL) {
+ 		old_cond->avtrue_list = cond->avtrue_list;
+ 	} else {
+-		for (tmp = old_cond->avtrue_list; tmp->next != NULL; tmp = tmp->next) ;
++		for (tmp = old_cond->avtrue_list; tmp->next != NULL;
++		     tmp = tmp->next) ;
+ 		tmp->next = cond->avtrue_list;
+ 	}
+ 	if (old_cond->avfalse_list == NULL) {
+ 		old_cond->avfalse_list = cond->avfalse_list;
+ 	} else {
+-		for (tmp = old_cond->avfalse_list; tmp->next != NULL; tmp = tmp->next) ;
++		for (tmp = old_cond->avfalse_list; tmp->next != NULL;
++		     tmp = tmp->next) ;
+ 		tmp->next = cond->avfalse_list;
+ 	}
++
++	old_cond->flags |= cond->flags;
+ }
+ 
+ void append_avrule(avrule_t * avrule)
+@@ -1276,7 +1425,8 @@ int begin_optional(int pass)
+ 	avrule_decl_t *decl;
+ 	if (pass == 1) {
+ 		/* allocate a new avrule block for this optional block */
+-		if ((block = avrule_block_create()) == NULL || (decl = avrule_decl_create(next_decl_id)) == NULL) {
++		if ((block = avrule_block_create()) == NULL ||
++		    (decl = avrule_decl_create(next_decl_id)) == NULL) {
+ 			goto cleanup;
+ 		}
+ 		block->flags |= AVRULE_OPTIONAL;
+@@ -1285,7 +1435,9 @@ int begin_optional(int pass)
+ 	} else {
+ 		/* select the next block from the chain built during pass 1 */
+ 		block = last_block->next;
+-		assert(block != NULL && block->branch_list != NULL && block->branch_list->decl_id == next_decl_id);
++		assert(block != NULL &&
++		       block->branch_list != NULL &&
++		       block->branch_list->decl_id == next_decl_id);
+ 		decl = block->branch_list;
+ 	}
+ 	if (push_stack(1, block, decl) == -1) {
+@@ -1324,7 +1476,8 @@ int begin_optional_else(int pass)
+ 		/* pick the (hopefully last) declaration of this
+ 		   avrule block, built from pass 1 */
+ 		decl = stack_top->decl->next;
+-		assert(decl != NULL && decl->next == NULL && decl->decl_id == next_decl_id);
++		assert(decl != NULL &&
++		       decl->next == NULL && decl->decl_id == next_decl_id);
+ 	}
+ 	stack_top->in_else = 1;
+ 	stack_top->decl = decl;
+@@ -1353,21 +1506,26 @@ static int copy_requirements(avrule_decl_t * dest, scope_stack_t * stack)
+ 		}
+ 		/* now copy class permissions */
+ 		if (src_scope->class_perms_len > dest_scope->class_perms_len) {
+-			ebitmap_t *new_map = realloc(dest_scope->class_perms_map,
+-						     src_scope->class_perms_len * sizeof(*new_map));
++			ebitmap_t *new_map =
++			    realloc(dest_scope->class_perms_map,
++				    src_scope->class_perms_len *
++				    sizeof(*new_map));
+ 			if (new_map == NULL) {
+ 				yyerror("Out of memory!");
+ 				return -1;
+ 			}
+ 			dest_scope->class_perms_map = new_map;
+-			for (i = dest_scope->class_perms_len; i < src_scope->class_perms_len; i++) {
++			for (i = dest_scope->class_perms_len;
++			     i < src_scope->class_perms_len; i++) {
+ 				ebitmap_init(dest_scope->class_perms_map + i);
+ 			}
+-			dest_scope->class_perms_len = src_scope->class_perms_len;
++			dest_scope->class_perms_len =
++			    src_scope->class_perms_len;
+ 		}
+ 		for (i = 0; i < src_scope->class_perms_len; i++) {
+ 			ebitmap_t *src_bitmap = &src_scope->class_perms_map[i];
+-			ebitmap_t *dest_bitmap = &dest_scope->class_perms_map[i];
++			ebitmap_t *dest_bitmap =
++			    &dest_scope->class_perms_map[i];
+ 			if (ebitmap_union(dest_bitmap, src_bitmap)) {
+ 				yyerror("Out of memory!");
+ 				return -1;
+@@ -1394,7 +1552,8 @@ int end_avrule_block(int pass)
+ 		return 0;
+ 	}
+ 	if (!stack_top->in_else && !stack_top->require_given) {
+-		if (policydbp->policy_type == POLICY_BASE && stack_top->parent != NULL) {
++		if (policydbp->policy_type == POLICY_BASE
++		    && stack_top->parent != NULL) {
+ 			/* if this is base no require should be in the global block */
+ 			return 0;
+ 		} else {
+@@ -1418,14 +1577,14 @@ static int push_stack(int stack_type, ...)
+ 	va_start(ap, stack_type);
+ 	switch (s->type = stack_type) {
+ 	case 1:{
+-		s->u.avrule = va_arg(ap, avrule_block_t *);
+-		s->decl = va_arg(ap, avrule_decl_t *);
+-		break;
+-	}
++			s->u.avrule = va_arg(ap, avrule_block_t *);
++			s->decl = va_arg(ap, avrule_decl_t *);
++			break;
++		}
+ 	case 2:{
+-		s->u.cond_list = va_arg(ap, cond_list_t *);
+-		break;
+-	}
++			s->u.cond_list = va_arg(ap, cond_list_t *);
++			break;
++		}
+ 	default:
+ 		/* invalid stack type given */
+ 		assert(0);
+diff --git a/libqpol/src/module_compiler.h b/libqpol/src/module_compiler.h
+index d46dca61ec98..b9c05264cbbe 100644
+--- a/libqpol/src/module_compiler.h
++++ b/libqpol/src/module_compiler.h
+@@ -17,6 +17,7 @@
+ #ifndef MODULE_COMPILER_H
+ #define MODULE_COMPILER_H
+ 
++/* Required for SETools libqpol services */
+ #ifdef	__cplusplus
+ extern "C"
+ {
+@@ -36,18 +37,23 @@ int define_policy(int pass, int module_header_given);
+  * needs to free() the datum), -1 if declarations not allowed, -2 for
+  * duplicate declarations, -3 for all else.
+  */
+-int declare_symbol(uint32_t symbol_type, hashtab_key_t key, hashtab_datum_t datum, uint32_t * dest_value, uint32_t * datum_value);
++int declare_symbol(uint32_t symbol_type,
++		   hashtab_key_t key, hashtab_datum_t datum,
++		   uint32_t * dest_value, uint32_t * datum_value);
+ 
+-role_datum_t *declare_role(void);
++role_datum_t *declare_role(unsigned char isattr);
+ type_datum_t *declare_type(unsigned char primary, unsigned char isattr);
+ user_datum_t *declare_user(void);
+ 
+ type_datum_t *get_local_type(char *id, uint32_t value, unsigned char isattr);
++role_datum_t *get_local_role(char *id, uint32_t value, unsigned char isattr);
+ 
+ /* Add a symbol to the current avrule_block's require section.  Note
+  * that a module may not both declare and require the same symbol.
+  * Returns 0 on success, -1 on error. */
+-int require_symbol(uint32_t symbol_type, hashtab_key_t key, hashtab_datum_t datum, uint32_t * dest_value, uint32_t * datum_value);
++int require_symbol(uint32_t symbol_type,
++		   hashtab_key_t key, hashtab_datum_t datum,
++		   uint32_t * dest_value, uint32_t * datum_value);
+ 
+ /* Enable a permission for a class within the current avrule_decl.
+  * Return 0 on success, -1 if out of memory. */
+@@ -60,8 +66,10 @@ int require_class(int pass);
+ int require_role(int pass);
+ int require_type(int pass);
+ int require_attribute(int pass);
++int require_attribute_role(int pass);
+ int require_user(int pass);
+ int require_bool(int pass);
++int require_tunable(int pass);
+ int require_sens(int pass);
+ int require_cat(int pass);
+ 
+diff --git a/libqpol/src/policy.c b/libqpol/src/policy.c
+index 916482381165..717c07977c20 100644
+--- a/libqpol/src/policy.c
++++ b/libqpol/src/policy.c
+@@ -412,6 +412,45 @@ static int infer_policy_version(qpol_policy_t * policy)
+ 	}
+ 	qpol_iterator_destroy(&iter);
+ 
++/* Check each version change from 29 to 24 */
++/* If this is available then just set version 29 */
++#ifdef HAVE_SEPOL_CONSTRAINT_NAMES
++	db->policyvers = 29;
++	return STATUS_SUCCESS;
++#endif
++
++/*
++ * These will remove the rules from policy_define.c if libsepol
++ * does not have the support listed in policydb.h. The earlier code
++ * checked for at least one rule before enabling - this patch does not
++ * as if in policydb.h then must be capable of being built.
++ */
++#ifdef HAVE_SEPOL_DEFAULT_TYPE
++	db->policyvers = 28;
++	return STATUS_SUCCESS;
++#endif
++
++#ifdef HAVE_SEPOL_NEW_OBJECT_DEFAULTS
++	db->policyvers = 27;
++	return STATUS_SUCCESS;
++#endif
++
++/* This seems to be in place already ??
++#ifdef HAVE_SEPOL_ROLETRANS
++	db->policyvers = 26;
++	return STATUS_SUCCESS;
++#endif */
++
++#ifdef HAVE_SEPOL_FILENAME_TRANS
++	db->policyvers = 25;
++	return STATUS_SUCCESS;
++#endif
++
++#ifdef HAVE_SEPOL_BOUNDARY
++	db->policyvers = 24;
++	return STATUS_SUCCESS;
++#endif
++
+ #if defined(HAVE_SEPOL_PERMISSIVE_TYPES) || defined(HAVE_SEPOL_POLICYCAPS)
+ 	ebitmap_node_t *node = NULL;
+ 	unsigned int i = 0;
+diff --git a/libqpol/src/policy_define.c b/libqpol/src/policy_define.c
+index fad6b60511ea..f5d6764ae64c 100644
+--- a/libqpol/src/policy_define.c
++++ b/libqpol/src/policy_define.c
+@@ -3,6 +3,8 @@
+  *
+  * This file is based upon checkpolicy/policy_define.c from NSA's SVN
+  * repository.  It has been modified to support older policy formats.
++ * The older format just seems to be PSID support (see
++ * int define_fs_use(int behavior).
+  */
+ 
+ /*
+@@ -33,7 +35,7 @@
+  */
+ 
+ /* FLASK */
+-
++/* Required for SETools libqpol */
+ #include <config.h>
+ 
+ #include <sys/types.h>
+@@ -54,6 +56,7 @@
+ #include <sepol/policydb/conditional.h>
+ #include <sepol/policydb/flask.h>
+ #include <sepol/policydb/hierarchy.h>
++/* Required for SETools libqpol */
+ #ifdef HAVE_SEPOL_POLICYCAPS
+ #include <sepol/policydb/polcaps.h>
+ #endif
+@@ -62,15 +65,15 @@
+ #endif
+ 
+ #include "queue.h"
++/* Required for SETools libqpol - Removed #include "checkpolicy.h"*/
+ #include <qpol/policy.h>
++
+ #include "module_compiler.h"
+ #include "policy_define.h"
+ 
+ policydb_t *policydbp;
+ queue_t id_queue = 0;
+ unsigned int pass;
+-static int load_rules;
+-static unsigned int num_rules = 0;
+ char *curfile = 0;
+ int mlspol = 0;
+ 
+@@ -82,12 +85,15 @@ extern int yywarn(char *msg);
+ extern int yyerror(char *msg);
+ 
+ #define ERRORMSG_LEN 255
+-static char errormsg[ERRORMSG_LEN + 1] = { 0 };
++static char errormsg[ERRORMSG_LEN + 1] = {0};
+ 
+ static int id_has_dot(char *id);
+-static int parse_security_context(context_struct_t * c);
++static int parse_security_context(context_struct_t *c);
+ 
+ /* initialize all of the state variables for the scanner/parser */
++/* Modified for SETools libqpol */
++static int load_rules;
++static unsigned int num_rules = 0;
+ void init_parser(int pass_number, int do_rules)
+ {
+ 	policydb_lineno = 1;
+@@ -107,6 +113,7 @@ void yyerror2(char *fmt, ...)
+ 	va_end(ap);
+ }
+ 
++/* Required for SETools libqpol */
+ int define_mls(void)
+ {
+ 	mlspol = 1;
+@@ -115,6 +122,7 @@ int define_mls(void)
+ 	return 0;
+ }
+ 
++/* Required for SETools libqpol */
+ /* Add a rule onto an avtab hash table only if it does not already
+  * exist.  (Note that the avtab is discarded afterwards; it will be
+  * regenerated during expansion.)  Return 1 if rule was added (or
+@@ -135,11 +143,13 @@ static int insert_check_type_rule(avrule_t * rule, avtab_t * avtab, cond_av_list
+ #endif
+ 
+ 	ret = expand_rule(NULL, policydbp, rule, avtab, list, other, 0);
++
+ 	if (ret < 0) {
+ 		yyerror("Failed on expanding rule");
+ 	}
+ 	return ret;
+ }
++
+ int insert_separator(int push)
+ {
+ 	int error;
+@@ -217,24 +227,24 @@ int define_class(void)
+ 	ret = declare_symbol(SYM_CLASSES, id, datum, &value, &value);
+ 	switch (ret) {
+ 	case -3:{
+-		yyerror("Out of memory!");
+-		goto bad;
+-	}
++			yyerror("Out of memory!");
++			goto bad;
++		}
+ 	case -2:{
+-		yyerror2("duplicate declaration of class %s", id);
+-		goto bad;
+-	}
++			yyerror2("duplicate declaration of class %s", id);
++			goto bad;
++		}
+ 	case -1:{
+-		yyerror("could not declare class here");
+-		goto bad;
+-	}
++			yyerror("could not declare class here");
++			goto bad;
++		}
+ 	case 0:
+ 	case 1:{
+-		break;
+-	}
++			break;
++		}
+ 	default:{
+-		assert(0);	       /* should never get here */
+-	}
++			assert(0);	/* should never get here */
++		}
+ 	}
+ 	datum->s.value = value;
+ 	return 0;
+@@ -282,12 +292,13 @@ int define_permissive(void)
+ 		rc = -1;
+ 		goto out;
+ 	}
++/* Required for SETools libqpol */
+ #ifdef HAVE_SEPOL_PERMISSIVE_TYPES
+ 	t->flags |= TYPE_FLAGS_PERMISSIVE;
+ #else
+ 	yyerror("This version of SETools does not have permissive types enabled.");
+ #endif
+-      out:
++out:
+ 	free(type);
+ 	return rc;
+ }
+@@ -308,6 +319,7 @@ int define_polcap(void)
+ 		yyerror("no capability name for policycap definition?");
+ 		goto bad;
+ 	}
++/* Required for SETools libqpol */
+ #ifdef HAVE_SEPOL_POLICYCAPS
+ 	/* Check for valid cap name -> number mapping */
+ 	capnum = sepol_polcap_getnum(id);
+@@ -384,6 +396,178 @@ int define_initial_sid(void)
+ 	return -1;
+ }
+ 
++static int read_classes(ebitmap_t *e_classes)
++{
++	char *id;
++	class_datum_t *cladatum;
++
++	while ((id = queue_remove(id_queue))) {
++		if (!is_id_in_scope(SYM_CLASSES, id)) {
++			yyerror2("class %s is not within scope", id);
++			return -1;
++		}
++		cladatum = hashtab_search(policydbp->p_classes.table, id);
++		if (!cladatum) {
++			yyerror2("unknown class %s", id);
++			return -1;
++		}
++		if (ebitmap_set_bit(e_classes, cladatum->s.value - 1, TRUE)) {
++			yyerror("Out of memory");
++			return -1;
++		}
++		free(id);
++	}
++	return 0;
++}
++
++int define_default_user(int which)
++{
++	char *id;
++
++	if (pass == 1) {
++		while ((id = queue_remove(id_queue)))
++			free(id);
++		return 0;
++	}
++/* Required for SETools libqpol */
++#ifdef HAVE_SEPOL_NEW_OBJECT_DEFAULTS
++	class_datum_t *cladatum;
++
++	while ((id = queue_remove(id_queue))) {
++		if (!is_id_in_scope(SYM_CLASSES, id)) {
++			yyerror2("class %s is not within scope", id);
++			return -1;
++		}
++		cladatum = hashtab_search(policydbp->p_classes.table, id);
++		if (!cladatum) {
++			yyerror2("unknown class %s", id);
++			return -1;
++		}
++		if (cladatum->default_user && cladatum->default_user != which) {
++			yyerror2("conflicting default user information for class %s", id);
++			return -1;
++		}
++		cladatum->default_user = which;
++		free(id);
++	}
++
++	return 0;
++#else
++	yyerror("This version of SETools does not have default_user enabled.");
++#endif
++}
++
++int define_default_role(int which)
++{
++	char *id;
++
++	if (pass == 1) {
++		while ((id = queue_remove(id_queue)))
++			free(id);
++		return 0;
++	}
++/* Required for SETools libqpol */
++#ifdef HAVE_SEPOL_NEW_OBJECT_DEFAULTS
++	class_datum_t *cladatum;
++
++	while ((id = queue_remove(id_queue))) {
++		if (!is_id_in_scope(SYM_CLASSES, id)) {
++			yyerror2("class %s is not within scope", id);
++			return -1;
++		}
++		cladatum = hashtab_search(policydbp->p_classes.table, id);
++		if (!cladatum) {
++			yyerror2("unknown class %s", id);
++			return -1;
++		}
++		if (cladatum->default_role && cladatum->default_role != which) {
++			yyerror2("conflicting default role information for class %s", id);
++			return -1;
++		}
++		cladatum->default_role = which;
++		free(id);
++	}
++
++	return 0;
++#else
++	yyerror("This version of SETools does not have default_role enabled.");
++#endif
++}
++
++int define_default_type(int which)
++{
++	char *id;
++
++	if (pass == 1) {
++		while ((id = queue_remove(id_queue)))
++			free(id);
++		return 0;
++	}
++/* Required for SETools libqpol */
++#ifdef HAVE_SEPOL_DEFAULT_TYPE
++	class_datum_t *cladatum;
++
++	while ((id = queue_remove(id_queue))) {
++		if (!is_id_in_scope(SYM_CLASSES, id)) {
++			yyerror2("class %s is not within scope", id);
++			return -1;
++		}
++		cladatum = hashtab_search(policydbp->p_classes.table, id);
++		if (!cladatum) {
++			yyerror2("unknown class %s", id);
++			return -1;
++		}
++		if (cladatum->default_type && cladatum->default_type != which) {
++			yyerror2("conflicting default type information for class %s", id);
++			return -1;
++		}
++		cladatum->default_type = which;
++		free(id);
++	}
++
++	return 0;
++#else
++	yyerror("This version of SETools does not have default_type enabled.");
++#endif
++}
++
++int define_default_range(int which)
++{
++	char *id;
++
++	if (pass == 1) {
++		while ((id = queue_remove(id_queue)))
++			free(id);
++		return 0;
++	}
++/* Required for SETools libqpol */
++#ifdef HAVE_SEPOL_NEW_OBJECT_DEFAULTS
++	class_datum_t *cladatum;
++
++	while ((id = queue_remove(id_queue))) {
++		if (!is_id_in_scope(SYM_CLASSES, id)) {
++			yyerror2("class %s is not within scope", id);
++			return -1;
++		}
++		cladatum = hashtab_search(policydbp->p_classes.table, id);
++		if (!cladatum) {
++			yyerror2("unknown class %s", id);
++			return -1;
++		}
++		if (cladatum->default_range && cladatum->default_range != which) {
++			yyerror2("conflicting default range information for class %s", id);
++			return -1;
++		}
++		cladatum->default_range = which;
++		free(id);
++	}
++
++	return 0;
++#else
++	yyerror("This version of SETools does not have default_range enabled.");
++#endif
++}
++
+ int define_common_perms(void)
+ {
+ 	char *id = 0, *perm = 0;
+@@ -413,7 +597,8 @@ int define_common_perms(void)
+ 		goto bad;
+ 	}
+ 	memset(comdatum, 0, sizeof(common_datum_t));
+-	ret = hashtab_insert(policydbp->p_commons.table, (hashtab_key_t) id, (hashtab_datum_t) comdatum);
++	ret = hashtab_insert(policydbp->p_commons.table,
++			     (hashtab_key_t) id, (hashtab_datum_t) comdatum);
+ 
+ 	if (ret == SEPOL_EEXIST) {
+ 		yyerror("duplicate common definition");
+@@ -439,13 +624,17 @@ int define_common_perms(void)
+ 		perdatum->s.value = comdatum->permissions.nprim + 1;
+ 
+ 		if (perdatum->s.value > (sizeof(sepol_access_vector_t) * 8)) {
+-			yyerror("too many permissions to fit in an access vector");
++			yyerror
++			    ("too many permissions to fit in an access vector");
+ 			goto bad_perm;
+ 		}
+-		ret = hashtab_insert(comdatum->permissions.table, (hashtab_key_t) perm, (hashtab_datum_t) perdatum);
++		ret = hashtab_insert(comdatum->permissions.table,
++				     (hashtab_key_t) perm,
++				     (hashtab_datum_t) perdatum);
+ 
+ 		if (ret == SEPOL_EEXIST) {
+-			yyerror2("duplicate permission %s in common %s", perm, id);
++			yyerror2("duplicate permission %s in common %s", perm,
++				 id);
+ 			goto bad_perm;
+ 		}
+ 		if (ret == SEPOL_ENOMEM) {
+@@ -491,7 +680,8 @@ int define_av_perms(int inherits)
+ 		yyerror("no tclass name for av perm definition?");
+ 		return -1;
+ 	}
+-	cladatum = (class_datum_t *) hashtab_search(policydbp->p_classes.table, (hashtab_key_t) id);
++	cladatum = (class_datum_t *) hashtab_search(policydbp->p_classes.table,
++						    (hashtab_key_t) id);
+ 	if (!cladatum) {
+ 		yyerror2("class %s is not defined", id);
+ 		goto bad;
+@@ -509,10 +699,14 @@ int define_av_perms(int inherits)
+ 	if (inherits) {
+ 		id = (char *)queue_remove(id_queue);
+ 		if (!id) {
+-			yyerror("no inherits name for access vector definition?");
++			yyerror
++			    ("no inherits name for access vector definition?");
+ 			return -1;
+ 		}
+-		comdatum = (common_datum_t *) hashtab_search(policydbp->p_commons.table, (hashtab_key_t) id);
++		comdatum =
++		    (common_datum_t *) hashtab_search(policydbp->p_commons.
++						      table,
++						      (hashtab_key_t) id);
+ 
+ 		if (!comdatum) {
+ 			yyerror2("common %s is not defined", id);
+@@ -537,7 +731,8 @@ int define_av_perms(int inherits)
+ 		perdatum->s.value = ++cladatum->permissions.nprim;
+ 
+ 		if (perdatum->s.value > (sizeof(sepol_access_vector_t) * 8)) {
+-			yyerror("too many permissions to fit in an access vector");
++			yyerror
++			    ("too many permissions to fit in an access vector");
+ 			goto bad;
+ 		}
+ 		if (inherits) {
+@@ -546,13 +741,19 @@ int define_av_perms(int inherits)
+ 			 * common permissions exist in the same
+ 			 * name space.
+ 			 */
+-			perdatum2 = (perm_datum_t *) hashtab_search(cladatum->comdatum->permissions.table, (hashtab_key_t) id);
++			perdatum2 =
++			    (perm_datum_t *) hashtab_search(cladatum->comdatum->
++							    permissions.table,
++							    (hashtab_key_t) id);
+ 			if (perdatum2) {
+-				yyerror2("permission %s conflicts with an " "inherited permission", id);
++				yyerror2("permission %s conflicts with an "
++					 "inherited permission", id);
+ 				goto bad;
+ 			}
+ 		}
+-		ret = hashtab_insert(cladatum->permissions.table, (hashtab_key_t) id, (hashtab_datum_t) perdatum);
++		ret = hashtab_insert(cladatum->permissions.table,
++				     (hashtab_key_t) id,
++				     (hashtab_datum_t) perdatum);
+ 
+ 		if (ret == SEPOL_EEXIST) {
+ 			yyerror2("duplicate permission %s", id);
+@@ -584,7 +785,7 @@ int define_sens(void)
+ 	mls_level_t *level = 0;
+ 	level_datum_t *datum = 0, *aliasdatum = 0;
+ 	int ret;
+-	uint32_t value;		       /* dummy variable -- its value is never used */
++	uint32_t value;		/* dummy variable -- its value is never used */
+ 
+ 	if (!mlspol) {
+ 		yyerror("sensitivity definition in non-MLS configuration");
+@@ -612,8 +813,8 @@ int define_sens(void)
+ 		goto bad;
+ 	}
+ 	mls_level_init(level);
+-	level->sens = 0;	       /* actual value set in define_dominance */
+-	ebitmap_init(&level->cat);     /* actual value set in define_level */
++	level->sens = 0;	/* actual value set in define_dominance */
++	ebitmap_init(&level->cat);	/* actual value set in define_level */
+ 
+ 	datum = (level_datum_t *) malloc(sizeof(level_datum_t));
+ 	if (!datum) {
+@@ -627,24 +828,24 @@ int define_sens(void)
+ 	ret = declare_symbol(SYM_LEVELS, id, datum, &value, &value);
+ 	switch (ret) {
+ 	case -3:{
+-		yyerror("Out of memory!");
+-		goto bad;
+-	}
++			yyerror("Out of memory!");
++			goto bad;
++		}
+ 	case -2:{
+-		yyerror("duplicate declaration of sensitivity level");
+-		goto bad;
+-	}
++			yyerror("duplicate declaration of sensitivity level");
++			goto bad;
++		}
+ 	case -1:{
+-		yyerror("could not declare sensitivity level here");
+-		goto bad;
+-	}
++			yyerror("could not declare sensitivity level here");
++			goto bad;
++		}
+ 	case 0:
+ 	case 1:{
+-		break;
+-	}
++			break;
++		}
+ 	default:{
+-		assert(0);	       /* should never get here */
+-	}
++			assert(0);	/* should never get here */
++		}
+ 	}
+ 
+ 	while ((id = queue_remove(id_queue))) {
+@@ -664,24 +865,26 @@ int define_sens(void)
+ 		ret = declare_symbol(SYM_LEVELS, id, aliasdatum, NULL, &value);
+ 		switch (ret) {
+ 		case -3:{
+-			yyerror("Out of memory!");
+-			goto bad_alias;
+-		}
++				yyerror("Out of memory!");
++				goto bad_alias;
++			}
+ 		case -2:{
+-			yyerror("duplicate declaration of sensitivity alias");
+-			goto bad_alias;
+-		}
++				yyerror
++				    ("duplicate declaration of sensitivity alias");
++				goto bad_alias;
++			}
+ 		case -1:{
+-			yyerror("could not declare sensitivity alias here");
+-			goto bad_alias;
+-		}
++				yyerror
++				    ("could not declare sensitivity alias here");
++				goto bad_alias;
++			}
+ 		case 0:
+ 		case 1:{
+-			break;
+-		}
++				break;
++			}
+ 		default:{
+-			assert(0);     /* should never get here */
+-		}
++				assert(0);	/* should never get here */
++			}
+ 		}
+ 	}
+ 
+@@ -727,14 +930,18 @@ int define_dominance(void)
+ 
+ 	order = 0;
+ 	while ((id = (char *)queue_remove(id_queue))) {
+-		datum = (level_datum_t *) hashtab_search(policydbp->p_levels.table, (hashtab_key_t) id);
++		datum =
++		    (level_datum_t *) hashtab_search(policydbp->p_levels.table,
++						     (hashtab_key_t) id);
+ 		if (!datum) {
+-			yyerror2("unknown sensitivity %s used in dominance " "definition", id);
++			yyerror2("unknown sensitivity %s used in dominance "
++				 "definition", id);
+ 			free(id);
+ 			return -1;
+ 		}
+ 		if (datum->level->sens != 0) {
+-			yyerror2("sensitivity %s occurs multiply in dominance " "definition", id);
++			yyerror2("sensitivity %s occurs multiply in dominance "
++				 "definition", id);
+ 			free(id);
+ 			return -1;
+ 		}
+@@ -745,7 +952,8 @@ int define_dominance(void)
+ 	}
+ 
+ 	if (order != policydbp->p_levels.nprim) {
+-		yyerror("all sensitivities must be specified in dominance definition");
++		yyerror
++		    ("all sensitivities must be specified in dominance definition");
+ 		return -1;
+ 	}
+ 	return 0;
+@@ -789,24 +997,24 @@ int define_category(void)
+ 	ret = declare_symbol(SYM_CATS, id, datum, &value, &value);
+ 	switch (ret) {
+ 	case -3:{
+-		yyerror("Out of memory!");
+-		goto bad;
+-	}
++			yyerror("Out of memory!");
++			goto bad;
++		}
+ 	case -2:{
+-		yyerror("duplicate declaration of category");
+-		goto bad;
+-	}
++			yyerror("duplicate declaration of category");
++			goto bad;
++		}
+ 	case -1:{
+-		yyerror("could not declare category here");
+-		goto bad;
+-	}
++			yyerror("could not declare category here");
++			goto bad;
++		}
+ 	case 0:
+ 	case 1:{
+-		break;
+-	}
++			break;
++		}
+ 	default:{
+-		assert(0);	       /* should never get here */
+-	}
++			assert(0);	/* should never get here */
++		}
+ 	}
+ 	datum->s.value = value;
+ 
+@@ -824,27 +1032,31 @@ int define_category(void)
+ 		aliasdatum->isalias = TRUE;
+ 		aliasdatum->s.value = datum->s.value;
+ 
+-		ret = declare_symbol(SYM_CATS, id, aliasdatum, NULL, &datum->s.value);
++		ret =
++		    declare_symbol(SYM_CATS, id, aliasdatum, NULL,
++				   &datum->s.value);
+ 		switch (ret) {
+ 		case -3:{
+-			yyerror("Out of memory!");
+-			goto bad_alias;
+-		}
++				yyerror("Out of memory!");
++				goto bad_alias;
++			}
+ 		case -2:{
+-			yyerror("duplicate declaration of category aliases");
+-			goto bad_alias;
+-		}
++				yyerror
++				    ("duplicate declaration of category aliases");
++				goto bad_alias;
++			}
+ 		case -1:{
+-			yyerror("could not declare category aliases here");
+-			goto bad_alias;
+-		}
++				yyerror
++				    ("could not declare category aliases here");
++				goto bad_alias;
++			}
+ 		case 0:
+ 		case 1:{
+-			break;
+-		}
++				break;
++			}
+ 		default:{
+-			assert(0);     /* should never get here */
+-		}
++				assert(0);	/* should never get here */
++			}
+ 		}
+ 	}
+ 
+@@ -911,14 +1123,16 @@ int define_level(void)
+ 		yyerror("no level name for level definition?");
+ 		return -1;
+ 	}
+-	levdatum = (level_datum_t *) hashtab_search(policydbp->p_levels.table, (hashtab_key_t) id);
++	levdatum = (level_datum_t *) hashtab_search(policydbp->p_levels.table,
++						    (hashtab_key_t) id);
+ 	if (!levdatum) {
+ 		yyerror2("unknown sensitivity %s used in level definition", id);
+ 		free(id);
+ 		return -1;
+ 	}
+ 	if (ebitmap_length(&levdatum->level->cat)) {
+-		yyerror2("sensitivity %s used in multiple level definitions", id);
++		yyerror2("sensitivity %s used in multiple level definitions",
++			 id);
+ 		free(id);
+ 		return -1;
+ 	}
+@@ -936,16 +1150,22 @@ int define_level(void)
+ 
+ 			*(id_end++) = '\0';
+ 
+-			cdatum = (cat_datum_t *) hashtab_search(policydbp->p_cats.table, (hashtab_key_t)
+-								id_start);
++			cdatum =
++			    (cat_datum_t *) hashtab_search(policydbp->p_cats.
++							   table,
++							   (hashtab_key_t)
++							   id_start);
+ 			if (!cdatum) {
+ 				yyerror2("unknown category %s", id_start);
+ 				free(id);
+ 				return -1;
+ 			}
+ 			range_start = cdatum->s.value - 1;
+-			cdatum = (cat_datum_t *) hashtab_search(policydbp->p_cats.table, (hashtab_key_t)
+-								id_end);
++			cdatum =
++			    (cat_datum_t *) hashtab_search(policydbp->p_cats.
++							   table,
++							   (hashtab_key_t)
++							   id_end);
+ 			if (!cdatum) {
+ 				yyerror2("unknown category %s", id_end);
+ 				free(id);
+@@ -959,7 +1179,10 @@ int define_level(void)
+ 				return -1;
+ 			}
+ 		} else {
+-			cdatum = (cat_datum_t *) hashtab_search(policydbp->p_cats.table, (hashtab_key_t) id);
++			cdatum =
++			    (cat_datum_t *) hashtab_search(policydbp->p_cats.
++							   table,
++							   (hashtab_key_t) id);
+ 			range_start = range_end = cdatum->s.value - 1;
+ 		}
+ 
+@@ -974,7 +1197,8 @@ int define_level(void)
+ 		free(id);
+ 	}
+ 
+-	if (hashtab_map(policydbp->p_levels.table, clone_level, levdatum->level)) {
++	if (hashtab_map
++	    (policydbp->p_levels.table, clone_level, levdatum->level)) {
+ 		yyerror("out of memory");
+ 		return -1;
+ 	}
+@@ -1003,7 +1227,8 @@ static int add_aliases_to_type(type_datum_t * type)
+ 	while ((id = queue_remove(id_queue))) {
+ 		if (id_has_dot(id)) {
+ 			free(id);
+-			yyerror("type alias identifiers may not contain periods");
++			yyerror
++			    ("type alias identifiers may not contain periods");
+ 			return -1;
+ 		}
+ 		aliasdatum = (type_datum_t *) malloc(sizeof(type_datum_t));
+@@ -1015,39 +1240,40 @@ static int add_aliases_to_type(type_datum_t * type)
+ 		memset(aliasdatum, 0, sizeof(type_datum_t));
+ 		aliasdatum->s.value = type->s.value;
+ 
+-		ret = declare_symbol(SYM_TYPES, id, aliasdatum, NULL, &aliasdatum->s.value);
++		ret = declare_symbol(SYM_TYPES, id, aliasdatum,
++				     NULL, &aliasdatum->s.value);
+ 		switch (ret) {
+ 		case -3:{
+-			yyerror("Out of memory!");
+-			goto cleanup;
+-		}
++				yyerror("Out of memory!");
++				goto cleanup;
++			}
+ 		case -2:{
+-			yyerror2("duplicate declaration of alias %s", id);
+-			goto cleanup;
+-		}
++				yyerror2("duplicate declaration of alias %s",
++					 id);
++				goto cleanup;
++			}
+ 		case -1:{
+-			yyerror("could not declare alias here");
+-			goto cleanup;
+-		}
+-		case 0:
+-			break;
++				yyerror("could not declare alias here");
++				goto cleanup;
++			}
++		case 0:	 	break;
+ 		case 1:{
+-			/* ret == 1 means the alias was required and therefore already
+-			 * has a value. Set it up as an alias with a different primary. */
+-			type_datum_destroy(aliasdatum);
+-			free(aliasdatum);
++				/* ret == 1 means the alias was required and therefore already
++				 * has a value. Set it up as an alias with a different primary. */
++				type_datum_destroy(aliasdatum);
++				free(aliasdatum);
+ 
+-			aliasdatum = hashtab_search(policydbp->symtab[SYM_TYPES].table, id);
+-			assert(aliasdatum);
++				aliasdatum = hashtab_search(policydbp->symtab[SYM_TYPES].table, id);
++				assert(aliasdatum);
+ 
+-			aliasdatum->primary = type->s.value;
+-			aliasdatum->flavor = TYPE_ALIAS;
++				aliasdatum->primary = type->s.value;
++				aliasdatum->flavor = TYPE_ALIAS;
+ 
+-			break;
+-		}
++				break;
++			}
+ 		default:{
+-			assert(0);     /* should never get here */
+-		}
++				assert(0);	/* should never get here */
++			}
+ 		}
+ 	}
+ 	return 0;
+@@ -1082,11 +1308,11 @@ int define_typealias(void)
+ 	}
+ 	t = hashtab_search(policydbp->p_types.table, id);
+ 	if (!t || t->flavor == TYPE_ATTRIB) {
+-		yyerror2("unknown type %s, or it was already declared as an " "attribute", id);
++		yyerror2("unknown type %s, or it was already declared as an "
++			 "attribute", id);
+ 		free(id);
+ 		return -1;
+ 	}
+-	free(id);
+ 	return add_aliases_to_type(t);
+ }
+ 
+@@ -1118,7 +1344,6 @@ int define_typeattribute(void)
+ 		free(id);
+ 		return -1;
+ 	}
+-	free(id);
+ 
+ 	while ((id = queue_remove(id_queue))) {
+ 		if (!is_id_in_scope(SYM_TYPES, id)) {
+@@ -1191,7 +1416,8 @@ static int define_typebounds_helper(char *bounds_id, char *type_id)
+ 	else if (type->bounds != bounds->s.value) {
+ 		yyerror2("type %s has inconsistent master {%s,%s}",
+ 			 type_id,
+-			 policydbp->p_type_val_to_name[type->bounds - 1], policydbp->p_type_val_to_name[bounds->s.value - 1]);
++			 policydbp->p_type_val_to_name[type->bounds - 1],
++			 policydbp->p_type_val_to_name[bounds->s.value - 1]);
+ 		return -1;
+ 	}
+ 
+@@ -1200,15 +1426,18 @@ static int define_typebounds_helper(char *bounds_id, char *type_id)
+ 
+ int define_typebounds(void)
+ {
+-	char *bounds, *id;
++	char *id;
+ 
+ 	if (pass == 1) {
+ 		while ((id = queue_remove(id_queue)))
+ 			free(id);
+ 		return 0;
+ 	}
++/* Required for SETools libqpol */
++#ifdef HAVE_SEPOL_BOUNDARY
++	char *bounds;
+ 
+-	bounds = (char *)queue_remove(id_queue);
++	bounds = (char *) queue_remove(id_queue);
+ 	if (!bounds) {
+ 		yyerror("no type name for typebounds definition?");
+ 		return -1;
+@@ -1222,13 +1451,15 @@ int define_typebounds(void)
+ 	free(bounds);
+ 
+ 	return 0;
++#else
++	yyerror("This version of SETools does not have typebounds enabled.");
++#endif
+ }
+ 
+ int define_type(int alias)
+ {
+ 	char *id;
+ 	type_datum_t *datum, *attr;
+-	int newattr = 0;
+ 
+ 	if (pass == 2) {
+ 		/*
+@@ -1241,7 +1472,7 @@ int define_type(int alias)
+ 
+ 			if ((delim = strrchr(id, '.'))
+ 			    && (bounds = strdup(id))) {
+-				bounds[(size_t) (delim - id)] = '\0';
++				bounds[(size_t)(delim - id)] = '\0';
+ 
+ 				if (define_typebounds_helper(bounds, id))
+ 					return -1;
+@@ -1281,8 +1512,6 @@ int define_type(int alias)
+ 			/* treat it as a fatal error */
+ 			yyerror2("attribute %s is not declared", id);
+ 			return -1;
+-		} else {
+-			newattr = 0;
+ 		}
+ 
+ 		if (attr->flavor != TYPE_ATTRIB) {
+@@ -1304,8 +1533,7 @@ int define_type(int alias)
+ 	return 0;
+ }
+ 
+-struct val_to_name
+-{
++struct val_to_name {
+ 	unsigned int val;
+ 	char *name;
+ };
+@@ -1379,7 +1607,6 @@ int define_compute_type_helper(int which, avrule_t ** rule)
+ {
+ 	char *id;
+ 	type_datum_t *datum;
+-	class_datum_t *cladatum;
+ 	ebitmap_t tclasses;
+ 	ebitmap_node_t *node;
+ 	avrule_t *avrule;
+@@ -1397,32 +1624,17 @@ int define_compute_type_helper(int which, avrule_t ** rule)
+ 
+ 	while ((id = queue_remove(id_queue))) {
+ 		if (set_types(&avrule->stypes, id, &add, 0))
+-			return -1;
++			goto bad;
+ 	}
+ 	add = 1;
+ 	while ((id = queue_remove(id_queue))) {
+ 		if (set_types(&avrule->ttypes, id, &add, 0))
+-			return -1;
++			goto bad;
+ 	}
+ 
+ 	ebitmap_init(&tclasses);
+-	while ((id = queue_remove(id_queue))) {
+-		if (!is_id_in_scope(SYM_CLASSES, id)) {
+-			yyerror2("class %s is not within scope", id);
+-			free(id);
+-			goto bad;
+-		}
+-		cladatum = hashtab_search(policydbp->p_classes.table, id);
+-		if (!cladatum) {
+-			yyerror2("unknown class %s", id);
+-			goto bad;
+-		}
+-		if (ebitmap_set_bit(&tclasses, cladatum->s.value - 1, TRUE)) {
+-			yyerror("Out of memory");
+-			goto bad;
+-		}
+-		free(id);
+-	}
++	if (read_classes(&tclasses))
++		goto bad;
+ 
+ 	id = (char *)queue_remove(id_queue);
+ 	if (!id) {
+@@ -1434,19 +1646,19 @@ int define_compute_type_helper(int which, avrule_t ** rule)
+ 		free(id);
+ 		goto bad;
+ 	}
+-	datum = (type_datum_t *) hashtab_search(policydbp->p_types.table, (hashtab_key_t) id);
++	datum = (type_datum_t *) hashtab_search(policydbp->p_types.table,
++						(hashtab_key_t) id);
+ 	if (!datum || datum->flavor == TYPE_ATTRIB) {
+ 		yyerror2("unknown type %s", id);
+ 		goto bad;
+ 	}
+-	free(id);
+ 
+ 	ebitmap_for_each_bit(&tclasses, node, i) {
+ 		if (ebitmap_node_get_bit(node, i)) {
+ 			perm = malloc(sizeof(class_perm_node_t));
+ 			if (!perm) {
+ 				yyerror("out of memory");
+-				return -1;
++				goto bad;
+ 			}
+ 			class_perm_node_init(perm);
+ 			perm->class = i + 1;
+@@ -1472,7 +1684,7 @@ int define_compute_type(int which)
+ 	avrule_t *avrule;
+ 	int retval;
+ 
+-	if (pass == 1 || (num_rules && !load_rules)) {
++	if (pass == 1 || (num_rules && !load_rules)) { /* Required for SETools libqpol */
+ 		while ((id = queue_remove(id_queue)))
+ 			free(id);
+ 		while ((id = queue_remove(id_queue)))
+@@ -1519,7 +1731,7 @@ avrule_t *define_cond_compute_type(int which)
+ 	char *id;
+ 	avrule_t *avrule;
+ 
+-	if (pass == 1 || (num_rules && !load_rules)) {
++	if (pass == 1 || (num_rules && !load_rules)) { /* Required for SETools libqpol */
+ 		while ((id = queue_remove(id_queue)))
+ 			free(id);
+ 		while ((id = queue_remove(id_queue)))
+@@ -1539,7 +1751,7 @@ avrule_t *define_cond_compute_type(int which)
+ 	return avrule;
+ }
+ 
+-int define_bool(void)
++int define_bool_tunable(int is_tunable)
+ {
+ 	char *id, *bool_value;
+ 	cond_bool_datum_t *datum;
+@@ -1569,27 +1781,29 @@ int define_bool(void)
+ 		return -1;
+ 	}
+ 	memset(datum, 0, sizeof(cond_bool_datum_t));
++	if (is_tunable)
++		datum->flags |= COND_BOOL_FLAGS_TUNABLE;
+ 	ret = declare_symbol(SYM_BOOLS, id, datum, &value, &value);
+ 	switch (ret) {
+ 	case -3:{
+-		yyerror("Out of memory!");
+-		goto cleanup;
+-	}
++			yyerror("Out of memory!");
++			goto cleanup;
++		}
+ 	case -2:{
+-		yyerror2("duplicate declaration of boolean %s", id);
+-		goto cleanup;
+-	}
++			yyerror2("duplicate declaration of boolean %s", id);
++			goto cleanup;
++		}
+ 	case -1:{
+-		yyerror("could not declare boolean here");
+-		goto cleanup;
+-	}
++			yyerror("could not declare boolean here");
++			goto cleanup;
++		}
+ 	case 0:
+ 	case 1:{
+-		break;
+-	}
++			break;
++		}
+ 	default:{
+-		assert(0);	       /* should never get here */
+-	}
++			assert(0);	/* should never get here */
++		}
+ 	}
+ 	datum->s.value = value;
+ 
+@@ -1601,7 +1815,6 @@ int define_bool(void)
+ 	}
+ 
+ 	datum->state = (int)(bool_value[0] == 'T') ? 1 : 0;
+-	free(bool_value);
+ 	return 0;
+       cleanup:
+ 	cond_destroy_bool(id, datum, NULL);
+@@ -1610,7 +1823,7 @@ int define_bool(void)
+ 
+ avrule_t *define_cond_pol_list(avrule_t * avlist, avrule_t * sl)
+ {
+-	if (pass == 1 || (num_rules && !load_rules)) {
++	if (pass == 1 || (num_rules && !load_rules)) { /* Required for SETools libqpol */
+ 		/* return something so we get through pass 1 */
+ 		return (avrule_t *) 1;
+ 	}
+@@ -1649,7 +1862,9 @@ int define_te_avtab_helper(int which, avrule_t ** rule)
+ 	avrule->line = policydb_lineno;
+ 
+ 	while ((id = queue_remove(id_queue))) {
+-		if (set_types(&avrule->stypes, id, &add, which == AVRULE_NEVERALLOW ? 1 : 0)) {
++		if (set_types
++		    (&avrule->stypes, id, &add,
++		     which == AVRULE_NEVERALLOW ? 1 : 0)) {
+ 			ret = -1;
+ 			goto out;
+ 		}
+@@ -1661,38 +1876,25 @@ int define_te_avtab_helper(int which, avrule_t ** rule)
+ 			avrule->flags |= RULE_SELF;
+ 			continue;
+ 		}
+-		if (set_types(&avrule->ttypes, id, &add, which == AVRULE_NEVERALLOW ? 1 : 0)) {
++		if (set_types
++		    (&avrule->ttypes, id, &add,
++		     which == AVRULE_NEVERALLOW ? 1 : 0)) {
+ 			ret = -1;
+ 			goto out;
+ 		}
+ 	}
+ 
+ 	ebitmap_init(&tclasses);
+-	while ((id = queue_remove(id_queue))) {
+-		if (!is_id_in_scope(SYM_CLASSES, id)) {
+-			yyerror2("class %s is not within scope", id);
+-			ret = -1;
+-			goto out;
+-		}
+-		cladatum = hashtab_search(policydbp->p_classes.table, id);
+-		if (!cladatum) {
+-			yyerror2("unknown class %s used in rule", id);
+-			ret = -1;
+-			goto out;
+-		}
+-		if (ebitmap_set_bit(&tclasses, cladatum->s.value - 1, TRUE)) {
+-			yyerror("Out of memory");
+-			ret = -1;
+-			goto out;
+-		}
+-		free(id);
+-	}
++	ret = read_classes(&tclasses);
++	if (ret)
++		goto out;
+ 
+ 	perms = NULL;
+ 	ebitmap_for_each_bit(&tclasses, node, i) {
+ 		if (!ebitmap_node_get_bit(node, i))
+ 			continue;
+-		cur_perms = (class_perm_node_t *) malloc(sizeof(class_perm_node_t));
++		cur_perms =
++		    (class_perm_node_t *) malloc(sizeof(class_perm_node_t));
+ 		if (!cur_perms) {
+ 			yyerror("out of memory");
+ 			ret = -1;
+@@ -1728,21 +1930,29 @@ int define_te_avtab_helper(int which, avrule_t ** rule)
+ 				goto next;
+ 			}
+ 
+-			perdatum = hashtab_search(cladatum->permissions.table, id);
++			perdatum =
++			    hashtab_search(cladatum->permissions.table, id);
+ 			if (!perdatum) {
+ 				if (cladatum->comdatum) {
+-					perdatum = hashtab_search(cladatum->comdatum->permissions.table, id);
++					perdatum =
++					    hashtab_search(cladatum->comdatum->
++							   permissions.table,
++							   id);
+ 				}
+ 			}
+ 			if (!perdatum) {
+ 				if (!suppress)
+ 					yyerror2("permission %s is not defined"
+-						 " for class %s", id, policydbp->p_class_val_to_name[i]);
++					     " for class %s", id,
++					     policydbp->p_class_val_to_name[i]);
+ 				continue;
+-			} else if (!is_perm_in_scope(id, policydbp->p_class_val_to_name[i])) {
++			} else
++			    if (!is_perm_in_scope
++				(id, policydbp->p_class_val_to_name[i])) {
+ 				if (!suppress) {
+ 					yyerror2("permission %s of class %s is"
+-						 " not within scope", id, policydbp->p_class_val_to_name[i]);
++					     " not within scope", id,
++					     policydbp->p_class_val_to_name[i]);
+ 				}
+ 				continue;
+ 			} else {
+@@ -1765,70 +1975,216 @@ int define_te_avtab_helper(int which, avrule_t ** rule)
+ 
+ }
+ 
+-avrule_t *define_cond_te_avtab(int which)
++avrule_t *define_cond_te_avtab(int which)
++{
++	char *id;
++	avrule_t *avrule;
++	int i;
++
++	if (pass == 1 || (num_rules && !load_rules)) { /* Required for SETools libqpol */
++		for (i = 0; i < 4; i++) {
++			while ((id = queue_remove(id_queue)))
++				free(id);
++		}
++		return (avrule_t *) 1;	/* any non-NULL value */
++	}
++
++	num_rules++;
++
++	if (define_te_avtab_helper(which, &avrule))
++		return COND_ERR;
++
++	return avrule;
++}
++
++int define_te_avtab(int which)
++{
++	char *id;
++	avrule_t *avrule;
++	int i;
++
++	if (pass == 1 || (num_rules && !load_rules)) { /* Required for SETools libqpol */
++		for (i = 0; i < 4; i++) {
++			while ((id = queue_remove(id_queue)))
++				free(id);
++		}
++		return 0;
++	}
++
++	num_rules++;
++
++	if (define_te_avtab_helper(which, &avrule))
++		return -1;
++
++	/* append this avrule to the end of the current rules list */
++	append_avrule(avrule);
++	return 0;
++}
++
++/* The role-types rule is no longer used to declare regular role or
++ * role attribute, but solely aimed for declaring role-types associations.
++ */
++int define_role_types(void)
++{
++	role_datum_t *role;
++	char *id;
++	int add = 1;
++
++	if (pass == 1) {
++		while ((id = queue_remove(id_queue)))
++			free(id);
++		return 0;
++	}
++
++	id = (char *)queue_remove(id_queue);
++	if (!id) {
++		yyerror("no role name for role-types rule?");
++		return -1;
++	}
++
++	if (!is_id_in_scope(SYM_ROLES, id)) {
++		yyerror2("role %s is not within scope", id);
++		free(id);
++		return -1;
++	}
++
++	role = hashtab_search(policydbp->p_roles.table, id);
++	if (!role) {
++		yyerror2("unknown role %s", id);
++		free(id);
++		return -1;
++	}
++
++	while ((id = queue_remove(id_queue))) {
++		if (set_types(&role->types, id, &add, 0))
++			return -1;
++	}
++
++	return 0;
++}
++
++int define_attrib_role(void)
+ {
+-	char *id;
+-	avrule_t *avrule;
+-	int i;
+-
+-	if (pass == 1 || (num_rules && !load_rules)) {
+-		for (i = 0; i < 4; i++) {
+-			while ((id = queue_remove(id_queue)))
+-				free(id);
+-		}
+-		return (avrule_t *) 1; /* any non-NULL value */
++	if (pass == 2) {
++		free(queue_remove(id_queue));
++		return 0;
+ 	}
+ 
+-	num_rules++;
+-
+-	if (define_te_avtab_helper(which, &avrule))
+-		return COND_ERR;
++	/* Declare a role attribute */
++	if (declare_role(TRUE) == NULL)
++		return -1;
+ 
+-	return avrule;
++	return 0;
+ }
+ 
+-int define_te_avtab(int which)
++int define_role_attr(void)
+ {
+ 	char *id;
+-	avrule_t *avrule;
+-	int i;
++	role_datum_t *r, *attr;
+ 
+-	if (pass == 1 || (num_rules && !load_rules)) {
+-		for (i = 0; i < 4; i++) {
+-			while ((id = queue_remove(id_queue)))
+-				free(id);
+-		}
++	if (pass == 2) {
++		while ((id = queue_remove(id_queue)))
++			free(id);
+ 		return 0;
+ 	}
++	
++	/* Declare a regular role */
++	if ((r = declare_role(FALSE)) == NULL)
++		return -1;
+ 
+-	num_rules++;
++	while ((id = queue_remove(id_queue))) {
++		if (!is_id_in_scope(SYM_ROLES, id)) {
++			yyerror2("attribute %s is not within scope", id);
++			free(id);
++			return -1;
++		}
++		attr = hashtab_search(policydbp->p_roles.table, id);
++		if (!attr) {
++			/* treat it as a fatal error */
++			yyerror2("role attribute %s is not declared", id);
++			free(id);
++			return -1;
++		}
+ 
+-	if (define_te_avtab_helper(which, &avrule))
+-		return -1;
++		if (attr->flavor != ROLE_ATTRIB) {
++			yyerror2("%s is a regular role, not an attribute", id);
++			free(id);
++			return -1;
++		}
++
++		if ((attr = get_local_role(id, attr->s.value, 1)) == NULL) {
++			yyerror("Out of memory!");
++			return -1;
++		}
++
++		if (ebitmap_set_bit(&attr->roles, (r->s.value - 1), TRUE)) {
++			yyerror("out of memory");
++			return -1;
++		}
++	}
+ 
+-	/* append this avrule to the end of the current rules list */
+-	append_avrule(avrule);
+ 	return 0;
+ }
+ 
+-int define_role_types(void)
++int define_roleattribute(void)
+ {
+-	role_datum_t *role;
+ 	char *id;
+-	int add = 1;
++	role_datum_t *r, *attr;
+ 
+-	if (pass == 1) {
++	if (pass == 2) {
+ 		while ((id = queue_remove(id_queue)))
+ 			free(id);
+ 		return 0;
+ 	}
+ 
+-	if ((role = declare_role()) == NULL) {
++	id = (char *)queue_remove(id_queue);
++	if (!id) {
++		yyerror("no role name for roleattribute definition?");
++		return -1;
++	}
++
++	if (!is_id_in_scope(SYM_ROLES, id)) {
++		yyerror2("role %s is not within scope", id);
++		free(id);
++		return -1;
++	}
++	r = hashtab_search(policydbp->p_roles.table, id);
++	/* We support adding one role attribute into another */
++	if (!r) {
++		yyerror2("unknown role %s", id);
++		free(id);
+ 		return -1;
+ 	}
++
+ 	while ((id = queue_remove(id_queue))) {
+-		if (set_types(&role->types, id, &add, 0))
++		if (!is_id_in_scope(SYM_ROLES, id)) {
++			yyerror2("attribute %s is not within scope", id);
++			free(id);
++			return -1;
++		}
++		attr = hashtab_search(policydbp->p_roles.table, id);
++		if (!attr) {
++			/* treat it as a fatal error */
++			yyerror2("role attribute %s is not declared", id);
++			free(id);
++			return -1;
++		}
++
++		if (attr->flavor != ROLE_ATTRIB) {
++			yyerror2("%s is a regular role, not an attribute", id);
++			free(id);
++			return -1;
++		}
++
++		if ((attr = get_local_role(id, attr->s.value, 1)) == NULL) {
++			yyerror("Out of memory!");
++			return -1;
++		}
++
++		if (ebitmap_set_bit(&attr->roles, (r->s.value - 1), TRUE)) {
++			yyerror("out of memory");
+ 			return -1;
++		}
+ 	}
+ 
+ 	return 0;
+@@ -1848,13 +2204,15 @@ role_datum_t *merge_roles_dom(role_datum_t * r1, role_datum_t * r2)
+ 		return NULL;
+ 	}
+ 	memset(new, 0, sizeof(role_datum_t));
+-	new->s.value = 0;	       /* temporary role */
++	new->s.value = 0;		/* temporary role */
+ 	if (ebitmap_or(&new->dominates, &r1->dominates, &r2->dominates)) {
+ 		yyerror("out of memory");
++		free(new);
+ 		return NULL;
+ 	}
+ 	if (ebitmap_or(&new->types.types, &r1->types.types, &r2->types.types)) {
+ 		yyerror("out of memory");
++		free(new);
+ 		return NULL;
+ 	}
+ 	if (!r1->s.value) {
+@@ -1874,7 +2232,8 @@ role_datum_t *merge_roles_dom(role_datum_t * r1, role_datum_t * r2)
+ }
+ 
+ /* This function eliminates the ordering dependency of role dominance rule */
+-static int dominate_role_recheck(hashtab_key_t key, hashtab_datum_t datum, void *arg)
++static int dominate_role_recheck(hashtab_key_t key, hashtab_datum_t datum,
++				 void *arg)
+ {
+ 	role_datum_t *rdp = (role_datum_t *) arg;
+ 	role_datum_t *rdatum = (role_datum_t *) datum;
+@@ -1896,12 +2255,14 @@ static int dominate_role_recheck(hashtab_key_t key, hashtab_datum_t datum, void
+ 		/* raise types and dominates from dominated role */
+ 		ebitmap_for_each_bit(&rdp->dominates, node, i) {
+ 			if (ebitmap_node_get_bit(node, i))
+-				if (ebitmap_set_bit(&rdatum->dominates, i, TRUE))
++				if (ebitmap_set_bit
++				    (&rdatum->dominates, i, TRUE))
+ 					goto oom;
+ 		}
+ 		ebitmap_for_each_bit(&types, node, i) {
+ 			if (ebitmap_node_get_bit(node, i))
+-				if (ebitmap_set_bit(&rdatum->types.types, i, TRUE))
++				if (ebitmap_set_bit
++				    (&rdatum->types.types, i, TRUE))
+ 					goto oom;
+ 		}
+ 		ebitmap_destroy(&types);
+@@ -1936,7 +2297,8 @@ role_datum_t *define_role_dom(role_datum_t * r)
+ 		free(role_id);
+ 		return NULL;
+ 	}
+-	role = (role_datum_t *) hashtab_search(policydbp->p_roles.table, role_id);
++	role = (role_datum_t *) hashtab_search(policydbp->p_roles.table,
++					       role_id);
+ 	if (!role) {
+ 		role = (role_datum_t *) malloc(sizeof(role_datum_t));
+ 		if (!role) {
+@@ -1945,27 +2307,31 @@ role_datum_t *define_role_dom(role_datum_t * r)
+ 			return NULL;
+ 		}
+ 		memset(role, 0, sizeof(role_datum_t));
+-		ret = declare_symbol(SYM_ROLES, (hashtab_key_t) role_id, (hashtab_datum_t) role, &role->s.value, &role->s.value);
++		ret =
++		    declare_symbol(SYM_ROLES, (hashtab_key_t) role_id,
++				   (hashtab_datum_t) role, &role->s.value,
++				   &role->s.value);
+ 		switch (ret) {
+ 		case -3:{
+-			yyerror("Out of memory!");
+-			goto cleanup;
+-		}
++				yyerror("Out of memory!");
++				goto cleanup;
++			}
+ 		case -2:{
+-			yyerror2("duplicate declaration of role %s", role_id);
+-			goto cleanup;
+-		}
++				yyerror2("duplicate declaration of role %s",
++					 role_id);
++				goto cleanup;
++			}
+ 		case -1:{
+-			yyerror("could not declare role here");
+-			goto cleanup;
+-		}
++				yyerror("could not declare role here");
++				goto cleanup;
++			}
+ 		case 0:
+ 		case 1:{
+-			break;
+-		}
++				break;
++			}
+ 		default:{
+-			assert(0);     /* should never get here */
+-		}
++				assert(0);	/* should never get here */
++			}
+ 		}
+ 		if (ebitmap_set_bit(&role->dominates, role->s.value - 1, TRUE)) {
+ 			yyerror("Out of memory!");
+@@ -1986,7 +2352,8 @@ role_datum_t *define_role_dom(role_datum_t * r)
+ 		}
+ 		ebitmap_for_each_bit(&types, node, i) {
+ 			if (ebitmap_node_get_bit(node, i))
+-				if (ebitmap_set_bit(&role->types.types, i, TRUE))
++				if (ebitmap_set_bit
++				    (&role->types.types, i, TRUE))
+ 					goto oom;
+ 		}
+ 		ebitmap_destroy(&types);
+@@ -2000,7 +2367,8 @@ role_datum_t *define_role_dom(role_datum_t * r)
+ 		 * Now go through all the roles and escalate this role's
+ 		 * dominates and types if a role dominates this role.
+ 		 */
+-		hashtab_map(policydbp->p_roles.table, dominate_role_recheck, role);
++		hashtab_map(policydbp->p_roles.table,
++			    dominate_role_recheck, role);
+ 	}
+ 	return role;
+       cleanup:
+@@ -2013,7 +2381,8 @@ role_datum_t *define_role_dom(role_datum_t * r)
+ 	goto cleanup;
+ }
+ 
+-static int role_val_to_name_helper(hashtab_key_t key, hashtab_datum_t datum, void *p)
++static int role_val_to_name_helper(hashtab_key_t key, hashtab_datum_t datum,
++				   void *p)
+ {
+ 	struct val_to_name *v = p;
+ 	role_datum_t *roldatum;
+@@ -2076,17 +2445,18 @@ static int set_roles(role_set_t * set, char *id)
+ 	return 0;
+ }
+ 
+-int define_role_trans(void)
++int define_role_trans(int class_specified)
+ {
+ 	char *id;
+ 	role_datum_t *role;
+ 	role_set_t roles;
+ 	type_set_t types;
+-	ebitmap_t e_types, e_roles;
+-	ebitmap_node_t *tnode, *rnode;
++	class_datum_t *cladatum;
++	ebitmap_t e_types, e_roles, e_classes;
++	ebitmap_node_t *tnode, *rnode, *cnode;
+ 	struct role_trans *tr = NULL;
+ 	struct role_trans_rule *rule = NULL;
+-	unsigned int i, j;
++	unsigned int i, j, k;
+ 	int add = 1;
+ 
+ 	if (pass == 1) {
+@@ -2094,6 +2464,9 @@ int define_role_trans(void)
+ 			free(id);
+ 		while ((id = queue_remove(id_queue)))
+ 			free(id);
++		if (class_specified)
++			while ((id = queue_remove(id_queue)))
++				free(id);
+ 		id = queue_remove(id_queue);
+ 		free(id);
+ 		return 0;
+@@ -2103,6 +2476,7 @@ int define_role_trans(void)
+ 	ebitmap_init(&e_roles);
+ 	type_set_init(&types);
+ 	ebitmap_init(&e_types);
++	ebitmap_init(&e_classes);
+ 
+ 	while ((id = queue_remove(id_queue))) {
+ 		if (set_roles(&roles, id))
+@@ -2114,6 +2488,24 @@ int define_role_trans(void)
+ 			return -1;
+ 	}
+ 
++	if (class_specified) {
++		if (read_classes(&e_classes))
++			return -1;
++	} else {
++		cladatum = hashtab_search(policydbp->p_classes.table,
++					  "process");
++		if (!cladatum) {
++			yyerror2("could not find process class for "
++				 "legacy role_transition statement");
++			return -1;
++		}
++
++		if (ebitmap_set_bit(&e_classes, cladatum->s.value - 1, TRUE)) {
++			yyerror("out of memory");
++			return -1;
++		}
++	}
++
+ 	id = (char *)queue_remove(id_queue);
+ 	if (!id) {
+ 		yyerror("no new role in transition definition?");
+@@ -2129,9 +2521,14 @@ int define_role_trans(void)
+ 		yyerror2("unknown role %s used in transition definition", id);
+ 		goto bad;
+ 	}
+-	free(id);
++
++	if (role->flavor != ROLE_ROLE) {
++		yyerror2("the new role %s must be a regular role", id);
++		goto bad;
++	}
+ 
+ 	/* This ebitmap business is just to ensure that there are not conflicting role_trans rules */
++/* Required for SETools libqpol */
+ #ifdef HAVE_SEPOL_ROLE_ATTRS
+ 	if (role_set_expand(&roles, &e_roles, policydbp, NULL, NULL))
+ #elif HAVE_SEPOL_USER_ROLE_MAPPING
+@@ -2150,26 +2547,37 @@ int define_role_trans(void)
+ 		ebitmap_for_each_bit(&e_types, tnode, j) {
+ 			if (!ebitmap_node_get_bit(tnode, j))
+ 				continue;
+-
+-			for (tr = policydbp->role_tr; tr; tr = tr->next) {
+-				if (tr->role == (i + 1) && tr->type == (j + 1)) {
+-					yyerror2("duplicate role transition for (%s,%s)",
+-						 role_val_to_name(i + 1), policydbp->p_type_val_to_name[j]);
+-					goto bad;
++			ebitmap_for_each_bit(&e_classes, cnode, k) {
++				if (!ebitmap_node_get_bit(cnode, k))
++					continue;
++				for (tr = policydbp->role_tr; tr;
++				     tr = tr->next) {
++					if (tr->role == (i + 1) &&
++					    tr->type == (j + 1) &&
++					    tr->tclass == (k + 1)) {
++						yyerror2("duplicate role "
++							 "transition for "
++							 "(%s,%s,%s)",
++							 role_val_to_name(i+1),
++							 policydbp->p_type_val_to_name[j],
++							 policydbp->p_class_val_to_name[k]);
++						goto bad;
++					}
+ 				}
+-			}
+ 
+-			tr = malloc(sizeof(struct role_trans));
+-			if (!tr) {
+-				yyerror("out of memory");
+-				return -1;
++				tr = malloc(sizeof(struct role_trans));
++				if (!tr) {
++					yyerror("out of memory");
++					return -1;
++				}
++				memset(tr, 0, sizeof(struct role_trans));
++				tr->role = i + 1;
++				tr->type = j + 1;
++				tr->tclass = k + 1;
++				tr->new_role = role->s.value;
++				tr->next = policydbp->role_tr;
++				policydbp->role_tr = tr;
+ 			}
+-			memset(tr, 0, sizeof(struct role_trans));
+-			tr->role = i + 1;
+-			tr->type = j + 1;
+-			tr->new_role = role->s.value;
+-			tr->next = policydbp->role_tr;
+-			policydbp->role_tr = tr;
+ 		}
+ 	}
+ 	/* Now add the real rule */
+@@ -2181,6 +2589,7 @@ int define_role_trans(void)
+ 	memset(rule, 0, sizeof(struct role_trans_rule));
+ 	rule->roles = roles;
+ 	rule->types = types;
++	rule->classes = e_classes;
+ 	rule->new_role = role->s.value;
+ 
+ 	append_role_trans(rule);
+@@ -2215,13 +2624,17 @@ int define_role_allow(void)
+ 	role_allow_rule_init(ra);
+ 
+ 	while ((id = queue_remove(id_queue))) {
+-		if (set_roles(&ra->roles, id))
++		if (set_roles(&ra->roles, id)) {
++			free(ra);
+ 			return -1;
++		}
+ 	}
+ 
+ 	while ((id = queue_remove(id_queue))) {
+-		if (set_roles(&ra->new_roles, id))
++		if (set_roles(&ra->new_roles, id)) {
++			free(ra);
+ 			return -1;
++		}
+ 	}
+ 
+ 	append_role_allow(ra);
+@@ -2237,18 +2650,7 @@ avrule_t *define_cond_filename_trans(void)
+ 
+ int define_filename_trans(void)
+ {
+-	char *id, *name = NULL;
+-	type_set_t stypes, ttypes;
+-	ebitmap_t e_stypes, e_ttypes;
+-	ebitmap_t e_tclasses;
+-	ebitmap_node_t *snode, *tnode, *cnode;
+-	filename_trans_t *ft;
+-	filename_trans_rule_t *ftr;
+-	class_datum_t *cladatum;
+-	type_datum_t *typdatum;
+-	uint32_t otype;
+-	unsigned int c, s, t;
+-	int add;
++	char *id;
+ 
+ 	if (pass == 1) {
+ 		/* stype */
+@@ -2268,7 +2670,19 @@ int define_filename_trans(void)
+ 		free(id);
+ 		return 0;
+ 	}
+-
++/* Required for SETools libqpol */
++#ifdef HAVE_SEPOL_FILENAME_TRANS
++	char *name = NULL;
++	type_set_t stypes, ttypes;
++	ebitmap_t e_stypes, e_ttypes;
++	ebitmap_t e_tclasses;
++	ebitmap_node_t *snode, *tnode, *cnode;
++	filename_trans_t *ft;
++	filename_trans_rule_t *ftr;
++	type_datum_t *typdatum;
++	uint32_t otype;
++	unsigned int c, s, t;
++	int add;
+ 
+ 	add = 1;
+ 	type_set_init(&stypes);
+@@ -2285,23 +2699,8 @@ int define_filename_trans(void)
+ 	}
+ 
+ 	ebitmap_init(&e_tclasses);
+-	while ((id = queue_remove(id_queue))) {
+-		if (!is_id_in_scope(SYM_CLASSES, id)) {
+-			yyerror2("class %s is not within scope", id);
+-			free(id);
+-			goto bad;
+-		}
+-		cladatum = hashtab_search(policydbp->p_classes.table, id);
+-		if (!cladatum) {
+-			yyerror2("unknown class %s", id);
+-			goto bad;
+-		}
+-		if (ebitmap_set_bit(&e_tclasses, cladatum->s.value - 1, TRUE)) {
+-			yyerror("Out of memory");
+-			goto bad;
+-		}
+-		free(id);
+-	}
++	if (read_classes(&e_tclasses))
++		goto bad;
+ 
+ 	id = (char *)queue_remove(id_queue);
+ 	if (!id) {
+@@ -2360,8 +2759,7 @@ int define_filename_trans(void)
+ 							 policydbp->p_class_val_to_name[c]);
+ 						goto bad;
+ 					}
+-				}
+-	
++				}	
+ 				ft = malloc(sizeof(*ft));
+ 				if (!ft) {
+ 					yyerror("out of memory");
+@@ -2383,7 +2781,6 @@ int define_filename_trans(void)
+ 				ft->otype = otype;
+ 			}
+ 		}
+-	
+ 		/* Now add the real rule since we didn't find any duplicates */
+ 		ftr = malloc(sizeof(*ftr));
+ 		if (!ftr) {
+@@ -2410,6 +2807,9 @@ int define_filename_trans(void)
+ bad:
+ 	free(name);
+ 	return -1;
++#else
++	yyerror("This version of SETools does not have filename type_transition rules enabled.");
++#endif
+ }
+ 
+ static constraint_expr_t *constraint_expr_clone(constraint_expr_t * expr)
+@@ -2433,7 +2833,8 @@ static constraint_expr_t *constraint_expr_clone(constraint_expr_t * expr)
+ 		newe->op = e->op;
+ 		if (newe->expr_type == CEXPR_NAMES) {
+ 			if (newe->attr & CEXPR_TYPE) {
+-				if (type_set_cpy(newe->type_names, e->type_names))
++				if (type_set_cpy
++				    (newe->type_names, e->type_names))
+ 					goto oom;
+ 			} else {
+ 				if (ebitmap_cpy(&newe->names, &e->names))
+@@ -2520,7 +2921,9 @@ int define_constraint(constraint_expr_t * expr)
+ 			free(id);
+ 			return -1;
+ 		}
+-		cladatum = (class_datum_t *) hashtab_search(policydbp->p_classes.table, (hashtab_key_t) id);
++		cladatum =
++		    (class_datum_t *) hashtab_search(policydbp->p_classes.table,
++						     (hashtab_key_t) id);
+ 		if (!cladatum) {
+ 			yyerror2("class %s is not defined", id);
+ 			ebitmap_destroy(&classmap);
+@@ -2536,6 +2939,7 @@ int define_constraint(constraint_expr_t * expr)
+ 		node = malloc(sizeof(struct constraint_node));
+ 		if (!node) {
+ 			yyerror("out of memory");
++			free(node);
+ 			return -1;
+ 		}
+ 		memset(node, 0, sizeof(constraint_node_t));
+@@ -2547,6 +2951,7 @@ int define_constraint(constraint_expr_t * expr)
+ 		}
+ 		if (!node->expr) {
+ 			yyerror("out of memory");
++			free(node);
+ 			return -1;
+ 		}
+ 		node->permissions = 0;
+@@ -2563,22 +2968,33 @@ int define_constraint(constraint_expr_t * expr)
+ 				cladatum = policydbp->class_val_to_struct[i];
+ 				node = cladatum->constraints;
+ 
+-				perdatum = (perm_datum_t *) hashtab_search(cladatum->permissions.table, (hashtab_key_t)
+-									   id);
++				perdatum =
++				    (perm_datum_t *) hashtab_search(cladatum->
++								    permissions.
++								    table,
++								    (hashtab_key_t)
++								    id);
+ 				if (!perdatum) {
+ 					if (cladatum->comdatum) {
+-						perdatum = (perm_datum_t *)
+-							hashtab_search(cladatum->comdatum->permissions.table, (hashtab_key_t)
+-								       id);
++						perdatum =
++						    (perm_datum_t *)
++						    hashtab_search(cladatum->
++								   comdatum->
++								   permissions.
++								   table,
++								   (hashtab_key_t)
++								   id);
+ 					}
+ 					if (!perdatum) {
+-						yyerror2("permission %s is not" " defined", id);
++						yyerror2("permission %s is not"
++							 " defined", id);
+ 						free(id);
+ 						ebitmap_destroy(&classmap);
+ 						return -1;
+ 					}
+ 				}
+-				node->permissions |= (1 << (perdatum->s.value - 1));
++				node->permissions |=
++				    (1 << (perdatum->s.value - 1));
+ 			}
+ 		}
+ 		free(id);
+@@ -2647,7 +3063,9 @@ int define_validatetrans(constraint_expr_t * expr)
+ 			free(id);
+ 			return -1;
+ 		}
+-		cladatum = (class_datum_t *) hashtab_search(policydbp->p_classes.table, (hashtab_key_t) id);
++		cladatum =
++		    (class_datum_t *) hashtab_search(policydbp->p_classes.table,
++						     (hashtab_key_t) id);
+ 		if (!cladatum) {
+ 			yyerror2("class %s is not defined", id);
+ 			ebitmap_destroy(&classmap);
+@@ -2701,10 +3119,11 @@ uintptr_t define_cexpr(uint32_t expr_type, uintptr_t arg1, uintptr_t arg2)
+ 			while ((id = queue_remove(id_queue)))
+ 				free(id);
+ 		}
+-		return 1;	       /* any non-NULL value */
++		return 1;	/* any non-NULL value */
+ 	}
+ 
+-	if ((expr = malloc(sizeof(*expr))) == NULL || constraint_expr_init(expr) == -1) {
++	if ((expr = malloc(sizeof(*expr))) == NULL ||
++	    constraint_expr_init(expr) == -1) {
+ 		yyerror("out of memory");
+ 		free(expr);
+ 		return 0;
+@@ -2766,12 +3185,17 @@ uintptr_t define_cexpr(uint32_t expr_type, uintptr_t arg1, uintptr_t arg2)
+ 		while ((id = (char *)queue_remove(id_queue))) {
+ 			if (expr->attr & CEXPR_USER) {
+ 				if (!is_id_in_scope(SYM_USERS, id)) {
+-					yyerror2("user %s is not within scope", id);
++					yyerror2("user %s is not within scope",
++						 id);
+ 					constraint_expr_destroy(expr);
+ 					return 0;
+ 				}
+-				user = (user_datum_t *) hashtab_search(policydbp->p_users.table, (hashtab_key_t)
+-								       id);
++				user =
++				    (user_datum_t *) hashtab_search(policydbp->
++								    p_users.
++								    table,
++								    (hashtab_key_t)
++								    id);
+ 				if (!user) {
+ 					yyerror2("unknown user %s", id);
+ 					constraint_expr_destroy(expr);
+@@ -2780,12 +3204,17 @@ uintptr_t define_cexpr(uint32_t expr_type, uintptr_t arg1, uintptr_t arg2)
+ 				val = user->s.value;
+ 			} else if (expr->attr & CEXPR_ROLE) {
+ 				if (!is_id_in_scope(SYM_ROLES, id)) {
+-					yyerror2("role %s is not within scope", id);
++					yyerror2("role %s is not within scope",
++						 id);
+ 					constraint_expr_destroy(expr);
+ 					return 0;
+ 				}
+-				role = (role_datum_t *) hashtab_search(policydbp->p_roles.table, (hashtab_key_t)
+-								       id);
++				role =
++				    (role_datum_t *) hashtab_search(policydbp->
++								    p_roles.
++								    table,
++								    (hashtab_key_t)
++								    id);
+ 				if (!role) {
+ 					yyerror2("unknown role %s", id);
+ 					constraint_expr_destroy(expr);
+@@ -2814,22 +3243,19 @@ uintptr_t define_cexpr(uint32_t expr_type, uintptr_t arg1, uintptr_t arg2)
+ 		ebitmap_destroy(&negset);
+ 		return (uintptr_t) expr;
+ 	default:
+-		yyerror("invalid constraint expression");
+-		constraint_expr_destroy(expr);
+-		return 0;
++		break;
+ 	}
+ 
+ 	yyerror("invalid constraint expression");
+-	free(expr);
++	constraint_expr_destroy(expr);
+ 	return 0;
+ }
+ 
+ int define_conditional(cond_expr_t * expr, avrule_t * t, avrule_t * f)
+ {
+ 	cond_expr_t *e;
+-	int depth, retval;
++	int depth;
+ 	cond_node_t cn, *cn_old;
+-	avrule_t *tmp, *last_tmp;
+ 
+ 	/* expression cannot be NULL */
+ 	if (!expr) {
+@@ -2858,7 +3284,8 @@ int define_conditional(cond_expr_t * expr, avrule_t * t, avrule_t * f)
+ 		switch (e->expr_type) {
+ 		case COND_NOT:
+ 			if (depth < 0) {
+-				yyerror("illegal conditional expression; Bad NOT");
++				yyerror
++				    ("illegal conditional expression; Bad NOT");
+ 				return -1;
+ 			}
+ 			break;
+@@ -2868,14 +3295,16 @@ int define_conditional(cond_expr_t * expr, avrule_t * t, avrule_t * f)
+ 		case COND_EQ:
+ 		case COND_NEQ:
+ 			if (depth < 1) {
+-				yyerror("illegal conditional expression; Bad binary op");
++				yyerror
++				    ("illegal conditional expression; Bad binary op");
+ 				return -1;
+ 			}
+ 			depth--;
+ 			break;
+ 		case COND_BOOL:
+ 			if (depth == (COND_EXPR_MAXDEPTH - 1)) {
+-				yyerror("conditional expression is like totally too deep");
++				yyerror
++				    ("conditional expression is like totally too deep");
+ 				return -1;
+ 			}
+ 			depth++;
+@@ -2908,6 +3337,9 @@ int define_conditional(cond_expr_t * expr, avrule_t * t, avrule_t * f)
+ 		return -1;
+ 	}
+ 
++	/* Required for SETools libqpol */
++	avrule_t *tmp, *last_tmp;
++	int retval;
+ 	/* verify te rules -- both true and false branches of conditional */
+ 	tmp = cn.avtrue_list;
+ 	last_tmp = NULL;
+@@ -3053,7 +3485,8 @@ cond_expr_t *define_cond_expr(uint32_t expr_type, void *arg1, void *arg2)
+ 			e2 = e2->next;
+ 		}
+ 		if (!e1 || e1->next) {
+-			yyerror("illegal left side of conditional binary op expression");
++			yyerror
++			    ("illegal left side of conditional binary op expression");
+ 			free(expr);
+ 			return NULL;
+ 		}
+@@ -3066,7 +3499,8 @@ cond_expr_t *define_cond_expr(uint32_t expr_type, void *arg1, void *arg2)
+ 			e2 = e2->next;
+ 		}
+ 		if (!e1 || e1->next) {
+-			yyerror("illegal right side of conditional binary op expression");
++			yyerror
++			    ("illegal right side of conditional binary op expression");
+ 			free(expr);
+ 			return NULL;
+ 		}
+@@ -3086,9 +3520,13 @@ cond_expr_t *define_cond_expr(uint32_t expr_type, void *arg1, void *arg2)
+ 			free(expr);
+ 			return NULL;
+ 		}
+-		bool_var = (cond_bool_datum_t *) hashtab_search(policydbp->p_bools.table, (hashtab_key_t) id);
++		bool_var =
++		    (cond_bool_datum_t *) hashtab_search(policydbp->p_bools.
++							 table,
++							 (hashtab_key_t) id);
+ 		if (!bool_var) {
+-			yyerror2("unknown boolean %s in conditional expression", id);
++			yyerror2("unknown boolean %s in conditional expression",
++				 id);
+ 			free(expr);
+ 			free(id);
+ 			return NULL;
+@@ -3098,6 +3536,7 @@ cond_expr_t *define_cond_expr(uint32_t expr_type, void *arg1, void *arg2)
+ 		return expr;
+ 	default:
+ 		yyerror("illegal conditional expression");
++		free(expr);
+ 		return NULL;
+ 	}
+ }
+@@ -3156,14 +3595,16 @@ static int parse_categories(char *id, level_datum_t * levdatum, ebitmap_t * cats
+ 
+ 		*(id_end++) = '\0';
+ 
+-		cdatum = (cat_datum_t *) hashtab_search(policydbp->p_cats.table, (hashtab_key_t)
++		cdatum = (cat_datum_t *) hashtab_search(policydbp->p_cats.table,
++							(hashtab_key_t)
+ 							id_start);
+ 		if (!cdatum) {
+ 			yyerror2("unknown category %s", id_start);
+ 			return -1;
+ 		}
+ 		range_start = cdatum->s.value - 1;
+-		cdatum = (cat_datum_t *) hashtab_search(policydbp->p_cats.table, (hashtab_key_t) id_end);
++		cdatum = (cat_datum_t *) hashtab_search(policydbp->p_cats.table,
++							(hashtab_key_t) id_end);
+ 		if (!cdatum) {
+ 			yyerror2("unknown category %s", id_end);
+ 			return -1;
+@@ -3175,7 +3616,8 @@ static int parse_categories(char *id, level_datum_t * levdatum, ebitmap_t * cats
+ 			return -1;
+ 		}
+ 	} else {
+-		cdatum = (cat_datum_t *) hashtab_search(policydbp->p_cats.table, (hashtab_key_t) id);
++		cdatum = (cat_datum_t *) hashtab_search(policydbp->p_cats.table,
++							(hashtab_key_t) id);
+ 		if (!cdatum) {
+ 			yyerror2("unknown category %s", id);
+ 			return -1;
+@@ -3188,7 +3630,9 @@ static int parse_categories(char *id, level_datum_t * levdatum, ebitmap_t * cats
+ 			uint32_t level_value = levdatum->level->sens - 1;
+ 			policydb_index_others(NULL, policydbp, 0);
+ 			yyerror2("category %s can not be associated "
+-				 "with level %s", policydbp->p_cat_val_to_name[i], policydbp->p_sens_val_to_name[level_value]);
++				 "with level %s",
++				 policydbp->p_cat_val_to_name[i],
++				 policydbp->p_sens_val_to_name[level_value]);
+ 			return -1;
+ 		}
+ 		if (ebitmap_set_bit(cats, i, TRUE)) {
+@@ -3200,7 +3644,8 @@ static int parse_categories(char *id, level_datum_t * levdatum, ebitmap_t * cats
+ 	return 0;
+ }
+ 
+-static int parse_semantic_categories(char *id, level_datum_t * levdatum, mls_semantic_cat_t ** cats)
++static int parse_semantic_categories(char *id, level_datum_t * levdatum,
++				     mls_semantic_cat_t ** cats)
+ {
+ 	cat_datum_t *cdatum;
+ 	mls_semantic_cat_t *newcat;
+@@ -3212,7 +3657,8 @@ static int parse_semantic_categories(char *id, level_datum_t * levdatum, mls_sem
+ 
+ 		*(id_end++) = '\0';
+ 
+-		cdatum = (cat_datum_t *) hashtab_search(policydbp->p_cats.table, (hashtab_key_t)
++		cdatum = (cat_datum_t *) hashtab_search(policydbp->p_cats.table,
++							(hashtab_key_t)
+ 							id_start);
+ 		if (!cdatum) {
+ 			yyerror2("unknown category %s", id_start);
+@@ -3220,14 +3666,16 @@ static int parse_semantic_categories(char *id, level_datum_t * levdatum, mls_sem
+ 		}
+ 		range_start = cdatum->s.value;
+ 
+-		cdatum = (cat_datum_t *) hashtab_search(policydbp->p_cats.table, (hashtab_key_t) id_end);
++		cdatum = (cat_datum_t *) hashtab_search(policydbp->p_cats.table,
++							(hashtab_key_t) id_end);
+ 		if (!cdatum) {
+ 			yyerror2("unknown category %s", id_end);
+ 			return -1;
+ 		}
+ 		range_end = cdatum->s.value;
+ 	} else {
+-		cdatum = (cat_datum_t *) hashtab_search(policydbp->p_cats.table, (hashtab_key_t) id);
++		cdatum = (cat_datum_t *) hashtab_search(policydbp->p_cats.table,
++							(hashtab_key_t) id);
+ 		if (!cdatum) {
+ 			yyerror2("unknown category %s", id);
+ 			return -1;
+@@ -3296,9 +3744,11 @@ int define_user(void)
+ 		}
+ 
+ 		levdatum = (level_datum_t *)
+-			hashtab_search(policydbp->p_levels.table, (hashtab_key_t) id);
++		    hashtab_search(policydbp->p_levels.table,
++				   (hashtab_key_t) id);
+ 		if (!levdatum) {
+-			yyerror2("unknown sensitivity %s used in user" " level definition", id);
++			yyerror2("unknown sensitivity %s used in user"
++				 " level definition", id);
+ 			free(id);
+ 			return -1;
+ 		}
+@@ -3307,7 +3757,8 @@ int define_user(void)
+ 		usrdatum->dfltlevel.sens = levdatum->level->sens;
+ 
+ 		while ((id = queue_remove(id_queue))) {
+-			if (parse_semantic_categories(id, levdatum, &usrdatum->dfltlevel.cat)) {
++			if (parse_semantic_categories(id, levdatum,
++			                            &usrdatum->dfltlevel.cat)) {
+ 				free(id);
+ 				return -1;
+ 			}
+@@ -3318,9 +3769,11 @@ int define_user(void)
+ 
+ 		for (l = 0; l < 2; l++) {
+ 			levdatum = (level_datum_t *)
+-				hashtab_search(policydbp->p_levels.table, (hashtab_key_t) id);
++			    hashtab_search(policydbp->p_levels.table,
++					   (hashtab_key_t) id);
+ 			if (!levdatum) {
+-				yyerror2("unknown sensitivity %s used in user" " range definition", id);
++				yyerror2("unknown sensitivity %s used in user"
++					 " range definition", id);
+ 				free(id);
+ 				return -1;
+ 			}
+@@ -3329,7 +3782,8 @@ int define_user(void)
+ 			usrdatum->range.level[l].sens = levdatum->level->sens;
+ 
+ 			while ((id = queue_remove(id_queue))) {
+-				if (parse_semantic_categories(id, levdatum, &usrdatum->range.level[l].cat)) {
++				if (parse_semantic_categories(id, levdatum,
++				               &usrdatum->range.level[l].cat)) {
+ 					free(id);
+ 					return -1;
+ 				}
+@@ -3342,7 +3796,8 @@ int define_user(void)
+ 		}
+ 
+ 		if (l == 0) {
+-			if (mls_semantic_level_cpy(&usrdatum->range.level[1], &usrdatum->range.level[0])) {
++			if (mls_semantic_level_cpy(&usrdatum->range.level[1],
++			                           &usrdatum->range.level[0])) {
+ 				yyerror("out of memory");
+ 				return -1;
+ 			}
+@@ -3362,11 +3817,11 @@ static int parse_security_context(context_struct_t * c)
+ 
+ 	if (pass == 1) {
+ 		id = queue_remove(id_queue);
+-		free(id);	       /* user  */
++		free(id);	/* user  */
+ 		id = queue_remove(id_queue);
+-		free(id);	       /* role  */
++		free(id);	/* role  */
+ 		id = queue_remove(id_queue);
+-		free(id);	       /* type  */
++		free(id);	/* type  */
+ 		if (mlspol) {
+ 			id = queue_remove(id_queue);
+ 			free(id);
+@@ -3383,6 +3838,12 @@ static int parse_security_context(context_struct_t * c)
+ 		return 0;
+ 	}
+ 
++	/* check context c to make sure ok to dereference c later */
++	if (c == NULL) {
++		yyerror("null context pointer!");
++		return -1;
++	}
++
+ 	context_init(c);
+ 
+ 	/* extract the user */
+@@ -3396,7 +3857,8 @@ static int parse_security_context(context_struct_t * c)
+ 		free(id);
+ 		goto bad;
+ 	}
+-	usrdatum = (user_datum_t *) hashtab_search(policydbp->p_users.table, (hashtab_key_t) id);
++	usrdatum = (user_datum_t *) hashtab_search(policydbp->p_users.table,
++						   (hashtab_key_t) id);
+ 	if (!usrdatum) {
+ 		yyerror2("user %s is not defined", id);
+ 		free(id);
+@@ -3418,7 +3880,8 @@ static int parse_security_context(context_struct_t * c)
+ 		free(id);
+ 		return -1;
+ 	}
+-	role = (role_datum_t *) hashtab_search(policydbp->p_roles.table, (hashtab_key_t) id);
++	role = (role_datum_t *) hashtab_search(policydbp->p_roles.table,
++					       (hashtab_key_t) id);
+ 	if (!role) {
+ 		yyerror2("role %s is not defined", id);
+ 		free(id);
+@@ -3440,7 +3903,8 @@ static int parse_security_context(context_struct_t * c)
+ 		free(id);
+ 		return -1;
+ 	}
+-	typdatum = (type_datum_t *) hashtab_search(policydbp->p_types.table, (hashtab_key_t) id);
++	typdatum = (type_datum_t *) hashtab_search(policydbp->p_types.table,
++						   (hashtab_key_t) id);
+ 	if (!typdatum || typdatum->flavor == TYPE_ATTRIB) {
+ 		yyerror2("type %s is not defined or is an attribute", id);
+ 		free(id);
+@@ -3455,14 +3919,16 @@ static int parse_security_context(context_struct_t * c)
+ 		/* extract the low sensitivity */
+ 		id = (char *)queue_head(id_queue);
+ 		if (!id) {
+-			yyerror("no sensitivity name for sid context" " definition?");
++			yyerror("no sensitivity name for sid context"
++				" definition?");
+ 			return -1;
+ 		}
+ 
+ 		id = (char *)queue_remove(id_queue);
+ 		for (l = 0; l < 2; l++) {
+ 			levdatum = (level_datum_t *)
+-				hashtab_search(policydbp->p_levels.table, (hashtab_key_t) id);
++			    hashtab_search(policydbp->p_levels.table,
++					   (hashtab_key_t) id);
+ 			if (!levdatum) {
+ 				yyerror2("Sensitivity %s is not defined", id);
+ 				free(id);
+@@ -3473,7 +3939,8 @@ static int parse_security_context(context_struct_t * c)
+ 
+ 			/* extract low category set */
+ 			while ((id = queue_remove(id_queue))) {
+-				if (parse_categories(id, levdatum, &c->range.level[l].cat)) {
++				if (parse_categories(id, levdatum,
++						     &c->range.level[l].cat)) {
+ 					free(id);
+ 					return -1;
+ 				}
+@@ -3488,7 +3955,8 @@ static int parse_security_context(context_struct_t * c)
+ 
+ 		if (l == 0) {
+ 			c->range.level[1].sens = c->range.level[0].sens;
+-			if (ebitmap_cpy(&c->range.level[1].cat, &c->range.level[0].cat)) {
++			if (ebitmap_cpy(&c->range.level[1].cat,
++					&c->range.level[0].cat)) {
+ 
+ 				yyerror("out of memory");
+ 				goto bad;
+@@ -3554,12 +4022,10 @@ int define_fs_context(unsigned int major, unsigned int minor)
+ {
+ 	ocontext_t *newc, *c, *head;
+ 
+-#ifdef SEPOL_TARGET_XEN
+ 	if (policydbp->target_platform != SEPOL_TARGET_SELINUX) {
+ 		yyerror("fscon not supported for target");
+ 		return -1;
+ 	}
+-#endif
+ 
+ 	if (pass == 1) {
+ 		parse_security_context(NULL);
+@@ -3597,7 +4063,8 @@ int define_fs_context(unsigned int major, unsigned int minor)
+ 
+ 	for (c = head; c; c = c->next) {
+ 		if (!strcmp(newc->u.name, c->u.name)) {
+-			yyerror2("duplicate entry for file system %s", newc->u.name);
++			yyerror2("duplicate entry for file system %s",
++				 newc->u.name);
+ 			context_destroy(&newc->context[0]);
+ 			context_destroy(&newc->context[1]);
+ 			free(newc->u.name);
+@@ -3617,17 +4084,13 @@ int define_pirq_context(unsigned int pirq)
+ 	ocontext_t *newc, *c, *l, *head;
+ 	char *id;
+ 
+-#ifndef SEPOL_TARGET_XEN
+-	yyerror("pirqcon not supported for target");
+-	return -1;
+-#else
+ 	if (policydbp->target_platform != SEPOL_TARGET_XEN) {
+ 		yyerror("pirqcon not supported for target");
+ 		return -1;
+ 	}
+ 
+ 	if (pass == 1) {
+-		id = (char *)queue_remove(id_queue);
++		id = (char *) queue_remove(id_queue);
+ 		free(id);
+ 		parse_security_context(NULL);
+ 		return 0;
+@@ -3665,10 +4128,9 @@ int define_pirq_context(unsigned int pirq)
+ 
+ 	return 0;
+ 
+-      bad:
++bad:
+ 	free(newc);
+ 	return -1;
+-#endif
+ }
+ 
+ int define_iomem_context(unsigned long low, unsigned long high)
+@@ -3676,10 +4138,6 @@ int define_iomem_context(unsigned long low, unsigned long high)
+ 	ocontext_t *newc, *c, *l, *head;
+ 	char *id;
+ 
+-#ifndef SEPOL_TARGET_XEN
+-	yyerror("iomemcon not supported for target");
+-	return -1;
+-#else
+ 	if (policydbp->target_platform != SEPOL_TARGET_XEN) {
+ 		yyerror("iomemcon not supported for target");
+ 		return -1;
+@@ -3699,7 +4157,7 @@ int define_iomem_context(unsigned long low, unsigned long high)
+ 	}
+ 	memset(newc, 0, sizeof(ocontext_t));
+ 
+-	newc->u.iomem.low_iomem = low;
++	newc->u.iomem.low_iomem  = low;
+ 	newc->u.iomem.high_iomem = high;
+ 
+ 	if (low > high) {
+@@ -3720,7 +4178,9 @@ int define_iomem_context(unsigned long low, unsigned long high)
+ 		low2 = c->u.iomem.low_iomem;
+ 		high2 = c->u.iomem.high_iomem;
+ 		if (low <= high2 && low2 <= high) {
+-			yyerror2("iomemcon entry for 0x%x-0x%x overlaps with " "earlier entry 0x%x-0x%x", low, high, low2, high2);
++			yyerror2("iomemcon entry for 0x%x-0x%x overlaps with "
++				"earlier entry 0x%x-0x%x", low, high,
++				low2, high2);
+ 			goto bad;
+ 		}
+ 	}
+@@ -3732,10 +4192,9 @@ int define_iomem_context(unsigned long low, unsigned long high)
+ 
+ 	return 0;
+ 
+-      bad:
++bad:
+ 	free(newc);
+ 	return -1;
+-#endif
+ }
+ 
+ int define_ioport_context(unsigned long low, unsigned long high)
+@@ -3743,10 +4202,6 @@ int define_ioport_context(unsigned long low, unsigned long high)
+ 	ocontext_t *newc, *c, *l, *head;
+ 	char *id;
+ 
+-#ifndef SEPOL_TARGET_XEN
+-	yyerror("ioportcon not supported for target");
+-	return -1;
+-#else
+ 	if (policydbp->target_platform != SEPOL_TARGET_XEN) {
+ 		yyerror("ioportcon not supported for target");
+ 		return -1;
+@@ -3766,7 +4221,7 @@ int define_ioport_context(unsigned long low, unsigned long high)
+ 	}
+ 	memset(newc, 0, sizeof(ocontext_t));
+ 
+-	newc->u.ioport.low_ioport = low;
++	newc->u.ioport.low_ioport  = low;
+ 	newc->u.ioport.high_ioport = high;
+ 
+ 	if (low > high) {
+@@ -3787,7 +4242,9 @@ int define_ioport_context(unsigned long low, unsigned long high)
+ 		low2 = c->u.ioport.low_ioport;
+ 		high2 = c->u.ioport.high_ioport;
+ 		if (low <= high2 && low2 <= high) {
+-			yyerror2("ioportcon entry for 0x%x-0x%x overlaps with" "earlier entry 0x%x-0x%x", low, high, low2, high2);
++			yyerror2("ioportcon entry for 0x%x-0x%x overlaps with"
++				"earlier entry 0x%x-0x%x", low, high,
++				low2, high2);
+ 			goto bad;
+ 		}
+ 	}
+@@ -3799,10 +4256,9 @@ int define_ioport_context(unsigned long low, unsigned long high)
+ 
+ 	return 0;
+ 
+-      bad:
++bad:
+ 	free(newc);
+ 	return -1;
+-#endif
+ }
+ 
+ int define_pcidevice_context(unsigned long device)
+@@ -3810,17 +4266,13 @@ int define_pcidevice_context(unsigned long device)
+ 	ocontext_t *newc, *c, *l, *head;
+ 	char *id;
+ 
+-#ifndef SEPOL_TARGET_XEN
+-	yyerror("pcidevicecon not supported for target");
+-	return -1;
+-#else
+ 	if (policydbp->target_platform != SEPOL_TARGET_XEN) {
+ 		yyerror("pcidevicecon not supported for target");
+ 		return -1;
+ 	}
+ 
+ 	if (pass == 1) {
+-		id = (char *)queue_remove(id_queue);
++		id = (char *) queue_remove(id_queue);
+ 		free(id);
+ 		parse_security_context(NULL);
+ 		return 0;
+@@ -3846,7 +4298,8 @@ int define_pcidevice_context(unsigned long device)
+ 
+ 		device2 = c->u.device;
+ 		if (device == device2) {
+-			yyerror2("duplicate pcidevicecon entry for 0x%x ", device);
++			yyerror2("duplicate pcidevicecon entry for 0x%x ",
++				 device);
+ 			goto bad;
+ 		}
+ 	}
+@@ -3858,10 +4311,9 @@ int define_pcidevice_context(unsigned long device)
+ 
+ 	return 0;
+ 
+-      bad:
++bad:
+ 	free(newc);
+ 	return -1;
+-#endif
+ }
+ 
+ int define_port_context(unsigned int low, unsigned int high)
+@@ -3870,12 +4322,10 @@ int define_port_context(unsigned int low, unsigned int high)
+ 	unsigned int protocol;
+ 	char *id;
+ 
+-#ifdef SEPOL_TARGET_XEN
+ 	if (policydbp->target_platform != SEPOL_TARGET_SELINUX) {
+ 		yyerror("portcon not supported for target");
+ 		return -1;
+ 	}
+-#endif
+ 
+ 	if (pass == 1) {
+ 		id = (char *)queue_remove(id_queue);
+@@ -3932,15 +4382,16 @@ int define_port_context(unsigned int low, unsigned int high)
+ 		if (protocol != prot2)
+ 			continue;
+ 		if (low == low2 && high == high2) {
+-			yyerror2("duplicate portcon entry for %s %d-%d ", id, low, high);
++			yyerror2("duplicate portcon entry for %s %d-%d ", id,
++				 low, high);
+ 			goto bad;
+ 		}
+ 		if (low2 <= low && high2 >= high) {
+-			yyerror2("portcon entry for %s %d-%d hidden by earlier " "entry for %d-%d", id, low, high, low2, high2);
++			yyerror2("portcon entry for %s %d-%d hidden by earlier "
++				 "entry for %d-%d", id, low, high, low2, high2);
+ 			goto bad;
+ 		}
+ 	}
+-	free(id);
+ 
+ 	if (l)
+ 		l->next = newc;
+@@ -3958,12 +4409,10 @@ int define_netif_context(void)
+ {
+ 	ocontext_t *newc, *c, *head;
+ 
+-#ifdef SEPOL_TARGET_XEN
+ 	if (policydbp->target_platform != SEPOL_TARGET_SELINUX) {
+ 		yyerror("netifcon not supported for target");
+ 		return -1;
+ 	}
+-#endif
+ 
+ 	if (pass == 1) {
+ 		free(queue_remove(id_queue));
+@@ -3999,7 +4448,8 @@ int define_netif_context(void)
+ 
+ 	for (c = head; c; c = c->next) {
+ 		if (!strcmp(newc->u.name, c->u.name)) {
+-			yyerror2("duplicate entry for network interface %s", newc->u.name);
++			yyerror2("duplicate entry for network interface %s",
++				 newc->u.name);
+ 			context_destroy(&newc->context[0]);
+ 			context_destroy(&newc->context[1]);
+ 			free(newc->u.name);
+@@ -4014,18 +4464,16 @@ int define_netif_context(void)
+ }
+ 
+ int define_ipv4_node_context()
+-{
++{	
+ 	char *id;
+ 	int rc = 0;
+ 	struct in_addr addr, mask;
+ 	ocontext_t *newc, *c, *l, *head;
+ 
+-#ifdef SEPOL_TARGET_XEN
+ 	if (policydbp->target_platform != SEPOL_TARGET_SELINUX) {
+ 		yyerror("nodecon not supported for target");
+ 		return -1;
+ 	}
+-#endif
+ 
+ 	if (pass == 1) {
+ 		free(queue_remove(id_queue));
+@@ -4097,7 +4545,7 @@ int define_ipv4_node_context()
+ 	else
+ 		policydbp->ocontexts[OCON_NODE] = newc;
+ 	rc = 0;
+-      out:
++out:
+ 	return rc;
+ }
+ 
+@@ -4108,12 +4556,10 @@ int define_ipv6_node_context(void)
+ 	struct in6_addr addr, mask;
+ 	ocontext_t *newc, *c, *l, *head;
+ 
+-#ifdef SEPOL_TARGET_XEN
+ 	if (policydbp->target_platform != SEPOL_TARGET_SELINUX) {
+ 		yyerror("nodecon not supported for target");
+ 		return -1;
+ 	}
+-#endif
+ 
+ 	if (pass == 1) {
+ 		free(queue_remove(id_queue));
+@@ -4162,8 +4608,14 @@ int define_ipv6_node_context(void)
+ 	}
+ 
+ 	memset(newc, 0, sizeof(ocontext_t));
++
++#ifdef DARWIN
++	memcpy(&newc->u.node6.addr[0], &addr.s6_addr[0], 16);
++	memcpy(&newc->u.node6.mask[0], &mask.s6_addr[0], 16);
++#else
+ 	memcpy(&newc->u.node6.addr[0], &addr.s6_addr32[0], 16);
+ 	memcpy(&newc->u.node6.mask[0], &mask.s6_addr32[0], 16);
++#endif
+ 
+ 	if (parse_security_context(&newc->context[0])) {
+ 		free(newc);
+@@ -4195,15 +4647,14 @@ int define_fs_use(int behavior)
+ {
+ 	ocontext_t *newc, *c, *head;
+ 
+-#ifdef SEPOL_TARGET_XEN
+ 	if (policydbp->target_platform != SEPOL_TARGET_SELINUX) {
+ 		yyerror("fsuse not supported for target");
+ 		return -1;
+ 	}
+-#endif
+ 
+ 	if (pass == 1) {
+ 		free(queue_remove(id_queue));
++		/* Required for SETools libqpol */
+ 		if (behavior != SECURITY_FS_USE_PSIDS)
+ 			parse_security_context(NULL);
+ 		return 0;
+@@ -4222,6 +4673,7 @@ int define_fs_use(int behavior)
+ 		return -1;
+ 	}
+ 	newc->v.behavior = behavior;
++	/* Required for SETools libqpol */
+ 	if (newc->v.behavior != SECURITY_FS_USE_PSIDS) {
+ 		if (parse_security_context(&newc->context[0])) {
+ 			free(newc->u.name);
+@@ -4235,7 +4687,8 @@ int define_fs_use(int behavior)
+ 
+ 	for (c = head; c; c = c->next) {
+ 		if (!strcmp(newc->u.name, c->u.name)) {
+-			yyerror2("duplicate fs_use entry for filesystem type %s", newc->u.name);
++			yyerror2("duplicate fs_use entry for filesystem type %s",
++				 newc->u.name);
+ 			context_destroy(&newc->context[0]);
+ 			free(newc->u.name);
+ 			free(newc);
+@@ -4255,12 +4708,10 @@ int define_genfs_context_helper(char *fstype, int has_type)
+ 	char *type = NULL;
+ 	int len, len2;
+ 
+-#ifdef SEPOL_TARGET_XEN
+ 	if (policydbp->target_platform != SEPOL_TARGET_SELINUX) {
+ 		yyerror("genfs not supported for target");
+ 		return -1;
+ 	}
+-#endif
+ 
+ 	if (pass == 1) {
+ 		free(fstype);
+@@ -4271,7 +4722,8 @@ int define_genfs_context_helper(char *fstype, int has_type)
+ 		return 0;
+ 	}
+ 
+-	for (genfs_p = NULL, genfs = policydbp->genfs; genfs; genfs_p = genfs, genfs = genfs->next) {
++	for (genfs_p = NULL, genfs = policydbp->genfs;
++	     genfs; genfs_p = genfs, genfs = genfs->next) {
+ 		if (strcmp(fstype, genfs->fstype) <= 0)
+ 			break;
+ 	}
+@@ -4290,9 +4742,6 @@ int define_genfs_context_helper(char *fstype, int has_type)
+ 		else
+ 			policydbp->genfs = newgenfs;
+ 		genfs = newgenfs;
+-	} else {
+-		free(fstype);
+-		fstype=NULL;
+ 	}
+ 
+ 	newc = (ocontext_t *) malloc(sizeof(ocontext_t));
+@@ -4340,16 +4789,17 @@ int define_genfs_context_helper(char *fstype, int has_type)
+ 			goto fail;
+ 		}
+ 	}
+-	free(type);
+-	type = NULL;
+ 	if (parse_security_context(&newc->context[0]))
+ 		goto fail;
+ 
+ 	head = genfs->head;
+ 
+ 	for (p = NULL, c = head; c; p = c, c = c->next) {
+-		if (!strcmp(newc->u.name, c->u.name) && (!newc->v.sclass || !c->v.sclass || newc->v.sclass == c->v.sclass)) {
+-			yyerror2("duplicate entry for genfs entry (%s, %s)", fstype, newc->u.name);
++		if (!strcmp(newc->u.name, c->u.name) &&
++		    (!newc->v.sclass || !c->v.sclass
++		     || newc->v.sclass == c->v.sclass)) {
++			yyerror2("duplicate entry for genfs entry (%s, %s)",
++				 fstype, newc->u.name);
+ 			goto fail;
+ 		}
+ 		len = strlen(newc->u.name);
+@@ -4434,29 +4884,21 @@ int define_range_trans(int class_specified)
+ 	}
+ 
+ 	if (class_specified) {
+-		while ((id = queue_remove(id_queue))) {
+-			if (!is_id_in_scope(SYM_CLASSES, id)) {
+-				yyerror2("class %s is not within scope", id);
+-				free(id);
+-				goto out;
+-			}
+-			cladatum = hashtab_search(policydbp->p_classes.table, id);
+-			if (!cladatum) {
+-				yyerror2("unknown class %s", id);
+-				goto out;
+-			}
+-
+-			ebitmap_set_bit(&rule->tclasses, cladatum->s.value - 1, TRUE);
+-			free(id);
+-		}
++		if (read_classes(&rule->tclasses))
++			goto out;
+ 	} else {
+-		cladatum = hashtab_search(policydbp->p_classes.table, "process");
++		cladatum = hashtab_search(policydbp->p_classes.table,
++		                          "process");
+ 		if (!cladatum) {
+-			yyerror2("could not find process class for " "legacy range_transition statement");
++			yyerror2("could not find process class for "
++			         "legacy range_transition statement");
+ 			goto out;
+ 		}
+ 
+-		ebitmap_set_bit(&rule->tclasses, cladatum->s.value - 1, TRUE);
++		if (ebitmap_set_bit(&rule->tclasses, cladatum->s.value - 1, TRUE)) {
++			yyerror("out of memory");
++			goto out;
++		}
+ 	}
+ 
+ 	id = (char *)queue_remove(id_queue);
+@@ -4467,7 +4909,8 @@ int define_range_trans(int class_specified)
+ 	for (l = 0; l < 2; l++) {
+ 		levdatum = hashtab_search(policydbp->p_levels.table, id);
+ 		if (!levdatum) {
+-			yyerror2("unknown level %s used in range_transition " "definition", id);
++			yyerror2("unknown level %s used in range_transition "
++			         "definition", id);
+ 			free(id);
+ 			goto out;
+ 		}
+@@ -4476,7 +4919,8 @@ int define_range_trans(int class_specified)
+ 		rule->trange.level[l].sens = levdatum->level->sens;
+ 
+ 		while ((id = queue_remove(id_queue))) {
+-			if (parse_semantic_categories(id, levdatum, &rule->trange.level[l].cat)) {
++			if (parse_semantic_categories(id, levdatum,
++			                          &rule->trange.level[l].cat)) {
+ 				free(id);
+ 				goto out;
+ 			}
+@@ -4488,7 +4932,8 @@ int define_range_trans(int class_specified)
+ 			break;
+ 	}
+ 	if (l == 0) {
+-		if (mls_semantic_level_cpy(&rule->trange.level[1], &rule->trange.level[0])) {
++		if (mls_semantic_level_cpy(&rule->trange.level[1],
++		                           &rule->trange.level[0])) {
+ 			yyerror("out of memory");
+ 			goto out;
+ 		}
+@@ -4497,8 +4942,9 @@ int define_range_trans(int class_specified)
+ 	append_range_trans(rule);
+ 	return 0;
+ 
+-      out:
++out:
+ 	range_trans_rule_destroy(rule);
++	free(rule);
+ 	return -1;
+ }
+ 
+diff --git a/libqpol/src/policy_define.h b/libqpol/src/policy_define.h
+index f273fedf94cb..14c17479c3af 100644
+--- a/libqpol/src/policy_define.h
++++ b/libqpol/src/policy_define.h
+@@ -19,24 +19,32 @@
+ #define TRUE 1
+ #define FALSE 0
+ 
++/* Used by SETools libqpol */
+ /** parser used to support fs_use_psid declarations, so revert that bit
+  *  of code here */
+ #define SECURITY_FS_USE_PSIDS 6
++/* Used by SETools to determine if source MLS or not */
++int define_mls(void);
+ 
+ avrule_t *define_cond_compute_type(int which);
+-avrule_t *define_cond_pol_list(avrule_t * avlist, avrule_t * stmt);
++avrule_t *define_cond_pol_list(avrule_t *avlist, avrule_t *stmt);
+ avrule_t *define_cond_te_avtab(int which);
+ avrule_t *define_cond_filename_trans(void);
+-cond_expr_t *define_cond_expr(uint32_t expr_type, void *arg1, void *arg2);
++cond_expr_t *define_cond_expr(uint32_t expr_type, void *arg1, void* arg2);
+ int define_attrib(void);
++int define_attrib_role(void);
+ int define_av_perms(int inherits);
+-int define_bool(void);
++int define_bool_tunable(int is_tunable);
+ int define_category(void);
+ int define_class(void);
++int define_default_user(int which);
++int define_default_role(int which);
++int define_default_type(int which);
++int define_default_range(int which);
+ int define_common_perms(void);
+ int define_compute_type(int which);
+-int define_conditional(cond_expr_t * expr, avrule_t * t_list, avrule_t * f_list);
+-int define_constraint(constraint_expr_t * expr);
++int define_conditional(cond_expr_t *expr, avrule_t *t_list, avrule_t *f_list );
++int define_constraint(constraint_expr_t *expr);
+ int define_dominance(void);
+ int define_fs_context(unsigned int major, unsigned int minor);
+ int define_fs_use(int behavior);
+@@ -46,7 +54,6 @@ int define_initial_sid(void);
+ int define_ipv4_node_context(void);
+ int define_ipv6_node_context(void);
+ int define_level(void);
+-int define_mls(void);
+ int define_netif_context(void);
+ int define_permissive(void);
+ int define_polcap(void);
+@@ -57,8 +64,10 @@ int define_ioport_context(unsigned long low, unsigned long high);
+ int define_pcidevice_context(unsigned long device);
+ int define_range_trans(int class_specified);
+ int define_role_allow(void);
+-int define_role_trans(void);
++int define_role_trans(int class_specified);
+ int define_role_types(void);
++int define_role_attr(void);
++int define_roleattribute(void);
+ int define_filename_trans(void);
+ int define_sens(void);
+ int define_te_avtab(int which);
+@@ -67,11 +76,11 @@ int define_typeattribute(void);
+ int define_typebounds(void);
+ int define_type(int alias);
+ int define_user(void);
+-int define_validatetrans(constraint_expr_t * expr);
+-int insert_id(char *id, int push);
++int define_validatetrans(constraint_expr_t *expr);
++int insert_id(char *id,int push);
+ int insert_separator(int push);
+-role_datum_t *define_role_dom(role_datum_t * r);
+-role_datum_t *merge_roles_dom(role_datum_t * r1, role_datum_t * r2);
++role_datum_t *define_role_dom(role_datum_t *r);
++role_datum_t *merge_roles_dom(role_datum_t *r1,role_datum_t *r2);
+ uintptr_t define_cexpr(uint32_t expr_type, uintptr_t arg1, uintptr_t arg2);
+ 
+-#endif				       /* _POLICY_DEFINE_H_ */
++#endif /* _POLICY_DEFINE_H_ */
+diff --git a/libqpol/src/policy_parse.y b/libqpol/src/policy_parse.y
+index dc16c6f9849d..357f3d8f491e 100644
+--- a/libqpol/src/policy_parse.y
++++ b/libqpol/src/policy_parse.y
+@@ -3,6 +3,8 @@
+  *
+  * This file is based upon checkpolicy/policy_parse.y from NSA's SVN
+  * repository.  It has been modified to support older policy formats.
++ * The older format just seems to be FSUSEPSID support (see fs_use_def
++ * entry.
+  */
+ 
+ /*
+@@ -35,6 +37,7 @@
+ /* FLASK */
+ 
+ %{
++/* Add for SETools */
+ #include <config.h>
+ 
+ #include <sys/types.h>
+@@ -55,12 +58,16 @@
+ #include <sepol/policydb/conditional.h>
+ #include <sepol/policydb/flask.h>
+ #include <sepol/policydb/hierarchy.h>
++/* Add for SETools libqpol */
+ #ifdef HAVE_SEPOL_POLICYCAPS
+ #include <sepol/policydb/polcaps.h>
+ #endif
+ 
+ #include "queue.h"
++
++/* #include "checkpolicy.h" - Remove for setools and replace with: */
+ #include <qpol/policy.h>
++
+ #include "module_compiler.h"
+ #include "policy_define.h"
+ 
+@@ -74,6 +81,7 @@ extern int yyerror(char *msg);
+ 
+ typedef int (* require_func_t)();
+ 
++/* Add for SETools libqpol */
+ /* redefine input so we can read from a string */
+ /* borrowed from O'Reilly lex and yacc pg 157 */
+ extern char qpol_src_input[];
+@@ -107,6 +115,8 @@ extern char *qpol_src_inputlim;/* end of data */
+ %token INHERITS
+ %token SID
+ %token ROLE
++%token ROLEATTRIBUTE
++%token ATTRIBUTE_ROLE
+ %token ROLES
+ %token TYPEALIAS
+ %token TYPEATTRIBUTE
+@@ -116,6 +126,7 @@ extern char *qpol_src_inputlim;/* end of data */
+ %token ALIAS
+ %token ATTRIBUTE
+ %token BOOL
++%token TUNABLE
+ %token IF
+ %token ELSE
+ %token TYPE_TRANSITION
+@@ -156,6 +167,9 @@ extern char *qpol_src_inputlim;/* end of data */
+ %token MODULE VERSION_IDENTIFIER REQUIRE OPTIONAL
+ %token POLICYCAP
+ %token PERMISSIVE
++%token FILESYSTEM
++%token DEFAULT_USER DEFAULT_ROLE DEFAULT_TYPE DEFAULT_RANGE
++%token LOW_HIGH LOW HIGH
+ 
+ %left OR
+ %left XOR
+@@ -170,7 +184,7 @@ base_policy             : { if (define_policy(pass, 0) == -1) return -1; }
+                           classes initial_sids access_vectors
+                           { if (pass == 1) { if (policydb_index_classes(policydbp)) return -1; }
+                             else if (pass == 2) { if (policydb_index_others(NULL, policydbp, 0)) return -1; }}
+-			  opt_mls te_rbac users opt_constraints 
++			  opt_default_rules opt_mls te_rbac users opt_constraints 
+                          { if (pass == 1) { if (policydb_index_bools(policydbp)) return -1;}
+ 			   else if (pass == 2) { if (policydb_index_others(NULL, policydbp, 0)) return -1;}}
+ 			  initial_sid_contexts opt_fs_contexts opt_fs_uses opt_genfs_contexts net_contexts opt_dev_contexts
+@@ -208,6 +222,46 @@ av_perms_def		: CLASS identifier '{' identifier_list '}'
+                         | CLASS identifier INHERITS identifier '{' identifier_list '}'
+ 			{if (define_av_perms(TRUE)) return -1;}
+ 			;
++opt_default_rules	: default_rules
++			|
++			;
++default_rules		: default_user_def
++			| default_role_def
++			| default_type_def
++			| default_range_def
++			| default_rules default_user_def
++			| default_rules default_role_def
++			| default_rules default_type_def
++			| default_rules default_range_def
++			;
++default_user_def	: DEFAULT_USER names SOURCE ';'
++			{if (define_default_user(DEFAULT_SOURCE)) return -1; }
++			| DEFAULT_USER names TARGET ';'
++			{if (define_default_user(DEFAULT_TARGET)) return -1; }
++			;
++default_role_def	: DEFAULT_ROLE names SOURCE ';'
++			{if (define_default_role(DEFAULT_SOURCE)) return -1; }
++			| DEFAULT_ROLE names TARGET ';'
++			{if (define_default_role(DEFAULT_TARGET)) return -1; }
++			;
++default_type_def	: DEFAULT_TYPE names SOURCE ';'
++			{if (define_default_type(DEFAULT_SOURCE)) return -1; }
++			| DEFAULT_TYPE names TARGET ';'
++			{if (define_default_type(DEFAULT_TARGET)) return -1; }
++			;
++default_range_def	: DEFAULT_RANGE names SOURCE LOW ';'
++			{if (define_default_range(DEFAULT_SOURCE_LOW)) return -1; }
++			| DEFAULT_RANGE names SOURCE HIGH ';'
++			{if (define_default_range(DEFAULT_SOURCE_HIGH)) return -1; }
++			| DEFAULT_RANGE names SOURCE LOW_HIGH ';'
++			{if (define_default_range(DEFAULT_SOURCE_LOW_HIGH)) return -1; }
++			| DEFAULT_RANGE names TARGET LOW ';'
++			{if (define_default_range(DEFAULT_TARGET_LOW)) return -1; }
++			| DEFAULT_RANGE names TARGET HIGH ';'
++			{if (define_default_range(DEFAULT_TARGET_HIGH)) return -1; }
++			| DEFAULT_RANGE names TARGET LOW_HIGH ';'
++			{if (define_default_range(DEFAULT_TARGET_LOW_HIGH)) return -1; }
++			;
+ opt_mls			: mls
+                         | 
+ 			;
+@@ -216,8 +270,14 @@ mls			: sensitivities dominance opt_categories levels mlspolicy
+ sensitivities	 	: sensitivity_def 
+ 			| sensitivities sensitivity_def
+ 			;
+-/* Need to call define_mls here, as we are working with files */
+-/* only, not command line options */
++/*sensitivity_def		: SENSITIVITY identifier alias_def ';'
++			{if (define_sens()) return -1;}
++			| SENSITIVITY identifier ';'
++			{if (define_sens()) return -1;}
++	                ;
++The above has been replaced by: */
++/* Needed for SETools to call define_mls here, as we are working */
++/* with files only, not command line options */
+ sensitivity_def		: SENSITIVITY identifier alias_def ';'
+ 			{if (define_mls() | define_sens()) return -1;}
+ 			| SENSITIVITY identifier ';'
+@@ -271,10 +331,13 @@ te_rbac_decl		: te_decl
+ 			| policycap_def
+ 			| ';'
+                         ;
+-rbac_decl		: role_type_def
++rbac_decl		: attribute_role_def
++			| role_type_def
+                         | role_dominance
+                         | role_trans_def
+  			| role_allow_def
++			| roleattribute_def
++			| role_attr_def
+ 			;
+ te_decl			: attribute_def
+                         | type_def
+@@ -282,6 +345,7 @@ te_decl			: attribute_def
+                         | typeattribute_def
+                         | typebounds_def
+                         | bool_def
++			| tunable_def
+                         | transition_def
+                         | range_trans_def
+                         | te_avtab_def
+@@ -308,8 +372,11 @@ opt_attr_list           : ',' id_comma_list
+ 			| 
+ 			;
+ bool_def                : BOOL identifier bool_val ';'
+-                        {if (define_bool()) return -1;}
++                        { if (define_bool_tunable(0)) return -1; }
+                         ;
++tunable_def		: TUNABLE identifier bool_val ';'
++			{ if (define_bool_tunable(1)) return -1; }
++			;
+ bool_val                : CTRUE
+  			{ if (insert_id("T",0)) return -1; }
+                         | CFALSE
+@@ -364,7 +431,7 @@ cond_rule_def           : cond_transition_def
+ cond_transition_def	: TYPE_TRANSITION names names ':' names identifier filename ';'
+                         { $$ = define_cond_filename_trans() ;
+                           if ($$ == COND_ERR) return -1;}
+-                        | TYPE_TRANSITION names names ':' names identifier ';'
++			| TYPE_TRANSITION names names ':' names identifier ';'
+                         { $$ = define_cond_compute_type(AVRULE_TRANSITION) ;
+                           if ($$ == COND_ERR) return -1;}
+                         | TYPE_MEMBER names names ':' names identifier ';'
+@@ -399,6 +466,7 @@ cond_dontaudit_def	: DONTAUDIT names names ':' names names ';'
+ 			{ $$ = define_cond_te_avtab(AVRULE_DONTAUDIT);
+                           if ($$ == COND_ERR) return -1; }
+ 		        ;
++			;
+ transition_def		: TYPE_TRANSITION  names names ':' names identifier filename ';'
+ 			{if (define_filename_trans()) return -1; }
+ 			| TYPE_TRANSITION names names ':' names identifier ';'
+@@ -434,15 +502,21 @@ dontaudit_def		: DONTAUDIT names names ':' names names ';'
+ neverallow_def		: NEVERALLOW names names ':' names names  ';'
+ 			{if (define_te_avtab(AVRULE_NEVERALLOW)) return -1; }
+ 		        ;
++attribute_role_def	: ATTRIBUTE_ROLE identifier ';'
++			{if (define_attrib_role()) return -1; }
++		        ;
+ role_type_def		: ROLE identifier TYPES names ';'
+ 			{if (define_role_types()) return -1;}
+- 			| ROLE identifier';'
+- 			{if (define_role_types()) return -1;}
++			;
++role_attr_def		: ROLE identifier opt_attr_list ';'
++ 			{if (define_role_attr()) return -1;}
+                         ;
+ role_dominance		: DOMINANCE '{' roles '}'
+ 			;
+ role_trans_def		: ROLE_TRANSITION names names identifier ';'
+-			{if (define_role_trans()) return -1; }
++			{if (define_role_trans(0)) return -1; }
++			| ROLE_TRANSITION names names ':' names identifier ';'
++			{if (define_role_trans(1)) return -1;}
+ 			;
+ role_allow_def		: ALLOW names names ';'
+ 			{if (define_role_allow()) return -1; }
+@@ -457,6 +531,9 @@ role_def		: ROLE identifier_push ';'
+ 			| ROLE identifier_push '{' roles '}'
+                         {$$ = define_role_dom((role_datum_t*)$4); if ($$ == 0) return -1;}
+ 			;
++roleattribute_def	: ROLEATTRIBUTE identifier id_comma_list ';'
++			{if (define_roleattribute()) return -1;}
++			;
+ opt_constraints         : constraints
+                         |
+                         ;
+@@ -662,7 +739,7 @@ opt_fs_uses             : fs_uses
+ fs_uses                 : fs_use_def
+                         | fs_uses fs_use_def
+                         ;
+-fs_use_def              : FSUSEXATTR identifier security_context_def ';'
++fs_use_def              : FSUSEXATTR filesystem security_context_def ';'
+                         {if (define_fs_use(SECURITY_FS_USE_XATTR)) return -1;}
+                         | FSUSETASK identifier security_context_def ';'
+                         {if (define_fs_use(SECURITY_FS_USE_TASK)) return -1;}
+@@ -677,11 +754,11 @@ opt_genfs_contexts      : genfs_contexts
+ genfs_contexts          : genfs_context_def
+                         | genfs_contexts genfs_context_def
+                         ;
+-genfs_context_def	: GENFSCON identifier path '-' identifier security_context_def
++genfs_context_def	: GENFSCON filesystem path '-' identifier security_context_def
+ 			{if (define_genfs_context(1)) return -1;}
+-			| GENFSCON identifier path '-' '-' {insert_id("-", 0);} security_context_def
++			| GENFSCON filesystem path '-' '-' {insert_id("-", 0);} security_context_def
+ 			{if (define_genfs_context(1)) return -1;}
+-                        | GENFSCON identifier path security_context_def
++                        | GENFSCON filesystem path security_context_def
+ 			{if (define_genfs_context(0)) return -1;}
+ 			;
+ ipv4_addr_def		: IPV4_ADDR
+@@ -755,6 +832,11 @@ nested_id_element       : identifier | '-' { if (insert_id("-", 0)) return -1; }
+ identifier		: IDENTIFIER
+ 			{ if (insert_id(yytext,0)) return -1; }
+ 			;
++filesystem		: FILESYSTEM
++                        { if (insert_id(yytext,0)) return -1; }
++                        | IDENTIFIER
++			{ if (insert_id(yytext,0)) return -1; }
++                        ;
+ path     		: PATH
+ 			{ if (insert_id(yytext,0)) return -1; }
+ 			;
+@@ -785,6 +867,8 @@ module_def              : MODULE identifier version_identifier ';'
+                         ;
+ version_identifier      : VERSION_IDENTIFIER
+                         { if (insert_id(yytext,0)) return -1; }
++			| number
++                        { if (insert_id(yytext,0)) return -1; }
+                         | ipv4_addr_def /* version can look like ipv4 address */
+                         ;
+ avrules_block           : avrule_decls avrule_user_defs
+@@ -813,8 +897,10 @@ require_class           : CLASS identifier names
+ require_decl_def        : ROLE        { $$ = require_role; }
+                         | TYPE        { $$ = require_type; }
+                         | ATTRIBUTE   { $$ = require_attribute; }
++                        | ATTRIBUTE_ROLE   { $$ = require_attribute_role; }
+                         | USER        { $$ = require_user; }
+                         | BOOL        { $$ = require_bool; }
++			| TUNABLE     { $$ = require_tunable; }
+                         | SENSITIVITY { $$ = require_sens; }
+                         | CATEGORY    { $$ = require_cat; }
+                         ;
+diff --git a/libqpol/src/policy_scan.l b/libqpol/src/policy_scan.l
+index 30203cd23aaa..b4e3fe1d8f5d 100644
+--- a/libqpol/src/policy_scan.l
++++ b/libqpol/src/policy_scan.l
+@@ -3,6 +3,8 @@
+  *
+  * This file is based upon checkpolicy/policy_scan.l fram NSA's SVN
+  * repository.  It has been modified to support older policy formats.
++ * The older format just seems to be FSUSEPSID support (see fs_use_psid
++ * entry.
+  *
+  * Author : Stephen Smalley, <sds@epoch.ncsc.mil> 
+  *
+@@ -22,6 +24,7 @@
+ 
+ /* FLASK */
+ 
++/* Required for SETools libqpol services */
+ %{
+ #undef YY_INPUT
+ #define YY_INPUT(b, r, ms) (r = qpol_src_yyinput(b, ms))
+@@ -35,7 +38,12 @@
+ 
+ typedef int (* require_func_t)();
+ 
++/* For SETools libqpol services leave this as policy_parse.h */
++/* #ifdef ANDROID */
+ #include "policy_parse.h"
++/*#else
++#include "y.tab.h"
++#endif */
+ 
+ static char linebuf[2][255];
+ static unsigned int lno = 0;
+@@ -50,17 +58,16 @@ unsigned long policydb_lineno = 1;
+ 
+ unsigned int policydb_errors = 0;
+ 
++/* These are required for SETools libqpol services */
+ /* redefine input so we can read from a string */
+ /* borrowed from O'Reilly lex and yacc pg 157 */
+ extern char qpol_src_input[];
+ extern char *qpol_src_inputptr;/* current position in myinput */
+ extern char *qpol_src_inputlim;/* end of data */
+ int qpol_src_yyinput(char *buf, int max_size);
+-
+ %}
+ 
+-%option nounput
+-%option noyywrap
++%option noinput nounput noyywrap
+ 
+ %array
+ letter  [A-Za-z]
+@@ -93,6 +100,10 @@ ROLE |
+ role				{ return(ROLE); }
+ ROLES |
+ roles				{ return(ROLES); }
++ROLEATTRIBUTE |
++roleattribute			{ return(ROLEATTRIBUTE);}
++ATTRIBUTE_ROLE |
++attribute_role			{ return(ATTRIBUTE_ROLE);}
+ TYPES |
+ types				{ return(TYPES); }
+ TYPEALIAS |
+@@ -105,6 +116,8 @@ TYPE |
+ type				{ return(TYPE); }
+ BOOL |
+ bool                            { return(BOOL); }
++TUNABLE |
++tunable				{ return(TUNABLE); }
+ IF |
+ if				{ return(IF); }
+ ELSE |
+@@ -234,9 +247,24 @@ policycap |
+ POLICYCAP			{ return(POLICYCAP); }
+ permissive |
+ PERMISSIVE			{ return(PERMISSIVE); }
++default_user |
++DEFAULT_USER			{ return(DEFAULT_USER); }
++default_role |
++DEFAULT_ROLE			{ return(DEFAULT_ROLE); }
++default_type |
++DEFAULT_TYPE			{ return(DEFAULT_TYPE); }
++default_range |
++DEFAULT_RANGE			{ return(DEFAULT_RANGE); }
++low-high |
++LOW-HIGH			{ return(LOW_HIGH); }
++high |
++HIGH				{ return(HIGH); }
++low |
++LOW				{ return(LOW); }
+ "/"({alnum}|[_\.\-/])*	        { return(PATH); }
+-\"({alnum}|[_\.\-])+\"			{ return(FILENAME); }
++\"({alnum}|[_\.\-\+\~\: ])+\"	{ return(FILENAME); }
+ {letter}({alnum}|[_\-])*([\.]?({alnum}|[_\-]))*	{ return(IDENTIFIER); }
++{alnum}*{letter}{alnum}*        { return(FILESYSTEM); }
+ {digit}+|0x{hexval}+            { return(NUMBER); }
+ {digit}{1,3}(\.{digit}{1,3}){3}    { return(IPV4_ADDR); }
+ {hexval}{0,4}":"{hexval}{0,4}":"({hexval}|[:.])*  { return(IPV6_ADDR); }
+@@ -304,6 +332,7 @@ void set_source_file(const char *name)
+ 	source_file[sizeof(source_file)-1] = '\0';
+ }
+ 
++/* Required for SETools libqpol services */
+ int qpol_src_yyinput(char *buf, int max_size)
+ {
+ 	int n = max_size < (qpol_src_inputlim - qpol_src_inputptr) ? max_size : (qpol_src_inputlim - qpol_src_inputptr);
+@@ -315,6 +344,7 @@ int qpol_src_yyinput(char *buf, int max_size)
+ 	return n;
+ }
+ 
++/* Required for SETools libqpol services */
+ void init_scanner(void)
+ {
+ 	yy_flush_buffer(YY_CURRENT_BUFFER);
+diff --git a/libqpol/src/queue.c b/libqpol/src/queue.c
+index 18667d5accff..45a510a2f76b 100644
+--- a/libqpol/src/queue.c
++++ b/libqpol/src/queue.c
+@@ -6,6 +6,8 @@
+  * Author : Stephen Smalley, <sds@epoch.ncsc.mil>
+  */
+ 
++/* No changes for SETools libqpol services - Just the header */
++
+ /* FLASK */
+ 
+ /*
+@@ -144,7 +146,9 @@ int queue_map(queue_t q, int (*f) (queue_element_t, void *), void *vp)
+ 	return 0;
+ }
+ 
+-void queue_map_remove_on_error(queue_t q, int (*f) (queue_element_t, void *), void (*g) (queue_element_t, void *), void *vp)
++void queue_map_remove_on_error(queue_t q,
++			       int (*f) (queue_element_t, void *),
++			       void (*g) (queue_element_t, void *), void *vp)
+ {
+ 	queue_node_ptr_t p, last, temp;
+ 	int ret;
+diff --git a/libqpol/src/queue.h b/libqpol/src/queue.h
+index bca304b0128b..dca1b2e8ad89 100644
+--- a/libqpol/src/queue.h
++++ b/libqpol/src/queue.h
+@@ -6,6 +6,8 @@
+  * Author : Stephen Smalley, <sds@epoch.ncsc.mil>
+  */
+ 
++/* No changes for SETools libqpol services - Just the header */
++
+ /* FLASK */
+ 
+ /* 
+@@ -21,14 +23,12 @@ typedef void *queue_element_t;
+ 
+ typedef struct queue_node *queue_node_ptr_t;
+ 
+-typedef struct queue_node
+-{
++typedef struct queue_node {
+ 	queue_element_t element;
+ 	queue_node_ptr_t next;
+ } queue_node_t;
+ 
+-typedef struct queue_info
+-{
++typedef struct queue_info {
+ 	queue_node_ptr_t head;
+ 	queue_node_ptr_t tail;
+ } queue_info_t;
+@@ -60,7 +60,9 @@ int queue_map(queue_t, int (*f) (queue_element_t, void *), void *);
+    then the element will be removed from the queue and the g
+    function will be applied to the element. 
+  */
+-void queue_map_remove_on_error(queue_t, int (*f) (queue_element_t, void *), void (*g) (queue_element_t, void *), void *);
++void queue_map_remove_on_error(queue_t,
++			       int (*f) (queue_element_t, void *),
++			       void (*g) (queue_element_t, void *), void *);
+ 
+ #endif
+ 
+diff --git a/libqpol/swig/qpol.i b/libqpol/swig/qpol.i
+index 98ea70be7c8f..de9ff2f36c2a 100644
+--- a/libqpol/swig/qpol.i
++++ b/libqpol/swig/qpol.i
+@@ -3002,11 +3002,11 @@ typedef struct qpol_filename_trans {} qpol_filename_trans_t;
+ 	fail:
+ 		return t;
+ 	};
+-	const char *get_trans_filename(qpol_policy_t *p) {
++	const char *get_filename(qpol_policy_t *p) {
+ 		const char *name;
+ 		BEGIN_EXCEPTION
+ 		if (qpol_filename_trans_get_filename(p, self, &name)) {
+-			SWIG_exception(SWIG_ValueError, "Could not get file for filename_transition rule");
++			SWIG_exception(SWIG_ValueError, "Could not get file for filename transition rule");
+ 		}
+ 		END_EXCEPTION
+ 	fail:
+@@ -3230,15 +3230,14 @@ typedef struct qpol_default_object {} qpol_default_object_t;
+ 		return value;
+ 	};
+ 	const char *get_range_default(qpol_policy_t *p) {
+-		const char *value_1;
+-		const char *value_2;
++		const char *value;
+ 		BEGIN_EXCEPTION
+-		if (qpol_default_object_get_range_default(p, self, &value_1, &value_2)) {
++		if (qpol_default_object_get_range_default(p, self, &value)) {
+ 			SWIG_exception(SWIG_ValueError, "Could not get range defaults");
+ 		}
+ 		END_EXCEPTION
+ 	fail:
+-		return value_1;
++		return value;
+ 	};
+ };
+ %inline %{
+-- 
+2.3.0
+

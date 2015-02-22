@@ -1,0 +1,63 @@
+From f31571fd633c5ab6c76f6da4af2f0a0a2dc98f4e Mon Sep 17 00:00:00 2001
+From: cgarst <cgarst@tresys.com>
+Date: Fri, 16 May 2014 07:24:38 -0700
+Subject: [PATCH 09/13] Switching svn references to git
+
+---
+ README | 16 ++++++++--------
+ 1 file changed, 8 insertions(+), 8 deletions(-)
+
+diff --git a/README b/README
+index 04b159ba34fe..fcd6378bad1e 100644
+--- a/README
++++ b/README
+@@ -1,4 +1,4 @@
+-SETools - Policy analysis tools for SELinux (C) 2001-2010
++SETools - Policy analysis tools for SELinux (C) 2001-2014
+ Tresys Technology
+ setools@tresys.com, http://oss.tresys.com/projects/setools
+ 
+@@ -9,7 +9,7 @@ TABLE OF CONTENTS
+ 1. Overview
+ 2. Installation
+   2.1. compiling from official distribution
+-  2.2. compiling from SVN checkout
++  2.2. compiling from git clone 
+   2.3. configure flags
+   2.4. using development version of SELinux
+   2.5. Logwatch support
+@@ -119,11 +119,11 @@ Assuming that /usr/local/bin is in your $PATH and /usr/local/lib in
+ $LD_LIBRARY_PATH everything should now work.
+ 
+ 
+-2.2. compiling from SVN checkout
++2.2. compiling from git clone 
+ --------------------------------
+ 
+ If you prefer the bleeding edge of SETools development, you could
+-instead obtain the development version of SETools from the Subversion
++instead obtain the development version of SETools from the git 
+ repository (see Section 4).
+ 
+   $ cd setools
+@@ -424,13 +424,13 @@ Open Source Software website, http://oss.tresys.com/projects/setools.
+ Tresys builds RPM packages of SETools.  They may also be obtained from
+ the website listed above.
+ 
+-SETools source code is maintained within a Subversion repository.
++SETools source code is maintained within a git repository.
+ From the command line do:
+ 
+-  $ svn co http://oss.tresys.com/repos/setools/trunk/ setools
++  $ git clone https://github.com/TresysTechnology/setools3.git
+ 
+-You may also browse the SVN repository at
+-http://oss.tresys.com/projects/setools/browser.
++You may also browse the git repository at
++https://github.com/TresysTechnology/setools3
+ 
+ Other binary releases SETools are available for your favorite Linux
+ packaging system from third-party sources.  Gentoo users have an
+-- 
+2.3.0
+

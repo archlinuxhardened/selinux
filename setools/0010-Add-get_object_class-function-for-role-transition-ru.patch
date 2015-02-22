@@ -1,0 +1,92 @@
+From 6f3dd212e9b5d466628bb5be4263416057728219 Mon Sep 17 00:00:00 2001
+From: Chris PeBenito <cpebenito@tresys.com>
+Date: Wed, 1 Oct 2014 10:45:40 -0400
+Subject: [PATCH 10/13] Add get_object_class() function for role transition
+ rules.
+
+---
+ libqpol/include/qpol/rbacrule_query.h | 11 +++++++++++
+ libqpol/src/rbacrule_query.c          | 23 +++++++++++++++++++++++
+ libqpol/swig/qpol.i                   | 10 ++++++++++
+ 3 files changed, 44 insertions(+)
+
+diff --git a/libqpol/include/qpol/rbacrule_query.h b/libqpol/include/qpol/rbacrule_query.h
+index 342e597813fb..cb26600d9e6a 100644
+--- a/libqpol/include/qpol/rbacrule_query.h
++++ b/libqpol/include/qpol/rbacrule_query.h
+@@ -112,6 +112,17 @@ extern "C"
+ 						   const qpol_type_t ** target);
+ 
+ /**
++ *  Get the object class from a role transition rule.
++ *  @param rule The rule from which to get the object class.
++ *  @param obj_class Pointer in which to store the object class.
++ *  The caller should not free this pointer.
++ *  @return 0 on success and < 0 on failure; if the call fails,
++ *  errno will be set and *target will be NULL.
++ */
++	extern int qpol_role_trans_get_object_class(const qpol_policy_t * policy, const qpol_role_trans_t * rule,
++						    const qpol_class_t ** obj_class);
++
++/**
+  *  Get the default role from a role transition rule.
+  *  @param policy The policy from which the rule comes.
+  *  @param rule The rule from which to get the default role.
+diff --git a/libqpol/src/rbacrule_query.c b/libqpol/src/rbacrule_query.c
+index 7f844590ef82..28449b316454 100644
+--- a/libqpol/src/rbacrule_query.c
++++ b/libqpol/src/rbacrule_query.c
+@@ -334,6 +334,29 @@ int qpol_role_trans_get_target_type(const qpol_policy_t * policy, const qpol_rol
+ 	return STATUS_SUCCESS;
+ }
+ 
++int qpol_role_trans_get_object_class(const qpol_policy_t * policy, const qpol_role_trans_t * rule, const qpol_class_t ** obj_class)
++{
++	policydb_t *db = NULL;
++	role_trans_t *rt = NULL;
++
++	if (obj_class) {
++		*obj_class = NULL;
++	}
++
++	if (!policy || !rule || !obj_class) {
++		ERR(policy, "%s", strerror(EINVAL));
++		errno = EINVAL;
++		return STATUS_ERR;
++	}
++
++	db = &policy->p->p;
++	rt = (role_trans_t *) rule;
++
++	*obj_class = (qpol_class_t *) db->class_val_to_struct[rt->tclass - 1];
++
++	return STATUS_SUCCESS;
++}
++
+ int qpol_role_trans_get_default_role(const qpol_policy_t * policy, const qpol_role_trans_t * rule, const qpol_role_t ** dflt)
+ {
+ 	policydb_t *db = NULL;
+diff --git a/libqpol/swig/qpol.i b/libqpol/swig/qpol.i
+index 05af246c49cd..2a10ba7b2979 100644
+--- a/libqpol/swig/qpol.i
++++ b/libqpol/swig/qpol.i
+@@ -2218,6 +2218,16 @@ typedef struct qpol_role_trans {} qpol_role_trans_t;
+ 	fail:
+ 		return t;
+ 	};
++	const qpol_class_t *get_object_class(qpol_policy_t *p) {
++		const qpol_class_t *c;
++		BEGIN_EXCEPTION
++		if (qpol_role_trans_get_object_class(p, self, &c)) {
++			SWIG_exception(SWIG_ValueError, "Could not get class for role_transition rule");
++		}
++		END_EXCEPTION
++	fail:
++		return c;
++	};
+ 	const qpol_role_t *get_default_role(qpol_policy_t *p) {
+ 		const qpol_role_t *r;
+ 		BEGIN_EXCEPTION
+-- 
+2.3.0
+

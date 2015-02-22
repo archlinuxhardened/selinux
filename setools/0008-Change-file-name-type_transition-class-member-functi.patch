@@ -1,0 +1,26 @@
+From 92fa9a361aa962e21701cc601c175ab5c6798583 Mon Sep 17 00:00:00 2001
+From: Chris PeBenito <cpebenito@tresys.com>
+Date: Fri, 2 May 2014 19:28:57 +0000
+Subject: [PATCH 08/13] Change file name type_transition class member function
+ to be consistent with regular type_transition rules.
+
+---
+ libqpol/swig/qpol.i | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/libqpol/swig/qpol.i b/libqpol/swig/qpol.i
+index de9ff2f36c2a..05af246c49cd 100644
+--- a/libqpol/swig/qpol.i
++++ b/libqpol/swig/qpol.i
+@@ -2983,7 +2983,7 @@ typedef struct qpol_filename_trans {} qpol_filename_trans_t;
+ 	fail:
+ 		return t;
+ 	};
+-	const qpol_class_t *get_target_class(qpol_policy_t *p) {
++	const qpol_class_t *get_object_class(qpol_policy_t *p) {
+ 		const qpol_class_t *cls;
+ 		BEGIN_EXCEPTION
+ 		if (qpol_filename_trans_get_object_class(p, self, &cls)) {
+-- 
+2.3.0
+
