@@ -46,4 +46,5 @@ setools/setools-*.tar.bz2
 shadow-selinux/shadow-*.tar.xz*
 sudo-selinux/sudo-*.tar.gz*
 systemd-selinux/systemd-*.tar.xz
+util-linux-selinux/util-linux-*.tar.sign
 util-linux-selinux/util-linux-*.tar.xz
