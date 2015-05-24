@@ -9,7 +9,7 @@ pkgrel=5
 pkgdesc="Policy analysis tools for SELinux"
 groups=('selinux')
 arch=('i686' 'x86_64')
-url="http://oss.tresys.com/projects/setools/"
+url="https://github.com/TresysTechnology/setools3/wiki"
 license=('GPL' 'LGPL')
 depends=('flex' 'bison' 'libselinux>=2.4' 'libsepol>=2.4' 'sqlite3>=3.6.20' 'python2')
 optdepends=('glib2: needed for graphical tools'
@@ -24,50 +24,51 @@ provides=("selinux-${pkgname}=${pkgver}-${pkgrel}")
 # Use patchs from git tree to be able to grab 0012-Make-the-SWIG-files-compatible-with-SWIG-3.patch
 # and 0013-Update-for-2015-02-02-Userspace-release-2.4.patch without conflicts,
 # which are needed to make setools build successfully.
+# And as AUR4 forbid big patches (>100 KB), use ugly filenames from github.
 source=("https://raw.githubusercontent.com/wiki/TresysTechnology/setools3/files/dists/${pkgname}-${pkgver}/${pkgname}-${pkgver}.tar.bz2"
-        "0001-Remove-deprecated-use-of-g_cond_timed_wait-which-pre.patch"
-        "0002-Fix-changelog-entry.patch"
-        "0003-setools-APOL-Add-constraints-and-filename-transition.patch"
-        "0004-setools-APOL-Add-support-for-permissive-types-polcap.patch"
-        "0005-setools-APOL-Add-type-user-role-bounds-support.patch"
-        "0006-setools-APOL-Add-default_objects-and-CIL-policy-name.patch"
-        "0007-setools-Update-to-load-v29-policy-source-files.patch"
-        "0008-Change-file-name-type_transition-class-member-functi.patch"
-        "0009-Switching-svn-references-to-git.patch"
-        "0010-Add-get_object_class-function-for-role-transition-ru.patch"
-        "0011-Fix-missing-parentheses-in-policy_define.c.patch"
-        "0012-Make-the-SWIG-files-compatible-with-SWIG-3.patch"
-        "0013-Update-for-2015-02-02-Userspace-release-2.4.patch")
+        "https://github.com/TresysTechnology/setools3/commit/4560a00c872d0a664c1098585e5c1a209adf698b.patch"
+        "https://github.com/TresysTechnology/setools3/commit/76e333503433be018e8aee8992d8f77aa14979a5.patch"
+        "https://github.com/TresysTechnology/setools3/commit/ebf8c55a26abd7d5e088f9299a4d5c0df329446b.patch"
+        "https://github.com/TresysTechnology/setools3/commit/a85750fa6ed6570e29a52520317ec0986612eab9.patch"
+        "https://github.com/TresysTechnology/setools3/commit/0aa68c97dfd909d84242f3aca96923676770bf33.patch"
+        "https://github.com/TresysTechnology/setools3/commit/eefba53065bd522f3e053605d0c3a1d52a4aefbb.patch"
+        "https://github.com/TresysTechnology/setools3/commit/02bb44767963b38c0cd8f07c4ad55c23c67ebe9b.patch"
+        "https://github.com/TresysTechnology/setools3/commit/92fa9a361aa962e21701cc601c175ab5c6798583.patch"
+        "https://github.com/TresysTechnology/setools3/commit/f31571fd633c5ab6c76f6da4af2f0a0a2dc98f4e.patch"
+        "https://github.com/TresysTechnology/setools3/commit/6f3dd212e9b5d466628bb5be4263416057728219.patch"
+        "https://github.com/TresysTechnology/setools3/commit/8001568ca3914432ffc3825acb278a1e6d8293d9.patch"
+        "https://github.com/TresysTechnology/setools3/commit/4668d85ef6b078de110caf3aa6cdf89a7d8aa89d.patch"
+        "https://github.com/TresysTechnology/setools3/commit/f1e5b208d507171968ca4d2eeefd7980f1004a3c.patch")
 sha256sums=('44387ecc9a231ec536a937783440cd8960a72c51f14bffc1604b7525e341e999'
-            'ce86993a04b0e5e6118aea42ede2e5c6970808ad94c9c0fed635609e5e8134ee'
-            '9da638fae01f9506188ade86f85cd8d3f7ae4576dafa9efda0b3af54c15efd9d'
-            '52d221541f67f4de9d9aba6721e6f85786095470806619967399d13f6979bed6'
-            '1f24ce31b6dbd0dca2411e57c518761a0de33a81acbc72d4e67755a173dd9778'
-            'e1e20bc7641b6599ac6686d564610b0dde5158b7911e6c6a24dcab39c37aa5fa'
-            '5ab46780daaa229ac79cd7a42852e9e9642efe1c1259e01ac109610bd79c1153'
-            '35cc57bdc9b3080ef4fa0c8d760a7e587d38559cc6f71e674b586d779ab2c342'
-            '47c11ae528c18f61dd241b47444883ed658d511baad9a447290e17594154fd20'
-            '660b0ee1aa610852d475ff4b1e8605f0c1ca0695a79bf83c2a4485510029ecd0'
-            '1a1202f250afe89274a1fd34ee5b2c00fdd3aa8977e0866141c66bc259e33e00'
-            '9fe3b9e977b795ef3f5a83b9f292ebfd1e77e1820d716b0e4d568d35effddb29'
-            '6cf093e7af565face8813458b5dff72f1655267a9bb5639c13834ef8fac135cf'
-            '1b69d2f17e8fa245cfccbe72f6f7ce322b33be33e79953720ca1e4c9e4ce3f9c')
+            '14144c9d4bb3e1ea040f049a7fb0da0660df061a68a00ca9c66dcbbe8c334097'
+            '10b02d8074cf823bd6eefa7650ab385ea084ef1e4a88c201930a673e813c52d1'
+            '8951699c1976cba9f8a9fe32dc8c80a072d747155e3b731fb5f6072e12a92c53'
+            'e2745ec4cb7bc8efdc47abc16b049db5144939123b8e19e0395b5d21c5f49fa8'
+            '52e0e0eb6b41d7dedf5582dbf9f889594d6ef06ef24a85e3ecb6b93958838832'
+            '2d081631219c07cf573e3c3b912ceafbf894d043db75db77b893b50252fabb82'
+            '901b67411efa25e578b660aba0a171da0eb6b0ece824300eb30f80d992e582e6'
+            '7d2a001ecceef59b77d93522bef8a69f34e7e0294ed1605daf0585ffc55c3ba7'
+            'cd1552026f40a92bb57c20bf28ce9d11865b137c047e9993fb2bdbb209ae9d07'
+            '01efb617890d9173883a94a5a416fb20621e2fe26db6a52dca139b4fc884556f'
+            '9a302906aad975f4d1460ec0e0316b24d035c574796655c56ddf252459eaeb30'
+            '948a69c4f0b3389d985be9e460cf89efc86c1cd1ba735f655d81a1036e14d956'
+            '02bb2496f1c33177099ee025be3c297eec718dfe41565695e21056e165d4d626')
 
 prepare() {
   cd "${pkgname}-${pkgver}"
-  patch -Np1 -i ../0001-Remove-deprecated-use-of-g_cond_timed_wait-which-pre.patch
-  patch -Np1 -i ../0002-Fix-changelog-entry.patch
-  patch -Np1 -i ../0003-setools-APOL-Add-constraints-and-filename-transition.patch
-  patch -Np1 -i ../0004-setools-APOL-Add-support-for-permissive-types-polcap.patch
-  patch -Np1 -i ../0005-setools-APOL-Add-type-user-role-bounds-support.patch
-  patch -Np1 -i ../0006-setools-APOL-Add-default_objects-and-CIL-policy-name.patch
-  patch -Np1 -i ../0007-setools-Update-to-load-v29-policy-source-files.patch
-  patch -Np1 -i ../0008-Change-file-name-type_transition-class-member-functi.patch
-  patch -Np1 -i ../0009-Switching-svn-references-to-git.patch
-  patch -Np1 -i ../0010-Add-get_object_class-function-for-role-transition-ru.patch
-  patch -Np1 -i ../0011-Fix-missing-parentheses-in-policy_define.c.patch
-  patch -Np1 -i ../0012-Make-the-SWIG-files-compatible-with-SWIG-3.patch
-  patch -Np1 -i ../0013-Update-for-2015-02-02-Userspace-release-2.4.patch
+  patch -Np1 -i ../4560a00c872d0a664c1098585e5c1a209adf698b.patch
+  patch -Np1 -i ../76e333503433be018e8aee8992d8f77aa14979a5.patch
+  patch -Np1 -i ../ebf8c55a26abd7d5e088f9299a4d5c0df329446b.patch
+  patch -Np1 -i ../a85750fa6ed6570e29a52520317ec0986612eab9.patch
+  patch -Np1 -i ../0aa68c97dfd909d84242f3aca96923676770bf33.patch
+  patch -Np1 -i ../eefba53065bd522f3e053605d0c3a1d52a4aefbb.patch
+  patch -Np1 -i ../02bb44767963b38c0cd8f07c4ad55c23c67ebe9b.patch
+  patch -Np1 -i ../92fa9a361aa962e21701cc601c175ab5c6798583.patch
+  patch -Np1 -i ../f31571fd633c5ab6c76f6da4af2f0a0a2dc98f4e.patch
+  patch -Np1 -i ../6f3dd212e9b5d466628bb5be4263416057728219.patch
+  patch -Np1 -i ../8001568ca3914432ffc3825acb278a1e6d8293d9.patch
+  patch -Np1 -i ../4668d85ef6b078de110caf3aa6cdf89a7d8aa89d.patch
+  patch -Np1 -i ../f1e5b208d507171968ca4d2eeefd7980f1004a3c.patch
 
   # Disable broken check for SWIG version, to allow using swig 3
   sed -e "s/AC_PROG_SWIG(2.0.0)/AC_PROG_SWIG/" -i configure.ac
