@@ -31,6 +31,7 @@ import argparse
 import logging
 import os.path
 import re
+import shutil
 import subprocess
 import sys
 
@@ -45,6 +46,7 @@ BASE_PKGLIST_FILE = os.path.join(CURRENT_DIR, 'base_pkglist.txt')
 PACMAN_DB_DIR = os.path.join(CURRENT_DIR, '.pacman-db')
 
 ARCH_GITLOG_URL = 'https://projects.archlinux.org/svntogit/packages.git/log/trunk?h=packages/{}'
+ARCH_GITREMOTE = 'git://projects.archlinux.org/svntogit/packages.git'
 
 
 def sync_local_pacman_db():
@@ -62,31 +64,6 @@ def sync_local_pacman_db():
         logger.error("pacman exited with code {}".format(retval))
         return False
     return True
-
-
-def load_package_baselist(filename=None):
-    """Load a list of Arch Linux packages with versions"""
-    if filename is None:
-        filename = BASE_PKGLIST_FILE
-    baselist = {}
-    with open(filename, 'r') as fd:
-        for linenum, line in enumerate(fd):
-            # Remove comments
-            line = line.split(';', 1)[0]
-            line = line.split('#', 1)[0]
-            line = line.strip().lower()
-            if not line:
-                continue
-            matches = re.match(r'^([-_a-z0-9]+)\s*=\s*([-.0-9a-z]+)-([0-9]+)$', line)
-            if matches is None:
-                logger.warn("Ignoring line {}, not in format 'pkgname = pkgver-pkgrel'".format(linenum))
-                continue
-            pkgname, pkgver, pkgrel = matches.groups()
-            if pkgname in baselist:
-                logger.warn("Duplicate definition of package {}".format(pkgname))
-                continue
-            baselist[pkgname] = (pkgver, int(pkgrel))
-    return baselist
 
 
 def get_pkgbuild_pkgver(pkgbuild_filepath):
@@ -122,108 +99,172 @@ def get_pkgbuild_pkgver(pkgbuild_filepath):
     return pkgver, pkgrel
 
 
-def get_pacman_pkgver(pkgname, use_system_db=False):
-    """Get the latest version of a package"""
-    cmd = ['pacman', '-Si', pkgname]
-    if not use_system_db:
-        cmd += ['--dbpath', PACMAN_DB_DIR]
-    p = subprocess.Popen(
-        cmd,
-        env={'LANG': 'C'},
-        stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    for line in p.stdout:
-        sline = line.decode('ascii', errors='ignore').strip()
-        matches = re.match(r'^Version\s*:\s*([0-9a-z-.]+)-([0-9]+)\s*$', sline, re.I)
-        if matches is not None:
-            return matches.group(1), int(matches.group(2))
-    retval = p.wait()
-    if retval:
-        errmsg = p.communicate()[1].decode('ascii', errors='ignore').strip()
-        logger.error("pacman error {}: {}".format(retval, errmsg))
-    else:
-        logger.error("Unable to find package version for {}".format(pkgname))
-    return
+class Package(object):
+    """A base package which has an -selinux equivalent"""
+    def __init__(self, basepkgname, basepkgver, basepkgrel, repo):
+        self.basepkgname = basepkgname
+        self.basepkgver = basepkgver
+        self.basepkgrel = basepkgrel
+        self.repo = repo
 
-
-def compare_package(pkgname, pkgvertuple, use_system_db=False):
-    """Compare a base package with its -selinux equivalent
-
-    pkgname: name of the base package
-    pkgvertuple: (pkgver, pkgrel) of the last version of the base package which
-        was synced with the -selinux package
-    """
-    # Path to the downloaded PKGBUILD of the base package
-    path_base = os.path.join(BASE_PACKAGES_DIR, pkgname)
-    pkgbuild_base = os.path.join(path_base, 'PKGBUILD')
-
-    # Path to the PKGBUILD of the -selinux package
-    path_selinux = os.path.join(SELINUX_PACKAGES_DIR, pkgname + '-selinux')
-    pkgbuild_selinux = os.path.join(path_selinux, 'PKGBUILD')
-
-    if not os.path.exists(path_selinux):
-        logger.error("SELinux package directory doesn't exist ({})".format(path_selinux))
-        return False
-
-    if not os.path.exists(pkgbuild_selinux):
-        logger.error("PKGBUILD for {}-selinux doesn't exist ({})".format(pkgname, pkgbuild_selinux))
-        return False
-
-    # Get current version of the SElinux package, to validate pkgvertuple
-    pkgver_selinux = get_pkgbuild_pkgver(pkgbuild_selinux)
-    if pkgver_selinux is None:
-        logger.error("Failed to get the package version of {}-selinux".format(pkgname))
-        return False
-    if pkgver_selinux[0] != pkgvertuple[0]:
-        logger.error("{} is out of sync: package {}-selinux has version {} in its PKGBUILD but {} in the list".format(
-            BASE_PKGLIST_FILE, pkgname, pkgver_selinux[0], pkgvertuple[0]))
-        logger.error("You need to update {} for example with '{} = {}-1'".format(
-            BASE_PKGLIST_FILE, pkgname, pkgver_selinux[0]))
-        return False
-    del pkgver_selinux
-
-    # Get latest version of the base package
-    pkgver_base = get_pacman_pkgver(pkgname, use_system_db)
-    if pkgver_base is None:
-        logger.error("Failed to get the package version of {} with pacman".format(pkgname))
-        return False
-
-    if pkgver_base == pkgvertuple:
-        logger.info("Package {0}-selinux is up to date (version {1[0]}-{1[1]})".format(pkgname, pkgver_base))
-        return True
-
-    logger.info("Package {0}-selinux needs an update from {1[0]}-{1[1]} to {2[0]}-{2[1]}".format(
-        pkgname, pkgvertuple, pkgver_base))
-
-    # Download the PKGBUILD of the base package, if needed
-    if not os.path.exists(pkgbuild_base):
-        if os.path.exists(path_base):
-            logger.error("PKGBUILD for {} has been deleted. Please remove {}".format(pkgname, path_base))
-            return False
-        if not os.path.exists(BASE_PACKAGES_DIR):
-            os.makedirs(BASE_PACKAGES_DIR)
-        logger.info("Running 'yaourt -G {}'".format(pkgname))
+    def get_pacman_pkgver(self, use_system_db=False):
+        """Get the latest version of the base package"""
+        cmd = ['pacman', '-Si', self.basepkgname]
+        if not use_system_db:
+            cmd += ['--dbpath', PACMAN_DB_DIR]
         p = subprocess.Popen(
-            ['yaourt', '-G', pkgname],
-            cwd=BASE_PACKAGES_DIR)
+            cmd,
+            env={'LANG': 'C'},
+            stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        for line in p.stdout:
+            sline = line.decode('ascii', errors='ignore').strip()
+            matches = re.match(r'^Version\s*:\s*([0-9a-z-.]+)-([0-9]+)\s*$', sline, re.I)
+            if matches is not None:
+                return matches.group(1), int(matches.group(2))
         retval = p.wait()
         if retval:
-            logger.error("yaourt exited with code {}".format(retval))
+            errmsg = p.communicate()[1].decode('ascii', errors='ignore').strip()
+            logger.error("pacman error {}: {}".format(retval, errmsg))
+        else:
+            logger.error("Unable to find package version for {}".format(self.basepkgname))
+        return
+
+    def download_pkgsrc(self):
+        """Download the source package into basedir/pkgname directory
+
+        Don't use ABS (through rsync or yaourt -G) because it is only updated
+        once per day and appears to be late on the Git tree.
+        """
+        if not os.path.exists(BASE_PACKAGES_DIR):
+            os.makedirs(BASE_PACKAGES_DIR)
+            if not os.path.exists(BASE_PACKAGES_DIR):
+                logger.error("Unable to create {}".format(BASE_PACKAGES_DIR))
+                return False
+
+        logger.info("Getting the source package of {}".format(self.basepkgname))
+        git_dirname = 'gitclone-{}'.format(self.basepkgname)
+        proc = subprocess.Popen(
+            [
+                'git', 'clone',
+                '--branch', 'packages/{}'.format(self.basepkgname),
+                '--depth', '1', ARCH_GITREMOTE, git_dirname],
+            cwd=BASE_PACKAGES_DIR)
+        retval = proc.wait()
+        if retval:
+            logger.error("git clone exited with code {}".format(retval))
+            return False
+        shutil.move(
+            os.path.join(BASE_PACKAGES_DIR, git_dirname, 'repos', self.repo + '-x86_64'),
+            os.path.join(BASE_PACKAGES_DIR, self.basepkgname))
+        shutil.rmtree(os.path.join(BASE_PACKAGES_DIR, git_dirname))
+        return True
+
+    def compare_package(self, use_system_db=False):
+        """Compare a base package with its -selinux equivalent"""
+        # Path to the downloaded PKGBUILD of the base package
+        path_base = os.path.join(BASE_PACKAGES_DIR, self.basepkgname)
+        pkgbuild_base = os.path.join(path_base, 'PKGBUILD')
+
+        # Path to the PKGBUILD of the -selinux package
+        selinuxpkgname = self.basepkgname + '-selinux'
+        path_selinux = os.path.join(SELINUX_PACKAGES_DIR, selinuxpkgname)
+        pkgbuild_selinux = os.path.join(path_selinux, 'PKGBUILD')
+
+        if not os.path.exists(path_selinux):
+            logger.error("SELinux package directory doesn't exist ({})".format(path_selinux))
             return False
 
-    if not os.path.exists(pkgbuild_base):
-        logger.error("yaourt hasn't created {}".format(pkgbuild_base))
-        return False
+        if not os.path.exists(pkgbuild_selinux):
+            logger.error("PKGBUILD for {} doesn't exist ({})".format(selinuxpkgname, pkgbuild_selinux))
+            return False
 
-    pkgver_base2 = get_pkgbuild_pkgver(pkgbuild_base)
-    if pkgver_base > pkgver_base2:
-        logger.error("PKGBUILD for {} is out of date. Please remove {}".format(pkgname, path_base))
-        return False
-    elif pkgver_base < pkgver_base2:
-        logger.warn("Downloaded PKGBUILD for {} is in testing. Beware!".format(pkgname))
+        # Get current version of the SElinux package, to validate the base version
+        pkgver_selinux = get_pkgbuild_pkgver(pkgbuild_selinux)
+        if pkgver_selinux is None:
+            logger.error("Failed to get the package version of {}".format(selinuxpkgname))
+            return False
+        if self.basepkgver is None:
+            # Use the PKGBUILD version to know which base package is synced
+            self.basepkgver, self.basepkgrel = pkgver_selinux
+        elif pkgver_selinux[0] != self.basepkgver:
+            logger.error("{} is out of sync: package {} has version {} in its PKGBUILD but {} in the list".format(
+                BASE_PKGLIST_FILE, selinuxpkgname, pkgver_selinux[0], self.basepkgver))
+            logger.error("You need to update {} for example with '{}/{} = {}-1'".format(
+                BASE_PKGLIST_FILE, self.repo, self.basepkgname, pkgver_selinux[0]))
+            return False
+        del pkgver_selinux
 
-    logger.info("You can now compare {} and {} to update the SELinux package".format(path_selinux, path_base))
-    logger.info("... git log of Arch package : {}".format(ARCH_GITLOG_URL.format(pkgname)))
-    return True
+        # Get latest version of the base package
+        pkgver_base = self.get_pacman_pkgver(use_system_db)
+        if pkgver_base is None:
+            logger.error("Failed to get the package version of {} with pacman".format(self.basepkgname))
+            return False
+
+        if pkgver_base == (self.basepkgver, self.basepkgrel):
+            logger.info("Package {0} is up to date (version {1[0]}-{1[1]})".format(
+                selinuxpkgname, pkgver_base))
+            return True
+
+        logger.info("Package {0} needs an update from {1}-{2} to {3[0]}-{3[1]}".format(
+            selinuxpkgname, self.basepkgver, self.basepkgrel, pkgver_base))
+
+        # Download the PKGBUILD of the base package, if needed
+        if not os.path.exists(pkgbuild_base):
+            if os.path.exists(path_base):
+                logger.error("PKGBUILD for {} has been deleted. Please remove {}".format(
+                    self.basepkgname, path_base))
+                return False
+            if not self.download_pkgsrc():
+                return False
+
+        if not os.path.exists(pkgbuild_base):
+            logger.error("yaourt hasn't created {}".format(pkgbuild_base))
+            return False
+
+        pkgver_base2 = get_pkgbuild_pkgver(pkgbuild_base)
+        if pkgver_base > pkgver_base2:
+            logger.error("PKGBUILD for {} is out of date. Please remove {}".format(self.basepkgname, path_base))
+            return False
+        elif pkgver_base < pkgver_base2:
+            logger.warn("Downloaded PKGBUILD for {} is in testing. Beware!".format(self.basepkgname))
+
+        logger.info("You can now compare {} and {} to update the SELinux package".format(path_selinux, path_base))
+        logger.info("... git log of Arch package : {}".format(ARCH_GITLOG_URL.format(self.basepkgname)))
+        return True
+
+
+def load_package_baselist(filename=None):
+    """Load a list of Arch Linux packages with versions"""
+    if filename is None:
+        filename = BASE_PKGLIST_FILE
+    baselist = {}
+    with open(filename, 'r') as fd:
+        for linenum, line in enumerate(fd):
+            # Remove comments
+            line = line.split(';', 1)[0]
+            line = line.split('#', 1)[0]
+            line = line.strip().lower()
+            if not line:
+                continue
+            matches = re.match(
+                r'^([-_a-z0-9]+)/([-_a-z0-9]+)\s*=\s*([-.0-9a-z]+)-([0-9]+)$',
+                line)
+            if matches is not None:
+                repo, pkgname, pkgver, pkgrel = matches.groups()
+            else:
+                matches = re.match(r'^([-_a-z0-9]+)/([-_a-z0-9]+)', line)
+                if matches is not None:
+                    repo, pkgname = matches.groups()
+                    pkgver = None
+                    pkgrel = 0
+                else:
+                    logger.warn("Ignoring line {}, not in format 'repo/pkgname = pkgver-pkgrel'".format(linenum))
+                    continue
+            if pkgname in baselist:
+                logger.warn("Duplicate definition of package {}".format(pkgname))
+                continue
+            baselist[pkgname] = Package(pkgname, pkgver, int(pkgrel), repo)
+    return baselist
 
 
 def main(argv=None):
@@ -241,7 +282,7 @@ def main(argv=None):
 
     baselist = load_package_baselist()
     for pkgname in sorted(baselist.keys()):
-        if not compare_package(pkgname, baselist[pkgname], use_system_db=args.system_db):
+        if not baselist[pkgname].compare_package(use_system_db=args.system_db):
             return 1
     return 0
 
