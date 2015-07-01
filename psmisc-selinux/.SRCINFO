@@ -1,0 +1,22 @@
+pkgbase = psmisc-selinux
+	pkgdesc = Miscellaneous procfs tools with SELinux support
+	pkgver = 22.21
+	pkgrel = 3
+	url = http://psmisc.sourceforge.net/index.html
+	arch = i686
+	arch = x86_64
+	groups = selinux
+	license = GPL
+	depends = ncurses
+	depends = libselinux
+	provides = psmisc=22.21-3
+	provides = selinux-psmisc=22.21-3
+	conflicts = psmisc
+	conflicts = selinux-psmisc
+	source = http://downloads.sourceforge.net/psmisc/psmisc-22.21.tar.gz
+	source = psmisc-fuser.patch
+	sha1sums = 09fabbef4539b58b6b8738a73da3d21d5daa1a58
+	sha1sums = e739ad5b14ca836db5859f0755d8f2fc8e86de69
+
+pkgname = psmisc-selinux
+
