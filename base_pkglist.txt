@@ -12,7 +12,7 @@ core/findutils
 core/iproute2
 core/linux
 core/logrotate
-core/openssh = 6.8p1-3
+core/openssh
 core/pam
 core/pambase
 core/psmisc = 22.21-2
