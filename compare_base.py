@@ -44,6 +44,7 @@ BASE_PACKAGES_DIR = os.path.join(CURRENT_DIR, 'base-noselinux')
 SELINUX_PACKAGES_DIR = CURRENT_DIR
 BASE_PKGLIST_FILE = os.path.join(CURRENT_DIR, 'base_pkglist.txt')
 PACMAN_DB_DIR = os.path.join(CURRENT_DIR, '.pacman-db')
+PACMAN_CONF_FILE = os.path.join(CURRENT_DIR, 'local-pacman.conf')
 
 ARCH_GITLOG_URL = 'https://projects.archlinux.org/svntogit/packages.git/log/trunk?h=packages/{}'
 ARCH_GITREMOTE = 'git://projects.archlinux.org/svntogit/packages.git'
@@ -57,7 +58,12 @@ def sync_local_pacman_db():
         os.makedirs(PACMAN_DB_DIR)
 
     # This command comes from "checkupdates" script from pacman package
-    cmd = ['fakeroot', 'pacman', '-Sy', '--dbpath', PACMAN_DB_DIR, '--logfile', '/dev/null']
+    cmd = [
+        'fakeroot', 'pacman', '-Sy',
+        '--config', PACMAN_CONF_FILE,
+        '--dbpath', PACMAN_DB_DIR,
+        '--logfile', '/dev/null',
+    ]
     p = subprocess.Popen(cmd)
     retval = p.wait()
     if retval:
