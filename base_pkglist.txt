@@ -5,7 +5,7 @@
 ; the version is optional. Not having it means that the -selinux package uses
 ; the same pkgrel as the base package.
 
-core/coreutils = 8.23-2
+core/coreutils
 core/cronie
 core/dbus
 core/findutils
