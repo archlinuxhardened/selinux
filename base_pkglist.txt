@@ -15,7 +15,7 @@ core/logrotate
 core/openssh
 core/pam
 core/pambase
-core/psmisc = 22.21-2
+core/psmisc
 core/shadow = 4.2.1-3
 core/sudo
 core/systemd
