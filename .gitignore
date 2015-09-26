@@ -48,5 +48,6 @@ shadow-selinux/shadow-*.tar.xz*
 sudo-selinux/sudo-*.tar.gz*
 systemd-selinux/splash-arch.bmp
 systemd-selinux/systemd/
+ustr-selinux/ustr-*.tar.bz2
 util-linux-selinux/util-linux-*.tar.sign
 util-linux-selinux/util-linux-*.tar.xz
