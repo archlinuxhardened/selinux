@@ -8,6 +8,9 @@ export BUILDDIR
 
 # Build a package
 pkgbuild() {
+    # Uncomment the following line to skip already-installed packages
+    #if pacman -Qq "$1" > /dev/null 2>&1 ; then return; fi
+
     # Clean up the package folder
     rm -rf "./$1/src" "./$1/pkg"
     rm -f "./$1/"*.pkg.tar.xz "./$1/"*.pkg.tar.xz.sig
@@ -17,8 +20,8 @@ pkgbuild() {
     # -C (--cleanbuild): Remove $srcdir before building the package
     (cd "./$1" && makepkg -s -C) || exit $?
 
-    # Uncomment to install non-debug packages
-    #sudo pacman -U $(ls *.pkg.tar.xz | grep -v "\-debug") || exit $?
+    # Uncomment the following line to install or update the non-debug packages
+    #sudo pacman -U $(ls "./$1/"*.pkg.tar.xz | grep -vE '[-]debug') || exit $?
 }
 
 # Build SELinux userspace packages
@@ -26,13 +29,16 @@ pkgbuild libsepol
 pkgbuild libselinux
 pkgbuild checkpolicy
 pkgbuild setools
+pkgbuild ustr-selinux
 pkgbuild libsemanage
 pkgbuild sepolgen
+
+# policycoreutils depends on pam-selinux
+pkgbuild pambase-selinux
+pkgbuild pam-selinux
 pkgbuild policycoreutils
 
 # Build core packages with SELinux support
-pkgbuild pambase-selinux
-pkgbuild pam-selinux
 pkgbuild coreutils-selinux
 pkgbuild findutils-selinux
 pkgbuild iproute2-selinux
