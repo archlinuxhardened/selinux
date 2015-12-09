@@ -6,7 +6,7 @@ cd "$(dirname -- "$0")" || exit $?
 # Run the given command after displaying it
 log_and_run() {
     echo "Running: $*"
-    "$@"
+    "$@" || exit $?
 }
 
 # reset the git repository
@@ -20,7 +20,8 @@ do
     [ -n "$(git status --porcelain "$DIR")" ] || continue
 
     # Update .SRCINFO
-    log_and_run mksrcinfo -o "$DIR/.SRCINFO" "$DIR/PKGBUILD" || exit $?
+    echo "Committing update to ${DIR#./} package"
+    (cd "$DIR" && log_and_run mksrcinfo)
 
     # Commit everything with a custom commit message
     log_and_run git add "$DIR"

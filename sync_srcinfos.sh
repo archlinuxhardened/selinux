@@ -6,5 +6,5 @@ find . -maxdepth 2 -name PKGBUILD -printf '%h\n' | \
 while read DIR
 do
     echo "Generating $DIR/.SRCINFO"
-    mksrcinfo -o "$DIR/.SRCINFO" "$DIR/PKGBUILD"
+    (cd "$DIR" && mksrcinfo)
 done
