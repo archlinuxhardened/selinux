@@ -52,8 +52,9 @@ pkgbuild systemd-selinux
 pkgbuild dbus-selinux
 pkgbuild cronie-selinux
 
-# Build refpolicy source package
+# Build refpolicy source package and Arch Linux policy
 pkgbuild selinux-refpolicy-src
+pkgbuild selinux-refpolicy-arch
 
 # Finally build the kernel
 pkgbuild linux-selinux

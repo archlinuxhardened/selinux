@@ -40,6 +40,7 @@ pam-selinux/Linux-PAM-*.tar.bz2
 pam-selinux/pam_unix2-*.tar.bz2
 policycoreutils/policycoreutils-*.tar.gz
 psmisc-selinux/psmisc-*.tar.gz
+selinux-refpolicy-arch/refpolicy-*.tar.bz2
 selinux-refpolicy-src/refpolicy-*.tar.bz2
 sepolgen/sepolgen-*.tar.gz
 setools/setools-*.tar.bz2

@@ -1,0 +1,15 @@
+post_install() {
+  echo ">>> Loading refpolicy-arch. Please wait ..."
+  /usr/bin/semodule -s refpolicy-arch -i /usr/share/selinux/refpolicy-arch/*.pp
+  echo ">>> Relabeling the filesystem may be needed."
+  echo ">>> This can be done with: /usr/bin/restorecon -rF /"
+}
+
+post_upgrade() {
+  post_install
+}
+
+post_remove() {
+  echo ">>> Removing refpolicy left-over files."
+  /bin/rm -rf /etc/selinux/refpolicy-arch
+}
