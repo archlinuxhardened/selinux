@@ -1,0 +1,20 @@
+# Do not copy to the container the .git directory or Docker files
+.git/
+Dockerfile
+.dockerignore
+
+# .gitignore
+*~
+*.part
+
+*/src
+*/pkg
+*/*x86_64.pkg.tar.xz
+*/*x86_64.pkg.tar.xz.sig
+*/*any.pkg.tar.xz
+*/*any.pkg.tar.xz.sig
+*/*.src.tar.gz
+
+base-noselinux/
+.pacman-db/
+_vagrant/.vagrant/

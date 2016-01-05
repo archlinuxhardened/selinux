@@ -11,6 +11,7 @@
 
 base-noselinux/
 .pacman-db/
+_vagrant/.vagrant/
 
 checkpolicy/checkpolicy-*.tar.gz
 coreutils-selinux/coreutils-*.tar.xz*
