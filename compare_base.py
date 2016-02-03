@@ -159,11 +159,15 @@ class Package(object):
         if retval:
             logger.error("git clone exited with code {}".format(retval))
             return False
-        shutil.move(
-            os.path.join(BASE_PACKAGES_DIR, git_dirname, 'repos', self.repo + '-x86_64'),
-            os.path.join(BASE_PACKAGES_DIR, self.basepkgname))
-        shutil.rmtree(os.path.join(BASE_PACKAGES_DIR, git_dirname))
-        return True
+        for arch in ('x86_64', 'any'):
+            srcpath = os.path.join(BASE_PACKAGES_DIR, git_dirname, 'repos', self.repo + '-' + arch)
+            if os.path.exists(srcpath):
+                shutil.move(srcpath, os.path.join(BASE_PACKAGES_DIR, self.basepkgname))
+                shutil.rmtree(os.path.join(BASE_PACKAGES_DIR, git_dirname))
+                return True
+
+        logger.error("Unable to find repos/{}-$ARCH in source package".format(self.repo))
+        return False
 
     def compare_package(self, use_system_db=False):
         """Compare a base package with its -selinux equivalent"""
