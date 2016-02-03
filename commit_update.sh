@@ -21,7 +21,7 @@ do
 
     # Update .SRCINFO
     echo "Committing update to ${DIR#./} package"
-    (cd "$DIR" && log_and_run mksrcinfo)
+    (cd "$DIR" && makepkg --printsrcinfo > .SRCINFO) || exit $?
 
     # Commit everything with a custom commit message
     log_and_run git add "$DIR"
