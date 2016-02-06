@@ -39,4 +39,7 @@ sed -i -e 's/\(GRUB_CMDLINE_LINUX="\)/\1selinux=1 security=selinux /' /etc/defau
 grub-mkconfig -o /boot/grub/grub.cfg
 
 # Do not use unconfined module
-semodule -r unconfined
+if semodule -l | grep '^unconfined' > /dev/null
+then
+    semodule -r unconfined
+fi
