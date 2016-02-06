@@ -35,7 +35,10 @@ KERNELVER="$(pacman -Q linux-selinux | sed -n 's/linux\(-selinux\)\s\+\(\S\+\)/\
 dkms autoinstall -k "$KERNELVER"
 
 # Configure GRUB to launch SELinux kernel
-sed -i -e 's/\(GRUB_CMDLINE_LINUX="\)/\1selinux=1 security=selinux /' /etc/default/grub
+if ! grep 'GRUB_CMDLINE_LINUX=".*selinux=1 security=selinux' /etc/default/grub > /dev/null
+then
+    sed -i -e 's/\(GRUB_CMDLINE_LINUX="\)/\1selinux=1 security=selinux /' /etc/default/grub
+fi
 grub-mkconfig -o /boot/grub/grub.cfg
 
 # Do not use unconfined module
