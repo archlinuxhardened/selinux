@@ -12,7 +12,7 @@ fi
 # Verify whether a package needs to be installed
 needs_install() {
     local CURRENT_VERSION PKGREL PKGVER
-    CURRENT_VERSION="$(LANG=C pacman -Q "$1" 2> /dev/null | awk '{print $2}')"
+    CURRENT_VERSION="$(LANG=C pacman -Q "${1##*/}" 2> /dev/null | awk '{print $2}')"
     if [ -z "$CURRENT_VERSION" ]
     then
         # The package was not installed
@@ -98,6 +98,7 @@ install_libcgroup() {
 # SELinux userspace packages
 build_and_install libsepol
 build_and_install libselinux
+build_and_install secilc
 build_and_install checkpolicy
 # setools 3.3.8-5 Makefile has dependencies issues when installing __init__.py for qpol
 # (install command can be invoked before the destination directory is created)
