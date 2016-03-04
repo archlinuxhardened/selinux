@@ -10,7 +10,7 @@ do
         exit 1
     fi
     PKG="${DIR#./}"
-    for GPGKEY in ${validpgpkeys[@]} ; do
+    for GPGKEY in "${validpgpkeys[@]}" ; do
         if gpg --list-keys "$GPGKEY" > /dev/null 2>&1 ; then
             echo "$PKG: key $GPGKEY already received."
         else
