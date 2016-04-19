@@ -83,12 +83,18 @@ def get_pkgbuild_pkgver(pkgbuild_filepath):
                 pkgver = matches.group(1)
                 continue
 
-            # Sudo defines _sudover
+            # sudo package defines _sudover
             matches = re.match(r'^_sudover=([0-9a-zA-Z-.]+)(p[0-9]+)\s*$', line)
             if matches is not None:
                 pkgver = '.'.join(matches.groups())
                 continue
             matches = re.match(r'^_sudover=([0-9a-zA-Z-.]+)\s$', line)
+            if matches is not None:
+                pkgver = matches.group(1)
+                continue
+
+            # util-linux package defines _pkgmajor
+            matches = re.match(r'^_pkgmajor=([0-9a-zA-Z-.]+)\s*$', line)
             if matches is not None:
                 pkgver = matches.group(1)
                 continue
