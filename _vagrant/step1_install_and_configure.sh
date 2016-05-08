@@ -29,11 +29,6 @@ pacman --noconfirm -Sc
 systemctl enable auditd.service
 systemctl enable restorecond.service
 
-# Install virtualbox modules through DKMS
-systemctl enable dkms.service
-KERNELVER="$(pacman -Q linux-selinux | sed -n 's/linux\(-selinux\)\s\+\(\S\+\)/\2\1/p')"
-dkms autoinstall -k "$KERNELVER"
-
 # Configure GRUB to launch SELinux kernel
 if ! grep 'GRUB_CMDLINE_LINUX=".*selinux=1 security=selinux' /etc/default/grub > /dev/null
 then
