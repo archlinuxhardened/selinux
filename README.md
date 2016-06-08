@@ -12,9 +12,7 @@ Authors are credited in the PKGBUILD file for each package.
 Binary repository
 -----------------
 
-A repository with built and signed packages for x86-64 only is available at
-http://repo.siosm.fr/siosm-selinux/ (See https://tim.siosm.fr/repositories/ if
-you need help / instructions).
+No binary repository available at the moment.
 
 Build order
 -----------
