@@ -47,12 +47,12 @@ run_conflictual_install() {
     do
         # Do not put sudo inside the expect so that passwords are not intercepted by except
         sudo LANG=C expect <<EOF
-set timeout 60
+set timeout 300
 set send_slow {1 1}
 spawn $(echo "$*" | sed 's/pacman -U/pacman --color never -U/')
 expect {
-    -re {:: [-a-z0-9]+ and [-a-z0-9]+ are in conflict( \([-a-z0-9]+\))?\. Remove [-a-z0-9]+\? \[y/N\] } { send y\r; exp_continue }
-    {:: Proceed with installation? \[Y/n\] } { send y\r; exp_continue }
+    -re {:: [-a-z0-9]+ and [-a-z0-9]+ are in conflict( \([-a-z0-9]+\))?\. Remove [-a-z0-9]+\? \[y/N\] } { sleep .5; send y\r; exp_continue }
+    {:: Proceed with installation? \[Y/n\] } { sleep .5; send y\r; exp_continue }
     timeout { send_user "Time out.\n"; exit 42 }
     eof
 }
