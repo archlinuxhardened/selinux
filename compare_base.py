@@ -76,6 +76,7 @@ def get_pkgbuild_pkgver(pkgbuild_filepath):
     """Get the version of a package from its PKGBUILD"""
     pkgver = None
     pkgrel = None
+    pkgmajor_value = None
     with open(pkgbuild_filepath, 'r') as fd:
         for line in fd:
             matches = re.match(r'^pkgver=([0-9a-zA-Z-.]+)\s*$', line)
@@ -96,8 +97,13 @@ def get_pkgbuild_pkgver(pkgbuild_filepath):
             # util-linux package defines _pkgmajor
             matches = re.match(r'^_pkgmajor=([0-9a-zA-Z-.]+)\s*$', line)
             if matches is not None:
-                pkgver = matches.group(1)
+                pkgmajor_value = matches.group(1)
                 continue
+            if pkgmajor_value is not None:
+                matches = re.match(r'^pkgver=\${_pkgmajor}([0-9a-zA-Z-.]+)\s*$', line)
+                if matches is not None:
+                    pkgver = pkgmajor_value + matches.group(1)
+                    continue
 
             # Retrieve pkgrel
             matches = re.match(r'^pkgrel=([0-9]+)\s*$', line)
