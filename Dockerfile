@@ -1,6 +1,6 @@
 # Usage: docker build -t arch-selinux-build .
 # Once the container is build, you can get the packages in "pkgs" directory with:
-#    docker run -v "$(pwd)/pkgs:/packages --rm -ti arch-selinux-build
+#    docker run -v "$(pwd)/pkgs:/packages" --rm -ti arch-selinux-build
 
 # Use Debian because Arch Linux has no official Docker image
 FROM debian:sid
