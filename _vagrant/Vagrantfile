@@ -8,20 +8,38 @@ require './vagrant-reload'
 # backwards compatibility). Please don't change it unless you know what
 # you're doing.
 Vagrant.configure(2) do |config|
-  config.vm.define "arch-selinux" do |config|
+  config.vm.define "arch-selinux" do |machine|
     # Use Arch Linux Vagrant Base box
     # https://wiki.archlinux.org/index.php/Vagrant#Base_Boxes_for_Vagrant
     # https://github.com/terrywang/vagrantboxes/blob/master/archlinux-x86_64.md
-    config.vm.box = "terrywang/archlinux"
+    # To get the box on libvirt, run:
+    #    vagrant box add terrywang/archlinux
+    #    vagrant mutate terrywang/archlinux libvirt
+    # and then use this Vagrantfile with:
+    #    vagrant up --provider libvirt
+    machine.vm.box = "terrywang/archlinux"
 
-    config.vm.synced_folder "..", "/srv/arch-selinux"
+    # SETools 4 requires more than 1024 MB of RAM
+    machine.vm.provider :libvirt do |v|
+      v.memory = 2048
+
+      # Disable "Copy host CPU Configuration" to prevent the following KVM error on Intel CPUs:
+      #   "the CPU is incompatible with host CPU: Host CPU does not provide required features: svm"
+      v.cpu_mode = "custom"
+      v.cpu_model = nil
+    end
+    machine.vm.provider :virtualbox do |v|
+      v.memory = 2048
+    end
+
+    machine.vm.synced_folder "..", "/srv/arch-selinux"
 
     # Build and install packages and configure SELinux
-    config.vm.provision "shell", path: "step1_install_and_configure.sh"
-    config.vm.provision :reload
+    machine.vm.provision :shell, path: "step1_install_and_configure.sh"
+    machine.vm.provision :reload
     # After the first reboot, relabel everything
-    config.vm.provision "shell", path: "step2_relabel.sh"
+    machine.vm.provision :shell, path: "step2_relabel.sh"
     # Reboot in a clean environment
-    config.vm.provision :reload
+    machine.vm.provision :reload
   end
 end
