@@ -29,6 +29,7 @@ pkgbuild libsepol
 pkgbuild libselinux
 pkgbuild secilc
 pkgbuild checkpolicy
+pkgbuild setools3-libs
 pkgbuild setools
 pkgbuild ustr-selinux
 pkgbuild libsemanage

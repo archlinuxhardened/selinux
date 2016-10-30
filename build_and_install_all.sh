@@ -102,6 +102,7 @@ build_and_install secilc
 build_and_install checkpolicy
 # setools 3.3.8-5 Makefile has dependencies issues when installing __init__.py for qpol
 # (install command can be invoked before the destination directory is created)
+build_and_install setools3-libs
 build_and_install setools MAKEFLAGS="-j1"
 build_and_install ustr-selinux
 build_and_install libsemanage
