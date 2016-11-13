@@ -95,6 +95,16 @@ install_libcgroup() {
     rm -rf "$MAKEPKGDIR"
 }
 
+# Install the packages which are needed for the script if they are not already installed
+# base and base-devel groups are supposed to be installed
+for PKG in expect git
+do
+    if ! pacman -Qi "$PKG" > /dev/null 2>&1
+    then
+        sudo pacman --noconfirm -S "$PKG" || exit $?
+    fi
+done
+
 # SELinux userspace packages
 build_and_install libsepol
 build_and_install libselinux
