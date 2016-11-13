@@ -29,5 +29,16 @@ then
     semanage login -a -s sysadm_u vagrant
 fi
 
+# On systems with syslinux, ldlinux.sys is immutable but needs to be relabelled
+if [ -e /boot/syslinux/ldlinux.sys ]
+then
+    if ! (getfilecon /boot/syslinux/ldlinux.sys | grep system_u:object_r:boot_t > /dev/null)
+    then
+        chattr -i /boot/syslinux/ldlinux.sys
+        restorecon -vF /boot/syslinux/ldlinux.sys
+        syslinux-install_update -u
+    fi
+fi
+
 echo "Relabelling the system..."
 restorecon -RF /
