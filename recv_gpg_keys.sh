@@ -1,6 +1,9 @@
 #!/bin/bash
 # Receive every gpg keys used by packages
 
+# GnuPG key server to use
+GPG_KEYSRV="${GPG_KEYSRV:-hkps://hkps.pool.sks-keyservers.net.}"
+
 cd "$(dirname -- "$0")" || exit $?
 for DIR in $(find . -maxdepth 2 -name PKGBUILD -printf '%h\n' | sort)
 do
@@ -15,7 +18,7 @@ do
             echo "$PKG: key $GPGKEY already received."
         else
             echo "$PKG: receiving key..."
-            gpg --recv-keys "$GPGKEY" || exit $?
+            gpg --keyserver "$GPG_KEYSRV" --recv-keys "$GPGKEY" || exit $?
         fi
     done
 done
