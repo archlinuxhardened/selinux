@@ -95,6 +95,19 @@ install_libcgroup() {
     rm -rf "$MAKEPKGDIR"
 }
 
+# Install python-ipy package from the AUR, if it is not already installed
+install_python_ipy() {
+    local MAKEPKGDIR
+    if pacman -Qi python-ipy > /dev/null 2>&1
+    then
+        return 0
+    fi
+    MAKEPKGDIR="$(mktemp -d makepkg-python-ipy-XXXXXX)"
+    git -C "$MAKEPKGDIR" clone https://aur.archlinux.org/python-ipy.git || exit $?
+    (cd "$MAKEPKGDIR/python-ipy" && makepkg -si --noconfirm --asdeps) || exit $?
+    rm -rf "$MAKEPKGDIR"
+}
+
 # Install the packages which are needed for the script if they are not already installed
 # base and base-devel groups are supposed to be installed
 for PKG in expect git
@@ -122,6 +135,7 @@ build_and_install sepolgen
 build_and_install pambase-selinux
 build_and_install pam-selinux
 install_libcgroup
+install_python_ipy
 build_and_install policycoreutils
 
 # Core packages with SELinux support
