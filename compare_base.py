@@ -100,7 +100,7 @@ def get_pkgbuild_pkgver(pkgbuild_filepath):
                 pkgmajor_value = matches.group(1)
                 continue
             if pkgmajor_value is not None:
-                matches = re.match(r'^pkgver=\${_pkgmajor}([0-9a-zA-Z-.]+)\s*$', line)
+                matches = re.match(r'^pkgver=\${_pkgmajor}([0-9a-zA-Z-.]*)\s*$', line)
                 if matches is not None:
                     pkgver = pkgmajor_value + matches.group(1)
                     continue
