@@ -15,7 +15,7 @@ LABEL Description="Build SELinux packages for Arch Linux"
 RUN \
     export DEBIAN_FRONTEND=noninteractive && \
     apt-get -qq update && \
-    apt-get install -qqy wget && \
+    apt-get install -qqy gnupg wget && \
     apt-get clean && \
     gpg --keyserver hkp://pool.sks-keyservers.net. --recv-key 4AA4767BBC9C4B1D18AE28B77F2D434B9741E8AC && \
     mkdir /arch && cd /arch && \
