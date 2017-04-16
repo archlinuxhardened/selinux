@@ -17,7 +17,7 @@ RUN \
     apt-get -qq update && \
     apt-get install -qqy gnupg wget && \
     apt-get clean && \
-    gpg --keyserver hkp://pool.sks-keyservers.net. --recv-key 4AA4767BBC9C4B1D18AE28B77F2D434B9741E8AC && \
+    gpg --keyserver hkp://pool.sks-keyservers.net --recv-key 4AA4767BBC9C4B1D18AE28B77F2D434B9741E8AC && \
     mkdir /arch && cd /arch && \
     (wget -qO- https://mirror.rackspace.com/archlinux/iso/latest/sha1sums.txt | fgrep 'x86_64.tar' > sha1sum.txt) && \
     read -r SHA1 FILE < sha1sum.txt && \
@@ -27,7 +27,7 @@ RUN \
     sha1sum -c sha1sum.txt && \
     tar -xpzf "$FILE" && \
     cd /arch/root.x86_64 && \
-    rm -r /bin /lib* /opt /root /sbin /srv /usr /var && \
+    rm -rf /bin /lib* /opt /root /sbin /srv /usr /var && \
     LD_LIBRARY_PATH=/arch/root.x86_64/lib /arch/root.x86_64/lib/ld-linux-x86-64.so.* bin/mv bin lib* opt root sbin srv usr var / && \
     find /etc/* -maxdepth 0 -not \( -name resolv.conf -o -name hostname -o -name hosts \) -exec rm -r {} + && \
     rm /arch/root.x86_64/etc/hosts /arch/root.x86_64/etc/resolv.conf && \
