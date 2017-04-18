@@ -138,6 +138,9 @@ install_libcgroup
 install_python_ipy
 build_and_install policycoreutils
 
+# pacman hook
+build_and_install selinux-alpm-hook
+
 # Core packages with SELinux support
 build_and_install coreutils-selinux
 build_and_install findutils-selinux
