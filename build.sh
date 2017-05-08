@@ -1,9 +1,17 @@
 #!/bin/sh
 
-# Build in yaourt temporary folder by default.
+# Build in a per-user temporary folder by default, if there is no directory
+# specified in /etc/makepkg.conf.
 # This directory can be specifically mounted with "exec" option on systems
 # where /tmp is mounted "noexec".
-BUILDDIR="${BUILDDIR:-/tmp/yaourt-tmp-$(id -nu)}"
+
+# Find the configured BUILDDIR
+if [ -z "$BUILDDIR" ] ; then
+    BUILDDIR="$(bash -c 'shopt -u extglob ; source /etc/makepkg.conf ; echo $BUILDDIR')"
+    if [ -z "$BUILDDIR" ] ; then
+        BUILDDIR="/tmp/makepkg-$(id -nu)"
+    fi
+fi
 export BUILDDIR
 
 # Build a package
