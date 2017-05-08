@@ -2,6 +2,7 @@
 *.asc
 *.bz2
 *.gz
+*.log
 *.orig
 *.rej
 *.sig

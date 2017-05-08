@@ -10,6 +10,7 @@ rm -frv ./*/src/ ./*/pkg/
 rm -fv ./*/*.pkg.tar.xz
 rm -fv ./*/*.pkg.tar.xz.sig
 rm -fv ./*/*.src.tar.gz
+rm -fv ./*/*.log
 
 # Also clean the downloaded base PKGBUILDs
 rm -frv base-noselinux/
