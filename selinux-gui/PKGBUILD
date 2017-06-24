@@ -1,0 +1,35 @@
+# Maintainer: Nicolas Iooss (nicolas <dot> iooss <at> m4x <dot> org)
+
+pkgname=selinux-gui
+_pkgver=2.7-rc2
+pkgver=${_pkgver/-/}
+pkgrel=1
+pkgdesc="SELinux GUI tools"
+groups=('selinux')
+arch=('any')
+url='https://github.com/SELinuxProject/selinux/wiki'
+license=('GPL2')
+depends=('gnome-python' 'hicolor-icon-theme' 'python2' 'pygtk' 'selinux-python2')
+conflicts=('policycoreutils<2.7rc1')
+source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20170616/${pkgname}-${_pkgver}.tar.gz")
+sha256sums=('9675f7d081d3a3d5d02f9a084a3af6de73a2a95580eab8b29bc642975a7491fe')
+
+prepare() {
+  cd "${pkgname}-${_pkgver}"
+
+  # system-config-selinux uses Python 2 because of pygtk
+  sed -i -e "s/python -E/python2 -E/" system-config-selinux.py
+}
+
+build() {
+  cd "${pkgname}-${_pkgver}"
+  make
+}
+
+package() {
+  cd "${pkgname}-${_pkgver}"
+  make DESTDIR="${pkgdir}" install
+
+  # Compile Python files into bytecode
+  python2 -m compileall "${pkgdir}/usr/share/system-config-selinux"
+}
