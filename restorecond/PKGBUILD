@@ -1,0 +1,30 @@
+# Maintainer: Nicolas Iooss (nicolas <dot> iooss <at> m4x <dot> org)
+
+pkgname=restorecond
+_pkgver=2.7-rc2
+pkgver=${_pkgver/-/}
+pkgrel=1
+pkgdesc="sandboxing tool for SELinux"
+arch=('i686' 'x86_64')
+url='https://github.com/SELinuxProject/selinux/wiki'
+license=('GPL2')
+groups=('selinux')
+depends=('dbus-glib' 'libselinux>=2.7rc1')
+conflicts=('policycoreutils<2.7rc1')
+source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20170616/${pkgname}-${_pkgver}.tar.gz")
+sha256sums=('c316b1706b5ef5cb184d60ec5d4e13e954919464164ce40d7e7f2f02b38db5e0')
+
+build() {
+  cd "${pkgname}-${_pkgver}"
+
+  make
+}
+
+package() {
+  cd "${pkgname}-${_pkgver}"
+
+  make DESTDIR="${pkgdir}" SBINDIR="${pkgdir}/usr/bin" install
+
+  # Remove restorecond init script
+  rm -rf "${pkgdir}/etc/rc.d"
+}
