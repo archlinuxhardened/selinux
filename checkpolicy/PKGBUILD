@@ -4,28 +4,28 @@
 # Contributor: Sergej Pupykin (pupykin <dot> s+arch <at> gmail <dot> com)
 
 pkgname=checkpolicy
-pkgver=2.6
+_pkgver=2.7-rc2
+pkgver=${_pkgver/-/}
 pkgrel=1
 pkgdesc="SELinux policy compiler"
 arch=('i686' 'x86_64')
 url='http://userspace.selinuxproject.org'
-license=('GPL')
+license=('GPL2')
 groups=('selinux')
-depends=('libsepol>=2.5' 'libselinux>=2.5')
+makedepends=('libsepol>=2.7rc1')
 conflicts=("selinux-usr-${pkgname}")
 provides=("selinux-usr-${pkgname}=${pkgver}-${pkgrel}")
-options=(!emptydirs)
-source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20161014/${pkgname}-${pkgver}.tar.gz")
-sha256sums=('0bebd18688ca8027b1b3b4ff1532c0626f1fe49883ae6cb74d9d385940e74157')
+source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20170616/${pkgname}-${_pkgver}.tar.gz")
+sha256sums=('785126cad28f91a139ba945a28dc4308df19d1fb758bab5fe4200ad5b490b95a')
 
 build() {
-  cd "${pkgname}-${pkgver}"
+  cd "${pkgname}-${_pkgver}"
   make
 }
 
-package(){
-  cd "${pkgname}-${pkgver}"
-  make DESTDIR="${pkgdir}" install
+package() {
+  cd "${pkgname}-${_pkgver}"
+  make DESTDIR="${pkgdir}" LIBSEPOLA=/usr/lib/libsepol.a install
   install -m 0755 test/dismod "${pkgdir}"/usr/bin/sedismod
   install -m 0755 test/dispol "${pkgdir}"/usr/bin/sedispol
 }
