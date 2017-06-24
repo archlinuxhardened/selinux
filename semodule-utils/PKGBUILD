@@ -1,0 +1,27 @@
+# Maintainer: Nicolas Iooss (nicolas <dot> iooss <at> m4x <dot> org)
+
+pkgname=semodule-utils
+_pkgver=2.7-rc2
+pkgver=${_pkgver/-/}
+pkgrel=1
+pkgdesc="SELinux module tools"
+arch=('i686' 'x86_64')
+url='https://github.com/SELinuxProject/selinux/wiki'
+license=('GPL2')
+groups=('selinux')
+depends=('libsepol>=2.7rc1')
+conflicts=('policycoreutils<2.7rc1')
+source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20170616/${pkgname}-${_pkgver}.tar.gz")
+sha256sums=('9a2cf518854952a5cf7f5f5a1db036b86d5edeb1dde6c4bc70b31db778681655')
+
+build() {
+  cd "${pkgname}-${_pkgver}"
+
+  make
+}
+
+package() {
+  cd "${pkgname}-${_pkgver}"
+
+  make DESTDIR="${pkgdir}" LIBSEPOLA=/usr/lib/libsepol.a install
+}
