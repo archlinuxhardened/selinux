@@ -1,0 +1,922 @@
+From e743d2a0eaaae7d99302dd3099549ca7ad868eab Mon Sep 17 00:00:00 2001
+From: Karl MacMillan <karl@rakkoon.com>
+Date: Mon, 23 Jan 2017 18:27:22 -0500
+Subject: [PATCH 1/1] Ftrules hashtab (#164)
+
+* Search for libsepol in /usr/local
+
+* Support filename transition and range transitions rules in the new hashtable storage of libsepol
+
+* Fix off-by-one bug in traversing hashtables and minor compile fixes under Fedora 25.
+
+* Remove debugging.
+
+* The policy_define.c that uses hashtables was not setting the otype for filetrans_rules. This
+appears intentional (the hashtable is just being filled out to detect duplicates based on the comments),
+but for qpol was causing problems.
+---
+ libqpol/ftrule_query.c  |  64 ++++++++++++++--
+ libqpol/mlsrule_query.c |  68 ++++++++++++++---
+ libqpol/policy_define.c | 195 +++++++++++++++++++++++++-----------------------
+ libqpol/policy_define.h |   6 --
+ setup.py                |   3 +-
+ 5 files changed, 218 insertions(+), 118 deletions(-)
+
+diff --git a/libqpol/ftrule_query.c b/libqpol/ftrule_query.c
+index 57fe10021424..82bff7dab9a4 100644
+--- a/libqpol/ftrule_query.c
++++ b/libqpol/ftrule_query.c
+@@ -29,10 +29,12 @@
+ #include "iterator_internal.h"
+ #include "qpol_internal.h"
+ #include <sepol/policydb/policydb.h>
++#include <sepol/policydb/hashtab.h>
+ 
+ typedef struct filename_trans_state
+ {
+-	filename_trans_t *head;
++	unsigned int bucket;
++	hashtab_ptr_t cur_item;
+ 	filename_trans_t *cur;
+ } filename_trans_state_t;
+ 
+@@ -76,7 +78,21 @@ static int filename_trans_state_next(qpol_iterator_t * iter)
+ 		return STATUS_ERR;
+ 	}
+ 
+-	fts->cur = fts->cur->next;
++	fts->cur_item = fts->cur_item->next;
++	while (fts->cur_item == NULL) {
++		fts->bucket++;
++		if (fts->bucket >= db->filename_trans->size) {
++            break;
++		}
++
++		fts->cur_item = db->filename_trans->htable[fts->bucket];
++	}
++
++    if (fts->cur_item == NULL) {
++        fts->cur = NULL;
++    } else {
++        fts->cur = (filename_trans_t*)fts->cur_item->key;
++    }
+ 
+ 	return STATUS_SUCCESS;
+ }
+@@ -85,16 +101,22 @@ static size_t filename_trans_state_size(const qpol_iterator_t * iter)
+ {
+ 	filename_trans_state_t *fts = NULL;
+ 	const policydb_t *db = NULL;
+-	filename_trans_t *tmp = NULL;
+ 	size_t count = 0;
++    unsigned int i = 0;
+ 
+ 	if (!iter || !(fts = qpol_iterator_state(iter)) || !(db = qpol_iterator_policy(iter))) {
+ 		errno = EINVAL;
+-		return STATUS_ERR;
++		return 0;
+ 	}
+ 
+-	for (tmp = fts->head; tmp; tmp = tmp->next)
+-		count++;
++	hashtab_ptr_t cur = NULL;
++	for (i = 0; i < db->filename_trans->size; i++) {
++		cur = db->filename_trans->htable[i];
++		while (cur != NULL) {
++			count++;
++			cur = cur->next;
++		}
++	}
+ 
+ 	return count;
+ }
+@@ -122,8 +144,25 @@ int qpol_policy_get_filename_trans_iter(const qpol_policy_t * policy, qpol_itera
+ 		ERR(policy, "%s", strerror(errno));
+ 		return STATUS_ERR;
+ 	}
+-	fts->head = fts->cur = db->filename_trans;
+ 
++	fts->bucket = 0;
++	fts->cur_item = db->filename_trans->htable[0];
++	fts->cur = NULL;
++
++	fts->cur_item = db->filename_trans->htable[fts->bucket];
++	while (fts->cur_item == NULL) {
++		fts->bucket++;
++		if (fts->bucket >= db->filename_trans->size) {
++			break;
++		}
++
++		fts->cur_item = db->filename_trans->htable[fts->bucket];
++	}
++
++	if (fts->cur_item != NULL) {
++		fts->cur = (filename_trans_t*)fts->cur_item->key;
++	}
++	
+ 	if (qpol_iterator_create
+ 	    (policy, (void *)fts, filename_trans_state_get_cur, filename_trans_state_next, filename_trans_state_end, filename_trans_state_size,
+ 	     free, iter)) {
+@@ -224,7 +263,16 @@ int qpol_filename_trans_get_default_type(const qpol_policy_t * policy, const qpo
+ 	db = &policy->p->p;
+ 	ft = (filename_trans_t *) rule;
+ 
+-	*dflt = (qpol_type_t *) db->type_val_to_struct[ft->otype - 1];
++	/* Since the filename_trans rules were converted to being stored in a hashtab, otype was moved to the datum of the hashtab.
++	 * So we just look it up here.
++	 */
++	filename_trans_datum_t *datum = hashtab_search(db->filename_trans, (hashtab_key_t)ft);
++
++	if (datum == NULL) {
++		return STATUS_ERR;
++	}
++
++	*dflt = (qpol_type_t *) db->type_val_to_struct[datum->otype - 1];
+ 
+ 	return STATUS_SUCCESS;
+ }
+diff --git a/libqpol/mlsrule_query.c b/libqpol/mlsrule_query.c
+index c8c03de9b71f..19e93bc20a8f 100644
+--- a/libqpol/mlsrule_query.c
++++ b/libqpol/mlsrule_query.c
+@@ -36,7 +36,8 @@
+ 
+ typedef struct range_trans_state
+ {
+-	range_trans_t *head;
++    unsigned int bucket;
++    hashtab_ptr_t cur_item;
+ 	range_trans_t *cur;
+ } range_trans_state_t;
+ 
+@@ -55,8 +56,9 @@ static int range_trans_state_end(const qpol_iterator_t * iter)
+ static void *range_trans_state_get_cur(const qpol_iterator_t * iter)
+ {
+ 	range_trans_state_t *rs = NULL;
++    const policydb_t *db = NULL;
+ 
+-	if (!iter || !(rs = qpol_iterator_state(iter))) {
++	if (!iter || !(rs = qpol_iterator_state(iter)) || !(db = qpol_iterator_policy(iter))) {
+ 		errno = EINVAL;
+ 		return NULL;
+ 	}
+@@ -67,8 +69,9 @@ static void *range_trans_state_get_cur(const qpol_iterator_t * iter)
+ static int range_trans_state_next(qpol_iterator_t * iter)
+ {
+ 	range_trans_state_t *rs = NULL;
++    const policydb_t *db = NULL;
+ 
+-	if (!iter || !(rs = qpol_iterator_state(iter))) {
++	if (!iter || !(rs = qpol_iterator_state(iter))  || !(db = qpol_iterator_policy(iter))) {
+ 		errno = EINVAL;
+ 		return STATUS_ERR;
+ 	}
+@@ -78,7 +81,21 @@ static int range_trans_state_next(qpol_iterator_t * iter)
+ 		return STATUS_ERR;
+ 	}
+ 
+-	rs->cur = rs->cur->next;
++    rs->cur_item = rs->cur_item->next;
++    while (rs->cur_item == NULL) {
++        rs->bucket++;
++        if (rs->bucket >= db->range_tr->size) {
++            break;
++        }
++
++        rs->cur_item = db->range_tr->htable[rs->bucket];
++    }
++
++    if (rs->cur_item == NULL) {
++        rs->cur = NULL;
++    } else {
++        rs->cur = (range_trans_t*)rs->cur_item->key;
++    }
+ 
+ 	return STATUS_SUCCESS;
+ }
+@@ -86,16 +103,23 @@ static int range_trans_state_next(qpol_iterator_t * iter)
+ static size_t range_trans_state_size(const qpol_iterator_t * iter)
+ {
+ 	range_trans_state_t *rs = NULL;
++    const policydb_t *db = NULL;
+ 	size_t count = 0;
+-	range_trans_t *tmp = NULL;
++    unsigned int i = 0;
+ 
+-	if (!iter || !(rs = qpol_iterator_state(iter))) {
++	if (!iter || !(rs = qpol_iterator_state(iter)) || !(db = qpol_iterator_policy(iter))) {
+ 		errno = EINVAL;
+ 		return 0;
+ 	}
+ 
+-	for (tmp = rs->head; tmp; tmp = tmp->next)
+-		count++;
++    hashtab_ptr_t cur = NULL;
++    for (i = 0; i < db->range_tr->size; i++) {
++        cur = db->range_tr->htable[i];
++        while (cur != NULL) {
++            count++;
++            cur = cur->next;
++        }
++    }
+ 
+ 	return count;
+ }
+@@ -133,7 +157,24 @@ int qpol_policy_get_range_trans_iter(const qpol_policy_t * policy, qpol_iterator
+ 		return STATUS_ERR;
+ 	}
+ 
+-	rs->head = rs->cur = db->range_tr;
++    rs->bucket = 0;
++    rs->cur_item = db->range_tr->htable[0];
++    rs->cur = NULL;
++
++    rs->cur_item = db->range_tr->htable[rs->bucket];
++    while (rs->cur_item == NULL) {
++        rs->bucket++;
++        if (rs->bucket >= db->range_tr->size) {
++            break;
++        }
++
++        rs->cur_item = db->range_tr->htable[rs->bucket];
++    }
++
++    if (rs->cur_item != NULL) {
++        rs->cur = (range_trans_t*)rs->cur_item->key;
++    }
++    
+ 	return STATUS_SUCCESS;
+ }
+ 
+@@ -220,9 +261,16 @@ int qpol_range_trans_get_range(const qpol_policy_t * policy, const qpol_range_tr
+ 		return STATUS_ERR;
+ 	}
+ 
++    policydb_t *db = &policy->p->p;
+ 	rt = (range_trans_t *) rule;
++    mls_range_t *target_range = NULL;
++
++    target_range = hashtab_search(db->range_tr, (hashtab_key_t)rt);
++    if (target_range == NULL) {
++        return STATUS_ERR;
++    }
+ 
+-	*range = (qpol_mls_range_t *) & rt->target_range;
++	*range = (qpol_mls_range_t *)target_range;
+ 
+ 	return STATUS_SUCCESS;
+ }
+diff --git a/libqpol/policy_define.c b/libqpol/policy_define.c
+index f6d9555fee58..dcc69fcda4a8 100644
+--- a/libqpol/policy_define.c
++++ b/libqpol/policy_define.c
+@@ -1,5 +1,5 @@
+ /*
+- * This file is a copy of policy_define.c from checkpolicy 2.4 updated to
++ * This file is a copy of policy_define.c from checkpolicy 2.6 updated to
+  * support SETools.
+  */
+ 
+@@ -31,8 +31,6 @@
+  */
+ 
+ /* FLASK */
+-/* Required for SETools libqpol */
+-#include <config.h>
+ 
+ #include <sys/types.h>
+ #include <assert.h>
+@@ -43,10 +41,14 @@
+ #include <string.h>
+ #include <sys/socket.h>
+ #include <netinet/in.h>
++#ifndef IPPROTO_DCCP
++#define IPPROTO_DCCP 33
++#endif
+ #include <arpa/inet.h>
+ #include <stdlib.h>
+ #include <limits.h>
+ #include <inttypes.h>
++#include <ctype.h>
+ 
+ #include <sepol/policydb/expand.h>
+ #include <sepol/policydb/policydb.h>
+@@ -56,17 +58,12 @@
+ #include <sepol/policydb/hierarchy.h>
+ #include <sepol/policydb/polcaps.h>
+ #include "queue.h"
+-
+-#ifdef DARWIN
+-#include <qpol/linux_types.h>
+-#endif
++#include "module_compiler.h"
++#include "policy_define.h"
+ 
+ /* Required for SETools libqpol - Removed #include "checkpolicy.h"*/
+ #include <qpol/policy.h>
+ 
+-#include "module_compiler.h"
+-#include "policy_define.h"
+-
+ policydb_t *policydbp;
+ queue_t id_queue = 0;
+ unsigned int pass;
+@@ -116,6 +113,7 @@ int define_mls(void)
+ 
+ 	return 0;
+ }
++
+ /* Required for SETools libqpol */
+ int define_xen(void)
+ {
+@@ -218,7 +216,7 @@ int define_class(void)
+ 			break;
+ 		}
+ 	default:{
+-			abort();	/* should never get here */
++			assert(0);	/* should never get here */
+ 		}
+ 	}
+ 	datum->s.value = value;
+@@ -792,7 +790,7 @@ int define_sens(void)
+ 			break;
+ 		}
+ 	default:{
+-			abort();	/* should never get here */
++			assert(0);	/* should never get here */
+ 		}
+ 	}
+ 
+@@ -831,7 +829,7 @@ int define_sens(void)
+ 				break;
+ 			}
+ 		default:{
+-				abort();	/* should never get here */
++				assert(0);	/* should never get here */
+ 			}
+ 		}
+ 	}
+@@ -961,7 +959,7 @@ int define_category(void)
+ 			break;
+ 		}
+ 	default:{
+-			abort();	/* should never get here */
++			assert(0);	/* should never get here */
+ 		}
+ 	}
+ 	datum->s.value = value;
+@@ -1003,7 +1001,7 @@ int define_category(void)
+ 				break;
+ 			}
+ 		default:{
+-				abort();	/* should never get here */
++				assert(0);	/* should never get here */
+ 			}
+ 		}
+ 	}
+@@ -1220,7 +1218,7 @@ static int add_aliases_to_type(type_datum_t * type)
+ 				break;
+ 			}
+ 		default:{
+-				abort();	/* should never get here */
++				assert(0);	/* should never get here */
+ 			}
+ 		}
+ 	}
+@@ -1261,6 +1259,7 @@ int define_typealias(void)
+ 		free(id);
+ 		return -1;
+ 	}
++	free(id);
+ 	return add_aliases_to_type(t);
+ }
+ 
+@@ -1292,6 +1291,7 @@ int define_typeattribute(void)
+ 		free(id);
+ 		return -1;
+ 	}
++	free(id);
+ 
+ 	while ((id = queue_remove(id_queue))) {
+ 		if (!is_id_in_scope(SYM_TYPES, id)) {
+@@ -1299,8 +1299,7 @@ int define_typeattribute(void)
+ 			free(id);
+ 			return -1;
+ 		}
+-		attr = hashtab_search(policydbp->p_types.table,
+-					    (hashtab_key_t)id); /* SETools */
++		attr = hashtab_search(policydbp->p_types.table, id);
+ 		if (!attr) {
+ 			/* treat it as a fatal error */
+ 			yyerror2("attribute %s is not declared", id);
+@@ -1328,8 +1327,7 @@ int define_typeattribute(void)
+ 	return 0;
+ }
+ 
+-							   /* SETools */
+-static int define_typebounds_helper(char *bounds_id, hashtab_key_t type_id)
++static int define_typebounds_helper(char *bounds_id, char *type_id)
+ {
+ 	type_datum_t *bounds, *type;
+ 
+@@ -1338,8 +1336,7 @@ static int define_typebounds_helper(char *bounds_id, hashtab_key_t type_id)
+ 		return -1;
+ 	}
+ 
+-	bounds = hashtab_search(policydbp->p_types.table,
+-				    (hashtab_key_t)bounds_id); /* SETools */
++	bounds = hashtab_search(policydbp->p_types.table, bounds_id);
+ 	if (!bounds || bounds->flavor == TYPE_ATTRIB) {
+ 		yyerror2("hoge unknown type %s", bounds_id);
+ 		return -1;
+@@ -1350,8 +1347,7 @@ static int define_typebounds_helper(char *bounds_id, hashtab_key_t type_id)
+ 		return -1;
+ 	}
+ 
+-	type = hashtab_search(policydbp->p_types.table,
+-				    (hashtab_key_t)type_id); /* SETools */
++	type = hashtab_search(policydbp->p_types.table, type_id);
+ 	if (!type || type->flavor == TYPE_ATTRIB) {
+ 		yyerror2("type %s is not declared", type_id);
+ 		return -1;
+@@ -1453,8 +1449,7 @@ int define_type(int alias)
+ 			free(id);
+ 			return -1;
+ 		}
+-		attr = hashtab_search(policydbp->p_types.table,
+-					    (hashtab_key_t)id); /* SETools */
++		attr = hashtab_search(policydbp->p_types.table, id);
+ 		if (!attr) {
+ 			/* treat it as a fatal error */
+ 			yyerror2("attribute %s is not declared", id);
+@@ -1493,25 +1488,25 @@ static int set_types(type_set_t * set, char *id, int *add, char starallowed)
+ 	type_datum_t *t;
+ 
+ 	if (strcmp(id, "*") == 0) {
++		free(id);
+ 		if (!starallowed) {
+ 			yyerror("* not allowed in this type of rule");
+ 			return -1;
+ 		}
+ 		/* set TYPE_STAR flag */
+ 		set->flags = TYPE_STAR;
+-		free(id);
+ 		*add = 1;
+ 		return 0;
+ 	}
+ 
+ 	if (strcmp(id, "~") == 0) {
++		free(id);
+ 		if (!starallowed) {
+ 			yyerror("~ not allowed in this type of rule");
+ 			return -1;
+ 		}
+ 		/* complement the set */
+ 		set->flags = TYPE_COMP;
+-		free(id);
+ 		*add = 1;
+ 		return 0;
+ 	}
+@@ -1527,8 +1522,7 @@ static int set_types(type_set_t * set, char *id, int *add, char starallowed)
+ 		free(id);
+ 		return -1;
+ 	}
+-	t = hashtab_search(policydbp->p_types.table,
+-				    (hashtab_key_t)id); /* SETools */
++	t = hashtab_search(policydbp->p_types.table, id);
+ 	if (!t) {
+ 		yyerror2("unknown type %s", id);
+ 		free(id);
+@@ -1559,7 +1553,7 @@ int define_compute_type_helper(int which, avrule_t ** rule)
+ 	ebitmap_node_t *node;
+ 	avrule_t *avrule;
+ 	class_perm_node_t *perm;
+-	unsigned int i = 0;
++	uint32_t i;
+ 	int add = 1;
+ 
+ 	avrule = malloc(sizeof(avrule_t));
+@@ -1605,8 +1599,10 @@ int define_compute_type_helper(int which, avrule_t ** rule)
+ 						(hashtab_key_t) id);
+ 	if (!datum || datum->flavor == TYPE_ATTRIB) {
+ 		yyerror2("unknown type %s", id);
++		free(id);
+ 		goto bad;
+ 	}
++	free(id);
+ 
+ 	ebitmap_for_each_bit(&tclasses, node, i) {
+ 		if (ebitmap_node_get_bit(node, i)) {
+@@ -1731,7 +1727,7 @@ int define_bool_tunable(int is_tunable)
+ 			break;
+ 		}
+ 	default:{
+-			abort();	/* should never get here */
++			assert(0);	/* should never get here */
+ 		}
+ 	}
+ 	datum->s.value = value;
+@@ -1739,11 +1735,11 @@ int define_bool_tunable(int is_tunable)
+ 	bool_value = (char *)queue_remove(id_queue);
+ 	if (!bool_value) {
+ 		yyerror("no default value for bool definition?");
+-		free(id);
+ 		return -1;
+ 	}
+ 
+ 	datum->state = (int)(bool_value[0] == 'T') ? 1 : 0;
++	free(bool_value);
+ 	return 0;
+       cleanup:
+ 	cond_destroy_bool(id, datum, NULL);
+@@ -2013,6 +2009,11 @@ int define_te_avtab_xperms_helper(int which, avrule_t ** rule)
+ 	while ((id = queue_remove(id_queue))) {
+ 		if (strcmp(id, "self") == 0) {
+ 			free(id);
++			if (add == 0) {
++				yyerror("-self is not supported");
++				ret = -1;
++				goto out;
++			}
+ 			avrule->flags |= RULE_SELF;
+ 			continue;
+ 		}
+@@ -2419,11 +2420,12 @@ int define_te_avtab_extended_perms(int which)
+ 
+ 	id = queue_remove(id_queue);
+ 	if (strcmp(id,"ioctl") == 0) {
++		free(id);
+ 		if (define_te_avtab_ioctl(avrule_template))
+ 			return -1;
+-		free(id);
+ 	} else {
+ 		yyerror("only ioctl extended permissions are supported");
++		free(id);
+ 		return -1;
+ 	}
+ 	return 0;
+@@ -2472,6 +2474,11 @@ int define_te_avtab_helper(int which, avrule_t ** rule)
+ 	while ((id = queue_remove(id_queue))) {
+ 		if (strcmp(id, "self") == 0) {
+ 			free(id);
++			if (add == 0) {
++				yyerror("-self is not supported");
++				ret = -1;
++				goto out;
++			}
+ 			avrule->flags |= RULE_SELF;
+ 			continue;
+ 		}
+@@ -2649,6 +2656,7 @@ int define_role_types(void)
+ 		free(id);
+ 		return -1;
+ 	}
++	role = get_local_role(id, role->s.value, (role->flavor == ROLE_ATTRIB));
+ 
+ 	while ((id = queue_remove(id_queue))) {
+ 		if (set_types(&role->types, id, &add, 0))
+@@ -2833,7 +2841,7 @@ static int dominate_role_recheck(hashtab_key_t key __attribute__ ((unused)),
+ 	role_datum_t *rdp = (role_datum_t *) arg;
+ 	role_datum_t *rdatum = (role_datum_t *) datum;
+ 	ebitmap_node_t *node;
+-	unsigned int i;
++	uint32_t i;
+ 
+ 	/* Don't bother to process against self role */
+ 	if (rdatum->s.value == rdp->s.value)
+@@ -2925,7 +2933,7 @@ role_datum_t *define_role_dom(role_datum_t * r)
+ 				break;
+ 			}
+ 		default:{
+-				abort();  /* should never get here */
++				assert(0);	/* should never get here */
+ 			}
+ 		}
+ 		if (ebitmap_set_bit(&role->dominates, role->s.value - 1, TRUE)) {
+@@ -3088,7 +3096,7 @@ int define_role_trans(int class_specified)
+ 			return -1;
+ 	} else {
+ 		cladatum = hashtab_search(policydbp->p_classes.table,
+-				  (hashtab_key_t)"process"); /* SETools */
++                                  (hashtab_key_t)"process");
+ 		if (!cladatum) {
+ 			yyerror2("could not find process class for "
+ 				 "legacy role_transition statement");
+@@ -3114,13 +3122,16 @@ int define_role_trans(int class_specified)
+ 	role = hashtab_search(policydbp->p_roles.table, id);
+ 	if (!role) {
+ 		yyerror2("unknown role %s used in transition definition", id);
++		free(id);
+ 		goto bad;
+ 	}
+ 
+ 	if (role->flavor != ROLE_ROLE) {
+ 		yyerror2("the new role %s must be a regular role", id);
++		free(id);
+ 		goto bad;
+ 	}
++	free(id);
+ 
+ 	/* This ebitmap business is just to ensure that there are not conflicting role_trans rules */
+ 	if (role_set_expand(&roles, &e_roles, policydbp, NULL, NULL))
+@@ -3244,11 +3255,12 @@ int define_filename_trans(void)
+ 	ebitmap_t e_tclasses;
+ 	ebitmap_node_t *snode, *tnode, *cnode;
+ 	filename_trans_t *ft;
++	filename_trans_datum_t *ftdatum;
+ 	filename_trans_rule_t *ftr;
+ 	type_datum_t *typdatum;
+ 	uint32_t otype;
+ 	unsigned int c, s, t;
+-	int add;
++	int add, rc;
+ 
+ 	if (pass == 1) {
+ 		/* stype */
+@@ -3332,40 +3344,45 @@ int define_filename_trans(void)
+ 			ebitmap_for_each_bit(&e_ttypes, tnode, t) {
+ 				if (!ebitmap_node_get_bit(tnode, t))
+ 					continue;
+-	
+-				for (ft = policydbp->filename_trans; ft; ft = ft->next) {
+-					if (ft->stype == (s + 1) &&
+-					    ft->ttype == (t + 1) &&
+-					    ft->tclass == (c + 1) &&
+-					    !strcmp(ft->name, name)) {
+-						yyerror2("duplicate filename transition for: filename_trans %s %s %s:%s",
+-							 name, 
+-							 policydbp->p_type_val_to_name[s],
+-							 policydbp->p_type_val_to_name[t],
+-							 policydbp->p_class_val_to_name[c]);
+-						goto bad;
+-					}
+-				}
+-	
+-				ft = malloc(sizeof(*ft));
++
++				ft = calloc(1, sizeof(*ft));
+ 				if (!ft) {
+ 					yyerror("out of memory");
+ 					goto bad;
+ 				}
+-				memset(ft, 0, sizeof(*ft));
+-	
+-				ft->next = policydbp->filename_trans;
+-				policydbp->filename_trans = ft;
+-	
++				ft->stype = s+1;
++				ft->ttype = t+1;
++				ft->tclass = c+1;
+ 				ft->name = strdup(name);
+ 				if (!ft->name) {
+ 					yyerror("out of memory");
+ 					goto bad;
+ 				}
+-				ft->stype = s + 1;
+-				ft->ttype = t + 1;
+-				ft->tclass = c + 1;
+-				ft->otype = otype;
++
++				ftdatum = hashtab_search(policydbp->filename_trans,
++							 (hashtab_key_t)ft);
++				if (ftdatum) {
++					yyerror2("duplicate filename transition for: filename_trans %s %s %s:%s",
++						 name,
++						 policydbp->p_type_val_to_name[s],
++						 policydbp->p_type_val_to_name[t],
++						 policydbp->p_class_val_to_name[c]);
++					goto bad;
++				}
++
++				ftdatum = calloc(1, sizeof(*ftdatum));
++				if (!ftdatum) {
++					yyerror("out of memory");
++					goto bad;
++				}
++				ftdatum->otype = otype;
++				rc = hashtab_insert(policydbp->filename_trans,
++						    (hashtab_key_t)ft,
++						    ftdatum);
++				if (rc) {
++					yyerror("out of memory");
++					goto bad;
++				}
+ 			}
+ 		}
+ 	
+@@ -3379,8 +3396,14 @@ int define_filename_trans(void)
+ 		append_filename_trans(ftr);
+ 
+ 		ftr->name = strdup(name);
+-		ftr->stypes = stypes;
+-		ftr->ttypes = ttypes;
++		if (type_set_cpy(&ftr->stypes, &stypes)) {
++			yyerror("out of memory");
++			goto bad;
++		}
++		if (type_set_cpy(&ftr->ttypes, &ttypes)) {
++			yyerror("out of memory");
++			goto bad;
++		}
+ 		ftr->tclass = c + 1;
+ 		ftr->otype = otype;
+ 	}
+@@ -4636,12 +4659,7 @@ bad:
+ 	return -1;
+ }
+ 
+-
+-#ifdef HAVE_SEPOL_XEN_DEVICETREE
+ int define_iomem_context(uint64_t low, uint64_t high)
+-#else
+-int define_iomem_context(unsigned long low, unsigned long high)
+-#endif
+ {
+ 	ocontext_t *newc, *c, *l, *head;
+ 	char *id;
+@@ -4681,11 +4699,7 @@ int define_iomem_context(unsigned long low, unsigned long high)
+ 
+ 	head = policydbp->ocontexts[OCON_XEN_IOMEM];
+ 	for (l = NULL, c = head; c; l = c, c = c->next) {
+-#ifdef HAVE_SEPOL_XEN_DEVICETREE
+ 		uint64_t low2, high2;
+-#else
+-		unsigned long low2, high2; /* SETools */
+-#endif
+ 
+ 		low2 = c->u.iomem.low_iomem;
+ 		high2 = c->u.iomem.high_iomem;
+@@ -4828,11 +4842,10 @@ bad:
+ 	return -1;
+ }
+ 
+-int define_devicetree_context(void) /* SETools */
++int define_devicetree_context(void)
+ {
+-#ifdef HAVE_SEPOL_XEN_DEVICETREE
+ 	ocontext_t *newc, *c, *l, *head;
+-#endif
++
+ 	if (policydbp->target_platform != SEPOL_TARGET_XEN) {
+ 		yyerror("devicetreecon not supported for target");
+ 		return -1;
+@@ -4844,7 +4857,6 @@ int define_devicetree_context(void) /* SETools */
+ 		return 0;
+ 	}
+ 
+-#ifdef HAVE_SEPOL_XEN_DEVICETREE
+ 	newc = malloc(sizeof(ocontext_t));
+ 	if (!newc) {
+ 		yyerror("out of memory");
+@@ -4883,10 +4895,6 @@ bad:
+ 	free(newc->u.name);
+ 	free(newc);
+ 	return -1;
+-#else
+-	yyerror("This version of SETools does not have devicetreecon support.");
+-	return -1;
+-#endif
+ }
+ 
+ int define_port_context(unsigned int low, unsigned int high)
+@@ -4927,8 +4935,7 @@ int define_port_context(unsigned int low, unsigned int high)
+ 		protocol = IPPROTO_DCCP;
+ 	} else {
+ 		yyerror2("unrecognized protocol %s", id);
+-		free(newc);
+-		return -1;
++		goto bad;
+ 	}
+ 
+ 	newc->u.port.protocol = protocol;
+@@ -4937,13 +4944,11 @@ int define_port_context(unsigned int low, unsigned int high)
+ 
+ 	if (low > high) {
+ 		yyerror2("low port %d exceeds high port %d", low, high);
+-		free(newc);
+-		return -1;
++		goto bad;
+ 	}
+ 
+ 	if (parse_security_context(&newc->context[0])) {
+-		free(newc);
+-		return -1;
++		goto bad;
+ 	}
+ 
+ 	/* Preserve the matching order specified in the configuration. */
+@@ -4973,9 +4978,11 @@ int define_port_context(unsigned int low, unsigned int high)
+ 	else
+ 		policydbp->ocontexts[OCON_PORT] = newc;
+ 
++	free(id);
+ 	return 0;
+ 
+       bad:
++	free(id);
+ 	free(newc);
+ 	return -1;
+ }
+@@ -5038,7 +5045,7 @@ int define_netif_context(void)
+ 	return 0;
+ }
+ 
+-int define_ipv4_node_context(void) /* SETools */
++int define_ipv4_node_context(void)
+ {	
+ 	char *id;
+ 	int rc = 0;
+@@ -5184,7 +5191,7 @@ int define_ipv6_node_context(void)
+ 
+ 	memset(newc, 0, sizeof(ocontext_t));
+ 
+-#ifdef DARWIN
++#ifdef __APPLE__
+ 	memcpy(&newc->u.node6.addr[0], &addr.s6_addr[0], 16);
+ 	memcpy(&newc->u.node6.mask[0], &mask.s6_addr[0], 16);
+ #else
+@@ -5311,6 +5318,9 @@ int define_genfs_context_helper(char *fstype, int has_type)
+ 		else
+ 			policydbp->genfs = newgenfs;
+ 		genfs = newgenfs;
++	} else {
++		free(fstype);
++		fstype = NULL;
+ 	}
+ 
+ 	newc = (ocontext_t *) malloc(sizeof(ocontext_t));
+@@ -5368,7 +5378,7 @@ int define_genfs_context_helper(char *fstype, int has_type)
+ 		    (!newc->v.sclass || !c->v.sclass
+ 		     || newc->v.sclass == c->v.sclass)) {
+ 			yyerror2("duplicate entry for genfs entry (%s, %s)",
+-				 fstype, newc->u.name);
++				 genfs->fstype, newc->u.name);
+ 			goto fail;
+ 		}
+ 		len = strlen(newc->u.name);
+@@ -5382,6 +5392,7 @@ int define_genfs_context_helper(char *fstype, int has_type)
+ 		p->next = newc;
+ 	else
+ 		genfs->head = newc;
++	free(type);
+ 	return 0;
+       fail:
+ 	if (type)
+@@ -5457,7 +5468,7 @@ int define_range_trans(int class_specified)
+ 			goto out;
+ 	} else {
+ 		cladatum = hashtab_search(policydbp->p_classes.table,
+-				    (hashtab_key_t)"process"); /* SETools */
++                                  (hashtab_key_t)"process");
+ 		if (!cladatum) {
+ 			yyerror2("could not find process class for "
+ 			         "legacy range_transition statement");
+diff --git a/libqpol/policy_define.h b/libqpol/policy_define.h
+index 1a5b3260ce05..81128284bb17 100644
+--- a/libqpol/policy_define.h
++++ b/libqpol/policy_define.h
+@@ -14,7 +14,6 @@
+  * for NULL (ie 0) because that is a potentially valid return.
+  */
+ #define COND_ERR ((avrule_t *)-1)
+-
+ #define TRUE 1
+ #define FALSE 0
+ 
+@@ -55,12 +54,7 @@ int define_permissive(void);
+ int define_polcap(void);
+ int define_port_context(unsigned int low, unsigned int high);
+ int define_pirq_context(unsigned int pirq);
+-/* Support SETools */
+-#ifdef HAVE_SEPOL_XEN_DEVICETREE
+ int define_iomem_context(uint64_t low, uint64_t high);
+-#else
+-int define_iomem_context(unsigned long low, unsigned long high);
+-#endif
+ int define_ioport_context(unsigned long low, unsigned long high);
+ int define_pcidevice_context(unsigned long device);
+ int define_devicetree_context(void);
+diff --git a/setup.py b/setup.py
+index be94e78ee94f..fa0d7a1038f2 100644
+--- a/setup.py
++++ b/setup.py
+@@ -77,7 +77,7 @@ class BuildExtCommand(build_ext):
+         build_ext.run(self)
+ 
+ 
+-base_lib_dirs = ['.', '/usr/lib64', '/usr/lib']
++base_lib_dirs = ['.', '/usr/lib64', '/usr/lib', '/usr/local/lib']
+ include_dirs = ['libqpol', 'libqpol/include']
+ 
+ try:
+@@ -147,7 +147,6 @@ ext_py_mods = [Extension('setools.policyrep._qpol',
+                          include_dirs=include_dirs,
+                          extra_compile_args=['-Werror', '-Wextra',
+                                              '-Waggregate-return',
+-                                             '-Wcast-align',
+                                              '-Wfloat-equal',
+                                              '-Wformat', '-Wformat=2',
+                                              '-Winit-self', '-Winline',
+-- 
+2.13.1
+
