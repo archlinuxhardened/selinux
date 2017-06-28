@@ -5,7 +5,7 @@
 # Contributor: Zezadas
 
 pkgname=libselinux
-_pkgver=2.7-rc2
+_pkgver=2.7-rc3
 pkgver=${_pkgver/-/}
 pkgrel=1
 pkgdesc="SELinux library and simple utilities and selabel patches"
@@ -20,9 +20,9 @@ optdepends=('python2: python2 bindings'
             'ruby: ruby bindings')
 conflicts=("selinux-usr-${pkgname}")
 provides=("selinux-usr-${pkgname}=${pkgver}-${pkgrel}")
-source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20170616/${pkgname}-${_pkgver}.tar.gz"
+source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20170623/${pkgname}-${_pkgver}.tar.gz"
         "libselinux.tmpfiles.d")
-sha256sums=('48c2b3989d342b7b87fd5e6a773ebfcee6e2918ed49cfd2850888c02215a7a16'
+sha256sums=('e75027bddd9d06ec7459b53b7988e84d06fcce0d86ffc15604fae6df7bafa355'
             'afe23890fb2e12e6756e5d81bad3c3da33f38a95d072731c0422fbeb0b1fa1fc')
 
 build() {
@@ -45,23 +45,23 @@ package() {
 
   make DESTDIR="${pkgdir}" \
     LIBSEPOLA=/usr/lib/libsepol.a \
+    SBINDIR="${pkgdir}/usr/bin" \
     SHLIBDIR="${pkgdir}/usr/lib" \
-    USRSBINDIR="${pkgdir}/usr/bin" \
     install
   make DESTDIR="${pkgdir}" PYTHON=/usr/bin/python2 \
     LIBSEPOLA=/usr/lib/libsepol.a \
+    SBINDIR="${pkgdir}/usr/bin" \
     SHLIBDIR="${pkgdir}/usr/lib" \
-    USRSBINDIR="${pkgdir}/usr/bin" \
     install-pywrap
   make DESTDIR="${pkgdir}" PYTHON=/usr/bin/python3 \
     LIBSEPOLA=/usr/lib/libsepol.a \
+    SBINDIR="${pkgdir}/usr/bin" \
     SHLIBDIR="${pkgdir}/usr/lib" \
-    USRSBINDIR="${pkgdir}/usr/bin" \
     install-pywrap
   make DESTDIR="${pkgdir}" RUBY=/usr/bin/ruby \
     LIBSEPOLA=/usr/lib/libsepol.a \
+    SBINDIR="${pkgdir}/usr/bin" \
     SHLIBDIR="${pkgdir}/usr/lib" \
-    USRSBINDIR="${pkgdir}/usr/bin" \
     install-rubywrap
   /usr/bin/python2 -m compileall "${pkgdir}/$(/usr/bin/python2 -c 'import site; print(site.getsitepackages()[0])')"
   /usr/bin/python3 -m compileall "${pkgdir}/$(/usr/bin/python3 -c 'import site; print(site.getsitepackages()[0])')"
