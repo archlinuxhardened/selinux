@@ -2,7 +2,7 @@
 
 pkgbase=selinux-python
 pkgname=(selinux-python selinux-python2)
-_pkgver=2.7-rc2
+_pkgver=2.7-rc3
 pkgver=${_pkgver/-/}
 pkgrel=1
 pkgdesc="SELinux python tools and libraries"
@@ -13,8 +13,8 @@ license=('GPL2')
 makedepends=('python2' 'python' 'python-ipy' 'libsemanage>=2.7rc1' 'setools>=4.0.0')
 conflicts=('sepolgen<2.7rc1' 'policycoreutils<2.7rc1')
 provides=("sepolgen=${pkgver}-${pkgrel}")
-source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20170616/${pkgname}-${_pkgver}.tar.gz")
-sha256sums=('c8afc3e6ba05f95dbb1546105287f4bb7a1e8563b2f6b39cb440baf5ca70448a')
+source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20170623/${pkgname}-${_pkgver}.tar.gz")
+sha256sums=('9f3b52946cc07d018e91bafd19dfad37cfc3905ea6621bcbafb1695507aa1d0f')
 
 build() {
   cd "${pkgbase}-${_pkgver}"
@@ -29,7 +29,6 @@ package_selinux-python() {
   make PYTHON=/usr/bin/python3 DESTDIR="${pkgdir}" \
     LIBSEPOLA=/usr/lib/libsepol.a \
     SBINDIR="${pkgdir}/usr/bin" \
-    USRSBINDIR="${pkgdir}/usr/bin" \
     install
   /usr/bin/python3 -m compileall "${pkgdir}/$(/usr/bin/python3 -c 'import site; print(site.getsitepackages()[0])')"
 }
@@ -48,7 +47,6 @@ package_selinux-python2() {
     MANDIR="${pkgdir}/removed" \
     SBINDIR="${pkgdir}/removed" \
     SHAREDIR="${pkgdir}/removed" \
-    USRSBINDIR="${pkgdir}/removed" \
     install
   rm -r "${pkgdir}/removed"
   /usr/bin/python2 -m compileall "${pkgdir}/$(/usr/bin/python2 -c 'import site; print(site.getsitepackages()[0])')"
