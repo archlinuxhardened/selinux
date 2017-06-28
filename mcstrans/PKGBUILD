@@ -1,7 +1,7 @@
 # Maintainer: Nicolas Iooss (nicolas <dot> iooss <at> m4x <dot> org)
 
 pkgname=mcstrans
-_pkgver=2.7-rc2
+_pkgver=2.7-rc3
 pkgver=${_pkgver/-/}
 pkgrel=1
 pkgdesc="SELinux MCS translation daemon"
@@ -10,8 +10,8 @@ url='https://github.com/SELinuxProject/selinux/wiki'
 license=('GPL2')
 groups=('selinux')
 depends=('libcap' 'libselinux>=2.7rc1' 'pcre')
-source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20170616/${pkgname}-${_pkgver}.tar.gz")
-sha256sums=('9fe7ddcfbee2415e14ccac492f455883511bfdaad7c495dac718a89d860b457d')
+source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20170623/${pkgname}-${_pkgver}.tar.gz")
+sha256sums=('29e1791ee92c9696a6f7f5caa8391dea45e25109cf2f28a192b108eb9cfa89ca')
 
 build() {
   cd "${pkgname}-${_pkgver}"
@@ -23,7 +23,6 @@ package() {
   cd "${pkgname}-${_pkgver}"
 
   make DESTDIR="${pkgdir}" \
-    BINDIR="${pkgdir}/usr/bin" \
     LIBSEPOLA=/usr/lib/libsepol.a \
     SBINDIR="${pkgdir}/usr/bin" \
     install
