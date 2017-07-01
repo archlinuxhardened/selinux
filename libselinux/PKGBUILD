@@ -5,7 +5,7 @@
 # Contributor: Zezadas
 
 pkgname=libselinux
-_pkgver=2.7-rc3
+_pkgver=2.7-rc4
 pkgver=${_pkgver/-/}
 pkgrel=1
 pkgdesc="SELinux library and simple utilities and selabel patches"
@@ -20,9 +20,9 @@ optdepends=('python2: python2 bindings'
             'ruby: ruby bindings')
 conflicts=("selinux-usr-${pkgname}")
 provides=("selinux-usr-${pkgname}=${pkgver}-${pkgrel}")
-source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20170623/${pkgname}-${_pkgver}.tar.gz"
+source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20170630/${pkgname}-${_pkgver}.tar.gz"
         "libselinux.tmpfiles.d")
-sha256sums=('e75027bddd9d06ec7459b53b7988e84d06fcce0d86ffc15604fae6df7bafa355'
+sha256sums=('27c1780d6c623ab70ccf6923b8c8f386f8984ec99b7b4734f7b23d3d25809970'
             'afe23890fb2e12e6756e5d81bad3c3da33f38a95d072731c0422fbeb0b1fa1fc')
 
 build() {
