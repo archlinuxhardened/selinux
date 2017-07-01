@@ -1,6 +1,6 @@
 pkgbase = selinux-dbus-config
 	pkgdesc = SELinux GUI tools
-	pkgver = 2.7rc3
+	pkgver = 2.7rc4
 	pkgrel = 1
 	url = https://github.com/SELinuxProject/selinux/wiki
 	arch = any
@@ -9,8 +9,8 @@ pkgbase = selinux-dbus-config
 	depends = python
 	depends = selinux-python
 	conflicts = policycoreutils<2.7rc1
-	source = https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20170623/selinux-dbus-2.7-rc3.tar.gz
-	sha256sums = b7c18b5592009468681edded2dba9e7befbee27ed69e78f78a8d37466c3d8805
+	source = https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20170630/selinux-dbus-2.7-rc4.tar.gz
+	sha256sums = 2a4812db4cf54008959b712aed0aae8d8b7b8ea5e81247f5fbc4a333430f7f46
 
 pkgname = selinux-dbus-config
 
