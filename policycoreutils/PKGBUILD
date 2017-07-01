@@ -5,7 +5,7 @@
 # Contributor: angelux/xangelux (xangelux <at> gmail <dot> com)
 
 pkgname=policycoreutils
-_pkgver=2.7-rc3
+_pkgver=2.7-rc4
 pkgver=${_pkgver/-/}
 pkgrel=1
 pkgdesc="SELinux policy core utilities"
@@ -23,8 +23,8 @@ optdepends=('mcstrans: SELinux MCS translation daemon'
             'semodule-utils: SELinux module tools')
 conflicts=("selinux-usr-${pkgname}")
 provides=("selinux-usr-${pkgname}=${pkgver}-${pkgrel}")
-source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20170623/${pkgname}-${_pkgver}.tar.gz")
-sha256sums=('55a8ec316a6f0762a90196afb9cd7f41d02ab0fcb453b095b56463a50ad9ed85')
+source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20170630/${pkgname}-${_pkgver}.tar.gz")
+sha256sums=('d68f7cfbdb5539c13f35aba4e506b4f5aff54cc426810d96eac14fc84aa26e5f')
 
 build() {
   cd "${pkgname}-${_pkgver}"
