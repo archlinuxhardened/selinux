@@ -1,6 +1,6 @@
 pkgbase = restorecond
 	pkgdesc = sandboxing tool for SELinux
-	pkgver = 2.7rc3
+	pkgver = 2.7rc4
 	pkgrel = 1
 	url = https://github.com/SELinuxProject/selinux/wiki
 	arch = i686
@@ -10,8 +10,8 @@ pkgbase = restorecond
 	depends = dbus-glib
 	depends = libselinux>=2.7rc1
 	conflicts = policycoreutils<2.7rc1
-	source = https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20170623/restorecond-2.7-rc3.tar.gz
-	sha256sums = 86ccbbf86910c93845001c4730e7cc1bfcd2360718795acea7c2fba9d9272679
+	source = https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20170630/restorecond-2.7-rc4.tar.gz
+	sha256sums = b8ebd7ba6d988442f6c24f43867d0ed4e9573975540ef4726adccf897db4a5c4
 
 pkgname = restorecond
 
