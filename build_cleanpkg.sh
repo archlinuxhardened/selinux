@@ -106,7 +106,7 @@ pkgbuild_python_ipy
 pkgbuild selinux-python libsepol libselinux libsemanage setools python-ipy
 pkgbuild selinux-gui libsepol libselinux libsemanage setools selinux-python2
 pkgbuild selinux-dbus-config libsepol libselinux libsemanage setools python-ipy selinux-python
-pkgbuild selinux-sandbox libsepol libselinux selinux-python
+pkgbuild selinux-sandbox libsepol libselinux libsemanage setools python-ipy selinux-python
 
 # Build pacman hook
 pkgbuild selinux-alpm-hook libsepol libselinux libsemanage policycoreutils
