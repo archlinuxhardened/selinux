@@ -184,4 +184,7 @@ build_and_install linux-selinux
 build_and_install selinux-refpolicy-src
 
 # Refpolicy with Arch Linux patches
-build_and_install selinux-refpolicy-arch
+#build_and_install selinux-refpolicy-arch
+
+# Refpolicy git master
+build_and_install selinux-refpolicy-git

@@ -65,6 +65,7 @@ pkgbuild cronie-selinux
 # Build refpolicy source package and Arch Linux policy and pacman hook
 pkgbuild selinux-refpolicy-src
 pkgbuild selinux-refpolicy-arch
+pkgbuild selinux-refpolicy-git
 pkgbuild selinux-alpm-hook
 
 # Finally build the kernel
