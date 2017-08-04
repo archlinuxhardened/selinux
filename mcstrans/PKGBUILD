@@ -1,7 +1,7 @@
 # Maintainer: Nicolas Iooss (nicolas <dot> iooss <at> m4x <dot> org)
 
 pkgname=mcstrans
-_pkgver=2.7-rc4
+_pkgver=2.7-rc6
 pkgver=${_pkgver/-/}
 pkgrel=1
 pkgdesc="SELinux MCS translation daemon"
@@ -10,8 +10,8 @@ url='https://github.com/SELinuxProject/selinux/wiki'
 license=('GPL2')
 groups=('selinux')
 depends=('libcap' 'libselinux>=2.7rc1' 'pcre')
-source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20170630/${pkgname}-${_pkgver}.tar.gz")
-sha256sums=('0548cc928609b17a2cfe0cac62146b79c44f86ec553ba41d8a9dae7876a9ae2b')
+source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20170728/${pkgname}-${_pkgver}.tar.gz")
+sha256sums=('45a520138e1ac2f4facc90568e8e420cd2853d72733969f65a32004a599383ac')
 
 build() {
   cd "${pkgname}-${_pkgver}"
