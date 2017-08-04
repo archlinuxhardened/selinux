@@ -1,6 +1,6 @@
 pkgbase = selinux-python
 	pkgdesc = SELinux python tools and libraries
-	pkgver = 2.7rc4
+	pkgver = 2.7rc6
 	pkgrel = 1
 	url = https://github.com/SELinuxProject/selinux/wiki
 	arch = i686
@@ -12,11 +12,11 @@ pkgbase = selinux-python
 	makedepends = python-ipy
 	makedepends = libsemanage>=2.7rc1
 	makedepends = setools>=4.0.0
-	provides = sepolgen=2.7rc4-1
+	provides = sepolgen=2.7rc6-1
 	conflicts = sepolgen<2.7rc1
 	conflicts = policycoreutils<2.7rc1
-	source = https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20170630/selinux-python-2.7-rc4.tar.gz
-	sha256sums = e6e1ae9aaebc7450f470df807b8a3913d751f15ce555c39b6bc4a50a712cc0ad
+	source = https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20170728/selinux-python-2.7-rc6.tar.gz
+	sha256sums = db221a37cd7b84184186157e6178017dd7210bd1854f48f25fa3c19d9a5c3b07
 
 pkgname = selinux-python
 	depends = python
