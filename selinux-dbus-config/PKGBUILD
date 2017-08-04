@@ -2,7 +2,7 @@
 
 pkgname=selinux-dbus-config
 _pkgname=selinux-dbus
-_pkgver=2.7-rc4
+_pkgver=2.7-rc6
 pkgver=${_pkgver/-/}
 pkgrel=1
 pkgdesc="SELinux GUI tools"
@@ -12,8 +12,8 @@ url='https://github.com/SELinuxProject/selinux/wiki'
 license=('GPL2')
 depends=('python' 'selinux-python')
 conflicts=('policycoreutils<2.7rc1')
-source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20170630/${_pkgname}-${_pkgver}.tar.gz")
-sha256sums=('2a4812db4cf54008959b712aed0aae8d8b7b8ea5e81247f5fbc4a333430f7f46')
+source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20170728/${_pkgname}-${_pkgver}.tar.gz")
+sha256sums=('3c8a89dad00244f7580fde4049cc1054d4b099cdf496368b8b9d8e3f18540b31')
 
 =build() {
   cd "${_pkgname}-${_pkgver}"
