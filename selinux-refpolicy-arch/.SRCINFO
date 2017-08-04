@@ -7,10 +7,10 @@ pkgbase = selinux-refpolicy-arch
 	arch = any
 	groups = selinux
 	license = GPL
-	makedepends = checkpolicy>=2.1.8
-	makedepends = policycoreutils>=2.1.10
-	makedepends = libsepol>=2.1.4
-	makedepends = libsemanage>=2.0.29
+	makedepends = python
+	makedepends = checkpolicy>=2.7rc1
+	makedepends = semodule-utils
+	depends = policycoreutils>=2.7rc1
 	optdepends = linux-hardened: Linux kernel with SELinux support
 	optdepends = linux-selinux: Linux kernel with SELinux support
 	backup = etc/selinux/config

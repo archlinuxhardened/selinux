@@ -9,8 +9,8 @@ arch=('any')
 url="https://github.com/TresysTechnology/refpolicy/wiki"
 license=('GPL2')
 groups=('selinux')
-makedepends=('git' 'python' 'checkpolicy>=2.6' 'libsepol>=2.6' 'libsemanage>=2.6')
-depends=('policycoreutils>=2.6')
+makedepends=('git' 'python' 'checkpolicy>=2.7rc1' 'semodule-utils')
+depends=('policycoreutils>=2.7rc1')
 optdepends=('linux-hardened: Linux kernel with SELinux support'
             'linux-selinux: Linux kernel with SELinux support')
 install="${pkgname}.install"

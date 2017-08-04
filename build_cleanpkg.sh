@@ -111,6 +111,11 @@ pkgbuild selinux-sandbox libsepol libselinux libsemanage setools python-ipy seli
 # Build pacman hook
 pkgbuild selinux-alpm-hook libsepol libselinux libsemanage policycoreutils
 
+# Build refpolicy source package and Arch Linux policy
+pkgbuild selinux-refpolicy-src libsepol libselinux libsemanage checkpolicy policycoreutils
+pkgbuild selinux-refpolicy-arch libsepol libselinux libsemanage semodule-utils checkpolicy policycoreutils
+pkgbuild selinux-refpolicy-git libsepol libselinux libsemanage semodule-utils checkpolicy policycoreutils
+
 # Build core packages with SELinux support
 pkgbuild pambase-selinux
 # Error: pambase-selinux and pambase are in conflict. Remove pambase? [y/N]
@@ -128,10 +133,6 @@ pkgbuild util-linux-selinux
 pkgbuild systemd-selinux
 pkgbuild dbus-selinux
 pkgbuild cronie-selinux
-
-# Build refpolicy source package and Arch Linux policy
-pkgbuild selinux-refpolicy-src
-pkgbuild selinux-refpolicy-arch
 
 # Finally build the kernel
 pkgbuild linux-selinux
