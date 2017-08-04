@@ -1,6 +1,6 @@
 pkgbase = libselinux
 	pkgdesc = SELinux library and simple utilities and selabel patches
-	pkgver = 2.7rc4
+	pkgver = 2.7rc6
 	pkgrel = 1
 	url = http://userspace.selinuxproject.org
 	arch = i686
@@ -18,11 +18,11 @@ pkgbase = libselinux
 	optdepends = python2: python2 bindings
 	optdepends = python: python bindings
 	optdepends = ruby: ruby bindings
-	provides = selinux-usr-libselinux=2.7rc4-1
+	provides = selinux-usr-libselinux=2.7rc6-1
 	conflicts = selinux-usr-libselinux
-	source = https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20170630/libselinux-2.7-rc4.tar.gz
+	source = https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20170728/libselinux-2.7-rc6.tar.gz
 	source = libselinux.tmpfiles.d
-	sha256sums = 27c1780d6c623ab70ccf6923b8c8f386f8984ec99b7b4734f7b23d3d25809970
+	sha256sums = f7c2a8666e7c5c913a6b32c99eb1be13b5bb8743f225f7051d4a8610dd134d42
 	sha256sums = afe23890fb2e12e6756e5d81bad3c3da33f38a95d072731c0422fbeb0b1fa1fc
 
 pkgname = libselinux
