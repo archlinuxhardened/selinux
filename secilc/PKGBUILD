@@ -1,7 +1,7 @@
 # Maintainer: Nicolas Iooss (nicolas <dot> iooss <at> m4x <dot> org)
 
 pkgname=secilc
-_pkgver=2.7-rc4
+_pkgver=2.7-rc6
 pkgver=${_pkgver/-/}
 pkgrel=1
 pkgdesc="SELinux Common Intermediate Language Compiler"
@@ -11,8 +11,8 @@ url='https://github.com/SELinuxProject/cil/wiki'
 license=('custom')
 makedepends=('xmlto' 'docbook-xml' 'docbook-xsl')
 depends=('libsepol>=2.7rc1')
-source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20170630/${pkgname}-${_pkgver}.tar.gz")
-sha256sums=('f1015c509eae73599922751ab966be35ec0e4c3e3517f1e8758e28ce23f0ffde')
+source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20170728/${pkgname}-${_pkgver}.tar.gz")
+sha256sums=('4ea9dd38a8a07fd956a144c81ca48b98e412676e3613b594e00d46cea66104a6')
 
 build() {
   cd "${pkgname}-${_pkgver}"
