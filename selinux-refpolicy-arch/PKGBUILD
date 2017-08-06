@@ -14,8 +14,8 @@ arch=('any')
 url="http://oss.tresys.com/projects/refpolicy"
 license=('GPL')
 groups=('selinux')
-makedepends=('python' 'checkpolicy>=2.7rc1' 'semodule-utils')
-depends=('policycoreutils>=2.7rc1')
+makedepends=('python' 'checkpolicy>=2.7' 'semodule-utils')
+depends=('policycoreutils>=2.7')
 optdepends=('linux-hardened: Linux kernel with SELinux support'
             'linux-selinux: Linux kernel with SELinux support')
 backup=(etc/selinux/config)
