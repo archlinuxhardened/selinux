@@ -46,8 +46,8 @@ BASE_PKGLIST_FILE = os.path.join(CURRENT_DIR, 'base_pkglist.txt')
 PACMAN_DB_DIR = os.path.join(CURRENT_DIR, '.pacman-db')
 PACMAN_CONF_FILE = os.path.join(CURRENT_DIR, 'local-pacman.conf')
 
-ARCH_GITLOG_URL = 'https://projects.archlinux.org/svntogit/packages.git/log/trunk?h=packages/{}'
-ARCH_GITREMOTE = 'git://projects.archlinux.org/svntogit/packages.git'
+ARCH_GITLOG_URL = 'https://git.archlinux.org/svntogit/packages.git/log/trunk?h=packages/{}'
+ARCH_GITREMOTE = 'https://git.archlinux.org/svntogit/packages.git'
 
 
 def sync_local_pacman_db():
@@ -165,7 +165,7 @@ class Package(object):
             [
                 'git', 'clone',
                 '--branch', 'packages/{}'.format(self.basepkgname),
-                '--depth', '1', ARCH_GITREMOTE, git_dirname],
+                '--single-branch', '--depth', '1', ARCH_GITREMOTE, git_dirname],
             cwd=BASE_PACKAGES_DIR)
         retval = proc.wait()
         if retval:
