@@ -1,13 +1,13 @@
 pkgbase = policycoreutils
 	pkgdesc = SELinux policy core utilities
-	pkgver = 2.7rc6
+	pkgver = 2.7
 	pkgrel = 1
 	url = http://userspace.selinuxproject.org
 	arch = i686
 	arch = x86_64
 	groups = selinux
 	license = GPL2
-	depends = libsemanage>=2.7rc1
+	depends = libsemanage>=2.7
 	depends = pam
 	optdepends = mcstrans: SELinux MCS translation daemon
 	optdepends = restorecond: SELinux daemon that fixes SELinux file contexts
@@ -16,10 +16,10 @@ pkgbase = policycoreutils
 	optdepends = selinux-python: Python tools and libraries for SELinux
 	optdepends = selinux-sandbox: sandboxing tool for SELinux
 	optdepends = semodule-utils: SELinux module tools
-	provides = selinux-usr-policycoreutils=2.7rc6-1
+	provides = selinux-usr-policycoreutils=2.7-1
 	conflicts = selinux-usr-policycoreutils
-	source = https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20170728/policycoreutils-2.7-rc6.tar.gz
-	sha256sums = 11b82d876823ea28994f14b283800e40cfe9f71d883d8944bea0984a2a07d112
+	source = https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20170804/policycoreutils-2.7.tar.gz
+	sha256sums = 0a1b8a4a323b854981c6755ff025fe98a0f1cff307f109abb260f0490f13e4f4
 
 pkgname = policycoreutils
 
