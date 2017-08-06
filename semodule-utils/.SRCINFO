@@ -1,16 +1,16 @@
 pkgbase = semodule-utils
 	pkgdesc = SELinux module tools
-	pkgver = 2.7rc6
+	pkgver = 2.7
 	pkgrel = 1
 	url = https://github.com/SELinuxProject/selinux/wiki
 	arch = i686
 	arch = x86_64
 	groups = selinux
 	license = GPL2
-	depends = libsepol>=2.7rc1
-	conflicts = policycoreutils<2.7rc1
-	source = https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20170728/semodule-utils-2.7-rc6.tar.gz
-	sha256sums = 13bd4f6600d53621a5a3817d7374d626c0cc1d6742c7348ca2c34c2fcc5e6311
+	depends = libsepol>=2.7
+	conflicts = policycoreutils<2.7
+	source = https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20170804/semodule-utils-2.7.tar.gz
+	sha256sums = 90c98b3362a43b4da2a51a9176820a56f3e615225e23e3395bc566c4490786ba
 
 pkgname = semodule-utils
 
