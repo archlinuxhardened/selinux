@@ -37,18 +37,22 @@ pkgbuild libsepol
 pkgbuild libselinux
 pkgbuild secilc
 pkgbuild checkpolicy
-pkgbuild setools3-libs
 pkgbuild setools
-pkgbuild ustr-selinux
 pkgbuild libsemanage
 pkgbuild sepolgen
-
-# policycoreutils depends on pam-selinux
-pkgbuild pambase-selinux
-pkgbuild pam-selinux
+pkgbuild semodule-utils
+pkgbuild restorecond
+pkgbuild mcstrans
 pkgbuild policycoreutils
+pkgbuild_python_ipy
+pkgbuild selinux-python
+pkgbuild selinux-gui
+pkgbuild selinux-dbus-config
+pkgbuild selinux-sandbox
 
 # Build core packages with SELinux support
+pkgbuild pambase-selinux
+pkgbuild pam-selinux
 pkgbuild coreutils-selinux
 pkgbuild findutils-selinux
 pkgbuild iproute2-selinux

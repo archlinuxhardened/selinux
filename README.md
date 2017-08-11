@@ -22,15 +22,25 @@ install packages (especially for sudo/shadow/pam packages).
 
 * linux-selinux (support in Arch Official kernel on the way:
   https://bugs.archlinux.org/task/37578) can be built at any time.
+  linux-hardened package provides SELinux.
 
 First, we build all packages from the SELinux userspace projet. They do not
 replace any official Arch Linux packages:
 
 * libsepol
 * libselinux
-* checkpolicy setools
-* libcgroup libsemanage sepolgen
+* secilc
+* checkpolicy
+* setools
+* libsemanage
+* semodule-utils
 * policycoreutils
+* selinux-dbus-config
+* selinux-gui
+* selinux-python
+* selinux-sandbox
+* mcstrans
+* restorecond
 
 Now we start replacing core packages:
 
@@ -39,9 +49,10 @@ Now we start replacing core packages:
 * coreutils-selinux shadow-selinux cronie-selinux sudo-selinux
 * util-linux-selinux
 * systemd-selinux
+* logrotate-selinux
 
-Optionnal but very nice to have:
-* openssh-selinux findutils-selinux psmisc-selinux
+Optional but very nice to have:
+* openssh-selinux findutils-selinux iproute2-selinux psmisc-selinux
 
 Policy
 ------

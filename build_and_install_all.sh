@@ -82,19 +82,6 @@ build_and_install() {
     run_conflictual_install pacman -U "./$1/"*.pkg.tar.xz
 }
 
-# Install libcgroup package from the AUR, if it is not already installed
-install_libcgroup() {
-    local MAKEPKGDIR
-    if pacman -Qi libcgroup > /dev/null 2>&1
-    then
-        return 0
-    fi
-    MAKEPKGDIR="$(mktemp -d makepkg-libcgroup-XXXXXX)"
-    git -C "$MAKEPKGDIR" clone https://aur.archlinux.org/libcgroup.git || exit $?
-    (cd "$MAKEPKGDIR/libcgroup" && makepkg -si --noconfirm --asdeps) || exit $?
-    rm -rf "$MAKEPKGDIR"
-}
-
 # Install python-ipy package from the AUR, if it is not already installed
 install_python_ipy() {
     local MAKEPKGDIR
@@ -125,23 +112,24 @@ build_and_install secilc
 build_and_install checkpolicy
 # setools 3.3.8-5 Makefile has dependencies issues when installing __init__.py for qpol
 # (install command can be invoked before the destination directory is created)
-build_and_install setools3-libs
 build_and_install setools MAKEFLAGS="-j1"
-build_and_install ustr-selinux
 build_and_install libsemanage
-build_and_install sepolgen
-
-# policycoreutils depends on pam-selinux and libcgroup (an AUR package)
-build_and_install pambase-selinux
-build_and_install pam-selinux
-install_libcgroup
-install_python_ipy
+build_and_install mcstrans
 build_and_install policycoreutils
+build_and_install semodule-utils
+build_and_install restorecond
+install_python_ipy
+build_and_install selinux-python
+build_and_install selinux-gui
+build_and_install selinux-dbus-config
+build_and_install selinux-sandbox
 
 # pacman hook
 build_and_install selinux-alpm-hook
 
 # Core packages with SELinux support
+build_and_install pambase-selinux
+build_and_install pam-selinux
 build_and_install coreutils-selinux
 build_and_install findutils-selinux
 build_and_install iproute2-selinux
