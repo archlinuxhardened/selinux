@@ -49,6 +49,38 @@ then
     fi
 fi
 
+# Use upstream refpolicy if it is cloned in _vagrant/refpolicy/ with for example:
+#     git clone --recursive https://github.com/TresysTechnology/refpolicy.git
+REFPOL_DIR=/vagrant/refpolicy
+if [ -d "$REFPOL_DIR" ]
+then
+    # Ensure that build.conf contains settings suitable to Arch Linux
+    if ! grep '^DISTRO *= *arch$' "$REFPOL_DIR/build.conf"
+    then
+        echo 'DISTRO = arch' >> "$REFPOL_DIR/build.conf"
+    fi
+
+    # Arch Linux uses systemd
+    if ! grep '^SYSTEMD *= *y$' "$REFPOL_DIR/build.conf"
+    then
+        echo 'SYSTEMD = y' >> "$REFPOL_DIR/build.conf"
+    fi
+
+    # Let's disable user-based access control for now
+    if ! grep '^UBAC *= *n$' "$REFPOL_DIR/build.conf"
+    then
+        echo 'UBAC = n' >> "$REFPOL_DIR/build.conf"
+    fi
+
+    make -C "$REFPOL_DIR" conf
+    make -C "$REFPOL_DIR" all
+    make -C "$REFPOL_DIR" validate
+    make -C "$REFPOL_DIR" install
+    make -C "$REFPOL_DIR" install-headers
+    sed -i -e 's/^\(SELINUXTYPE=\).*/SELINUXTYPE=refpolicy/' /etc/selinux/config
+    semodule -s refpolicy -i /usr/share/selinux/refpolicy/*.pp
+fi
+
 # Do not use unconfined module
 if semodule -l | grep '^unconfined' > /dev/null
 then
