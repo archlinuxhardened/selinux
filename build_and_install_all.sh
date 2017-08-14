@@ -41,38 +41,33 @@ build() {
 
 # Run an install command for a package which may conflict with a base package
 # and answer yes to ":: $PKG-selinux and $PKG are in conflict. Remove $PKG? [y/N]"
+# Use undocumented pacman's --ask=4 option to do this while in --noconfirm
+#
+# 4 is ALPM_QUESTION_CONFLICT_PKG in https://git.archlinux.org/pacman.git/tree/lib/libalpm/alpm.h?h=v5.0.2#n602
+# and --ask=... inverts the default answer of the interactive question according
+# to https://git.archlinux.org/pacman.git/tree/src/pacman/callback.c?h=v5.0.2#n490
 run_conflictual_install() {
-    local ATTEMPT STATUS
-    for ATTEMPT in $(seq 10)
-    do
-        # Do not put sudo inside the expect so that passwords are not intercepted by except
-        sudo LANG=C expect <<EOF
-set timeout 300
-set send_slow {1 1}
-spawn $(echo "$*" | sed 's/pacman -U/pacman --color never -U/')
-expect {
-    -re {:: [-a-z0-9]+ and [-a-z0-9]+ are in conflict( \([-a-z0-9]+\))?\. Remove [-a-z0-9]+\? \[y/N\] } { sleep .5; send y\r; exp_continue }
-    {:: Proceed with installation? \[Y/n\] } { sleep .5; send y\r; exp_continue }
-    timeout { send_user "Time out.\n"; exit 42 }
-    eof
-}
-foreach {pid spawnid os_error_flag value} [wait] break
-exit \$value
-EOF
-        STATUS=$?
-        if [ "$STATUS" = 0 ]
-        then
-            # Return if the command succeeded
-            return
-        elif [ "$STATUS" -ne 42 ]
-        then
-            echo >&2 "expect returned an error ($STATUS) when running: $*"
-            exit 1
-        fi
-        echo "installation timed out, retrying ($ATTEMPT)"
-    done
-    echo >&2 "expect kept getting timed out, aborting."
-    exit 1
+    local SUBCOMMAND
+
+    if [ "$1" = "pacman" ] ; then
+        shift
+        set pacman '--noconfirm' '--ask=4' "$@"
+    elif [ "$1" = "sh" ] && [ "$2" = "-c" ] ; then
+        # run "sh -c 'subcommand with pacman'
+        SUBCOMMAND="$3"
+        shift 3
+        set sh '-c' "$(echo "$SUBCOMMAND" | sed 's/pacman /pacman --noconfirm --ask=4 /g')" "$@"
+    else
+        echo >&2 "Internal error: run_conflictual_install without pacman but '$*'"
+        exit 1
+    fi
+
+    # Invoke pacman with sudo
+    if ! sudo LANG=C "$@"
+    then
+        echo >&2 "Error: the following command failed, sudo LANG=C $*"
+        exit 1
+    fi
 }
 
 # Build and install a package
@@ -150,7 +145,7 @@ then
         exit 1
     fi
     run_conflictual_install sh -c \
-        '{pacman -U sudo-selinux/sudo-selinux-*.pkg.tar.xz && if test -e /etc/sudoers.pacsave ; then mv /etc/sudoers.pacsave /etc/sudoers ; fi}'
+        '{ pacman -U sudo-selinux/sudo-selinux-*.pkg.tar.xz && if test -e /etc/sudoers.pacsave ; then mv /etc/sudoers.pacsave /etc/sudoers ; fi }'
 fi
 
 # Handle util-linux/systemd build-time cycle dependency (https://bugs.archlinux.org/task/39767)
