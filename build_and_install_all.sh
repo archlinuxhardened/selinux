@@ -12,6 +12,16 @@ fi
 # Verify whether a package needs to be installed
 needs_install() {
     local CURRENT_VERSION PKGREL PKGVER
+
+    if "$UPGRADE_GIT_PACKAGE"
+    then
+        # Always ugrade -git packages
+        if [ "${1%-git}" != "$1" ]
+        then
+            return 0
+        fi
+    fi
+
     CURRENT_VERSION="$(LANG=C pacman -Q "${1##*/}" 2> /dev/null | awk '{print $2}')"
     if [ -z "$CURRENT_VERSION" ]
     then
@@ -20,13 +30,19 @@ needs_install() {
     fi
     PKGVER="$(sed -n 's/^\s*pkgver = \(\S\+\)/\1/p' "$1/.SRCINFO" | head -n1)"
     PKGREL="$(sed -n 's/^\s*pkgrel = \(\S\+\)/\1/p' "$1/.SRCINFO" | head -n1)"
-    if [ "$CURRENT_VERSION" != "$PKGVER-$PKGREL" ]
+    if [ "$CURRENT_VERSION" = "$PKGVER-$PKGREL" ]
     then
-        # The package needs to be updated
-        return 0
+        # The package is already installed to the same version as in the tree
+        return 1
     fi
-    # The package is already installed to the same version as in the tree
-    return 1
+
+    # If the package is a git package, do not install it if the git tree
+    # contains an older package
+    if [ "${1%-git}" != "$1" ] && [ "$(vercmp "$CURRENT_VERSION" "$PKGVER-$PKGREL")" -ge 0 ]
+    then
+        return 1
+    fi
+    return 0
 }
 
 # Build a package
@@ -89,6 +105,28 @@ install_python_ipy() {
     (cd "$MAKEPKGDIR/python-ipy" && makepkg -si --noconfirm --asdeps) || exit $?
     rm -rf "$MAKEPKGDIR"
 }
+
+# Parse options
+UPGRADE_GIT_PACKAGE=false
+while getopts ":gh" OPT
+do
+    case "$OPT" in
+        h)
+            echo "Usage: $0 [OPTIONS]"
+            echo ""
+            echo "Build and install/upgrade every package which is not already installed"
+            echo ""
+            echo "Optional arguments:"
+            echo "  -h      display this help and exit"
+            echo "  -g      always upgrade -git packages"
+            echo "          (default: upgrade only when pkgver-pkgrel changes)"
+            exit
+            ;;
+        g)
+            UPGRADE_GIT_PACKAGE=true
+            ;;
+    esac
+done
 
 # Install the packages which are needed for the script if they are not already installed
 # base and base-devel groups are supposed to be installed

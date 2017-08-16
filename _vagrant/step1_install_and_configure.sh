@@ -21,7 +21,7 @@ pacman --noconfirm -Syu
 sudo -u vagrant /srv/arch-selinux/recv_gpg_keys.sh
 sudo -u vagrant /srv/arch-selinux/clean.sh
 install -d -m 755 -o vagrant -g vagrant /build
-sudo -u vagrant BUILDDIR=/build LANG=en_US.UTF-8 /srv/arch-selinux/build_and_install_all.sh
+sudo -u vagrant BUILDDIR=/build LANG=en_US.UTF-8 /srv/arch-selinux/build_and_install_all.sh -g
 rm -rf /build
 pacman --noconfirm -Sc
 
