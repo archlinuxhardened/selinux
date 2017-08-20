@@ -42,6 +42,9 @@ replace any official Arch Linux packages:
 * mcstrans
 * restorecond
 
+This makes it possible to install a pacman hook which relabels files when installing and updating packages:
+* selinux-alpm-hook
+
 Now we start replacing core packages:
 
 * pambase-selinux
@@ -50,6 +53,7 @@ Now we start replacing core packages:
 * util-linux-selinux
 * systemd-selinux
 * logrotate-selinux
+* dbus-selinux
 
 Optional but very nice to have:
 * openssh-selinux findutils-selinux iproute2-selinux psmisc-selinux
