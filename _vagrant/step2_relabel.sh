@@ -29,6 +29,20 @@ then
     semanage login -a -s sysadm_u vagrant
 fi
 
+# Label /srv/arch-selinux and /vagrant as vagrant's home files
+if semanage fcontext --list | grep '^/srv/arch-selinux(/\.\*)?'
+then
+    semanage fcontext -m -s sysadm_u -t user_home_t '/srv/arch-selinux(/.*)?'
+else
+    semanage fcontext -a -s sysadm_u -t user_home_t '/srv/arch-selinux(/.*)?'
+fi
+if semanage fcontext --list | grep '^/vagrant(/\.\*)?'
+then
+    semanage fcontext -m -s sysadm_u -t user_home_t '/vagrant(/.*)?'
+else
+    semanage fcontext -a -s sysadm_u -t user_home_t '/vagrant(/.*)?'
+fi
+
 # On systems with syslinux, ldlinux.sys is immutable but needs to be relabelled
 if [ -e /boot/syslinux/ldlinux.sys ]
 then
