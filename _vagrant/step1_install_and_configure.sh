@@ -18,10 +18,10 @@ sed -i -e 's/^#\?MAKEFLAGS=.*/MAKEFLAGS="-j\$(nproc)"/' /etc/makepkg.conf
 pacman --noconfirm -Syu
 
 # Build and install SELinux packages
-sudo -u vagrant /srv/arch-selinux/recv_gpg_keys.sh
-sudo -u vagrant /srv/arch-selinux/clean.sh
-sudo -u vagrant mkdir -p /home/vagrant/.tmp/build
-sudo -u vagrant BUILDDIR=/home/vagrant/.tmp/build LANG=en_US.UTF-8 /srv/arch-selinux/build_and_install_all.sh -g
+sudo -su vagrant /srv/arch-selinux/recv_gpg_keys.sh
+sudo -su vagrant /srv/arch-selinux/clean.sh
+sudo -su vagrant mkdir -p /home/vagrant/.tmp/build
+sudo -su vagrant BUILDDIR=/home/vagrant/.tmp/build LANG=en_US.UTF-8 /srv/arch-selinux/build_and_install_all.sh -g
 rm -rf /home/vagrant/.tmp/build
 pacman --noconfirm -Sc
 
@@ -86,3 +86,6 @@ if semodule -l | grep '^unconfined' > /dev/null
 then
     semodule -r unconfined
 fi
+
+# Install the custom policy module
+semodule --verbose -i /vagrant/vagrant-custom.cil
