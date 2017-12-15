@@ -9,5 +9,5 @@ find . \( -name base-noselinux -prune \) -o -name PKGBUILD -printf '%h\n' | sort
 while read -r DIR
 do
     echo "Generating $DIR/.SRCINFO"
-    (cd "$DIR" && makepkg --printsrcinfo > .SRCINFO)
+    (cd "$DIR" && updpkgsums && makepkg --printsrcinfo > .SRCINFO)
 done
