@@ -21,7 +21,7 @@ pacman --noconfirm -Syu
 sudo -su vagrant /srv/arch-selinux/recv_gpg_keys.sh
 sudo -su vagrant /srv/arch-selinux/clean.sh
 sudo -su vagrant mkdir -p /home/vagrant/.tmp/build
-sudo -su vagrant BUILDDIR=/home/vagrant/.tmp/build LANG=en_US.UTF-8 /srv/arch-selinux/build_and_install_all.sh -g
+sudo -su vagrant BUILDDIR=/home/vagrant/.tmp/build /srv/arch-selinux/build_and_install_all.sh -g
 rm -rf /home/vagrant/.tmp/build
 pacman --noconfirm -Sc
 
