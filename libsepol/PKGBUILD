@@ -4,7 +4,8 @@
 # Contributor: Sergej Pupykin (pupykin <dot> s+arch <at> gmail <dot> com)
 
 pkgname=libsepol
-pkgver=2.7
+_pkgver=2.8-rc1
+pkgver=${_pkgver/-/}
 pkgrel=1
 pkgdesc="SELinux binary policy manipulation library"
 arch=('i686' 'x86_64' 'armv6h')
@@ -16,15 +17,15 @@ depends=('glibc')
 options=(staticlibs)
 conflicts=("selinux-usr-${pkgname}")
 provides=("selinux-usr-${pkgname}=${pkgver}-${pkgrel}")
-source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20170804/${pkgname}-${pkgver}.tar.gz")
-sha256sums=('d69d3bd8ec901a3bd5adf2be2fb47fb1a685ed73066ab482e7e505371a48f9e7')
+source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20180419/${pkgname}-${_pkgver}.tar.gz")
+sha256sums=('57e8fad435055938dbc52b1ff4a0f6b943aad4a01cc7604a881805e84632d861')
 
 build() {
-  cd "${pkgname}-${pkgver}"
+  cd "${pkgname}-${_pkgver}"
   make
 }
 
 package() {
-  cd "${pkgname}-${pkgver}"
-  make DESTDIR="${pkgdir}" SHLIBDIR="${pkgdir}"/usr/lib install
+  cd "${pkgname}-${_pkgver}"
+  make DESTDIR="${pkgdir}" SHLIBDIR=/usr/lib install
 }
