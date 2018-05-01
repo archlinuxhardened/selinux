@@ -1,6 +1,6 @@
 pkgbase = selinux-gui
 	pkgdesc = SELinux GUI tools
-	pkgver = 2.8rc1
+	pkgver = 2.8rc2
 	pkgrel = 1
 	url = https://github.com/SELinuxProject/selinux/wiki
 	arch = any
@@ -9,9 +9,10 @@ pkgbase = selinux-gui
 	depends = python-gobject
 	depends = hicolor-icon-theme
 	depends = selinux-python
+	depends = gtk3
 	conflicts = policycoreutils<2.7
-	source = https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20180419/selinux-gui-2.8-rc1.tar.gz
-	sha256sums = aa7c26ee4668d955c442ae9fc0f432de9d3000ea43733034fca397cf50096a4b
+	source = https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20180426/selinux-gui-2.8-rc2.tar.gz
+	sha256sums = 00d453afdb7320537650ecf819b5ed6292131174d789dc11b3b43a1965ff15bc
 
 pkgname = selinux-gui
 

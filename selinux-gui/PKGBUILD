@@ -1,7 +1,7 @@
 # Maintainer: Nicolas Iooss (nicolas <dot> iooss <at> m4x <dot> org)
 
 pkgname=selinux-gui
-_pkgver=2.8-rc1
+_pkgver=2.8-rc2
 pkgver=${_pkgver/-/}
 pkgrel=1
 pkgdesc="SELinux GUI tools"
@@ -9,10 +9,10 @@ groups=('selinux')
 arch=('any')
 url='https://github.com/SELinuxProject/selinux/wiki'
 license=('GPL2')
-depends=('python-gobject' 'hicolor-icon-theme' 'selinux-python')
+depends=('python-gobject' 'hicolor-icon-theme' 'selinux-python' 'gtk3')
 conflicts=('policycoreutils<2.7')
-source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20180419/${pkgname}-${_pkgver}.tar.gz")
-sha256sums=('aa7c26ee4668d955c442ae9fc0f432de9d3000ea43733034fca397cf50096a4b')
+source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20180426/${pkgname}-${_pkgver}.tar.gz")
+sha256sums=('00d453afdb7320537650ecf819b5ed6292131174d789dc11b3b43a1965ff15bc')
 
 build() {
   cd "${pkgname}-${_pkgver}"
