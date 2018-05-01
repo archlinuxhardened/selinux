@@ -4,7 +4,7 @@
 # Contributor: Sergej Pupykin (pupykin <dot> s+arch <at> gmail <dot> com)
 
 pkgname=checkpolicy
-_pkgver=2.8-rc1
+_pkgver=2.8-rc2
 pkgver=${_pkgver/-/}
 pkgrel=1
 pkgdesc="SELinux policy compiler"
@@ -15,8 +15,8 @@ groups=('selinux')
 makedepends=('libsepol>=2.8rc1')
 conflicts=("selinux-usr-${pkgname}")
 provides=("selinux-usr-${pkgname}=${pkgver}-${pkgrel}")
-source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20180419/${pkgname}-${_pkgver}.tar.gz")
-sha256sums=('d30dbeb347cedcb947138927f92d48317662116303520b9506081b4300f75da9')
+source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20180426/${pkgname}-${_pkgver}.tar.gz")
+sha256sums=('f9825b14d6c1104d54f62383b6437889092121bcac7a1af49c293d60c129c8d6')
 
 build() {
   cd "${pkgname}-${_pkgver}"
