@@ -1,6 +1,6 @@
 pkgbase = restorecond
 	pkgdesc = SELinux restorecon daemon
-	pkgver = 2.8rc1
+	pkgver = 2.8rc2
 	pkgrel = 1
 	url = https://github.com/SELinuxProject/selinux/wiki
 	arch = i686
@@ -10,8 +10,8 @@ pkgbase = restorecond
 	depends = dbus-glib
 	depends = libselinux>=2.7
 	conflicts = policycoreutils<2.7
-	source = https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20180419/restorecond-2.8-rc1.tar.gz
-	sha256sums = 9f4ec0db6124140819d74a6f86585b11be02105df3e39f1a49a8536684694945
+	source = https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20180426/restorecond-2.8-rc2.tar.gz
+	sha256sums = d8720803df63251bd264348b5512add99a67ad5af3f7e7621f28aaec8b147244
 
 pkgname = restorecond
 
