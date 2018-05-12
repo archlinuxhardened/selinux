@@ -5,7 +5,7 @@
 
 pkgbase=selinux-python
 pkgname=(selinux-python selinux-python2)
-_pkgver=2.8-rc2
+_pkgver=2.8-rc3
 pkgver=${_pkgver/-/}
 pkgrel=1
 pkgdesc="SELinux python tools and libraries"
@@ -16,8 +16,8 @@ license=('GPL2')
 makedepends=('python2' 'python' 'python-ipy' 'libsemanage>=2.8rc1' 'setools>=4.0.0')
 conflicts=('sepolgen<2.7' 'policycoreutils<2.7')
 provides=("sepolgen=${pkgver}-${pkgrel}")
-source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20180426/${pkgname}-${_pkgver}.tar.gz")
-sha256sums=('1fc8470c0d72b3d7572ace862e2e363d65c21149cb8738a57250619d7c658e14')
+source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20180510/${pkgname}-${_pkgver}.tar.gz")
+sha256sums=('8bb4de21bafa92a26e11967285b321018d456d732b0bd3e9a2591ff146f76817')
 
 build() {
   cd "${pkgbase}-${_pkgver}"
