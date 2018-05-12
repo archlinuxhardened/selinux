@@ -5,7 +5,7 @@
 
 pkgname=selinux-dbus-config
 _pkgname=selinux-dbus
-_pkgver=2.8-rc2
+_pkgver=2.8-rc3
 pkgver=${_pkgver/-/}
 pkgrel=1
 pkgdesc="DBus service which allows managing SELinux configuration"
@@ -15,8 +15,8 @@ url='https://github.com/SELinuxProject/selinux/wiki'
 license=('GPL2')
 depends=('python' 'selinux-python')
 conflicts=('policycoreutils<2.7')
-source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20180426/${_pkgname}-${_pkgver}.tar.gz")
-sha256sums=('797f9c2968cab1fdd18b854c68f8b3569fdc591f0a89b769b7a74c873fb4db67')
+source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20180510/${_pkgname}-${_pkgver}.tar.gz")
+sha256sums=('a6692408e5e92f4464907730b84c6163413c3c09c311a6f15226ef862c5fedf3')
 
 build() {
   cd "${_pkgname}-${_pkgver}"
