@@ -1,6 +1,6 @@
 pkgbase = semodule-utils
 	pkgdesc = SELinux module tools
-	pkgver = 2.8rc3
+	pkgver = 2.8
 	pkgrel = 1
 	url = https://github.com/SELinuxProject/selinux/wiki
 	arch = i686
@@ -9,8 +9,8 @@ pkgbase = semodule-utils
 	license = GPL2
 	depends = libsepol>=2.7
 	conflicts = policycoreutils<2.7
-	source = https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20180510/semodule-utils-2.8-rc3.tar.gz
-	sha256sums = 33cedd6d95d44a57402b894aa210800ddfe5321e47d52896ad735de466ad2a7e
+	source = https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20180524/semodule-utils-2.8.tar.gz
+	sha256sums = 44f59c13070c637440b143ceab4dfe1efb9018b1e47828dd8789def74c1ccadf
 
 pkgname = semodule-utils
 

@@ -5,8 +5,7 @@
 
 pkgbase=selinux-python
 pkgname=(selinux-python selinux-python2)
-_pkgver=2.8-rc3
-pkgver=${_pkgver/-/}
+pkgver=2.8
 pkgrel=1
 pkgdesc="SELinux python tools and libraries"
 groups=('selinux')
@@ -16,11 +15,11 @@ license=('GPL2')
 makedepends=('python2' 'python' 'python-ipy' 'libsemanage>=2.8rc1' 'setools>=4.0.0')
 conflicts=('sepolgen<2.7' 'policycoreutils<2.7')
 provides=("sepolgen=${pkgver}-${pkgrel}")
-source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20180510/${pkgname}-${_pkgver}.tar.gz")
-sha256sums=('8bb4de21bafa92a26e11967285b321018d456d732b0bd3e9a2591ff146f76817')
+source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20180524/${pkgname}-${pkgver}.tar.gz")
+sha256sums=('e69f5e24820cb247a3d881a9c90efba1e64d76af863c82fb81bc3b87ed71e238')
 
 build() {
-  cd "${pkgbase}-${_pkgver}"
+  cd "${pkgbase}-${pkgver}"
   make PYTHON=/usr/bin/python2
   make PYTHON=/usr/bin/python3
 }
@@ -28,7 +27,7 @@ build() {
 package_selinux-python() {
   depends=('python' 'python-ipy' 'libsemanage>=2.7' 'setools>=4.0.0')
 
-  cd "${pkgbase}-${_pkgver}"
+  cd "${pkgbase}-${pkgver}"
   make PYTHON=/usr/bin/python3 DESTDIR="${pkgdir}" SBINDIR=/usr/bin install
   /usr/bin/python3 -m compileall "${pkgdir}/$(/usr/bin/python3 -c 'import site; print(site.getsitepackages()[0])')"
 }
@@ -36,7 +35,7 @@ package_selinux-python() {
 package_selinux-python2() {
   depends=('python2' 'libsemanage>=2.7' 'setools>=4.0.0')
 
-  cd "${pkgbase}-${_pkgver}"
+  cd "${pkgbase}-${pkgver}"
 
   # Guide the files which would conflict with selinux-python package into a
   # special directory, which would then be removed

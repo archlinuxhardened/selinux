@@ -4,8 +4,7 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=secilc
-_pkgver=2.8-rc3
-pkgver=${_pkgver/-/}
+pkgver=2.8
 pkgrel=1
 pkgdesc="SELinux Common Intermediate Language Compiler"
 groups=('selinux')
@@ -14,21 +13,21 @@ url='https://github.com/SELinuxProject/cil/wiki'
 license=('custom')
 makedepends=('xmlto' 'docbook-xml' 'docbook-xsl')
 depends=('libsepol>=2.8rc1')
-source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20180510/${pkgname}-${_pkgver}.tar.gz")
-sha256sums=('5d2a3adb82fda101478b1bf5e30d9de90850ab5389de980d1632abcef538787a')
+source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20180524/${pkgname}-${pkgver}.tar.gz")
+sha256sums=('cfe15f2e06b3013c9dfc46cf42234ff07fb61866c4c29d739eb8858f83b214d4')
 
 build() {
-  cd "${pkgname}-${_pkgver}"
+  cd "${pkgname}-${pkgver}"
   make all
 }
 
 check() {
-  cd "${pkgname}-${_pkgver}"
+  cd "${pkgname}-${pkgver}"
   make test
 }
 
 package() {
-  cd "${pkgname}-${_pkgver}"
+  cd "${pkgname}-${pkgver}"
   make DESTDIR="${pkgdir}" install
 
   install -Dm 0644 COPYING "${pkgdir}/usr/share/licenses/${pkgname}/COPYING"

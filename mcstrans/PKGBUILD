@@ -4,8 +4,7 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=mcstrans
-_pkgver=2.8-rc3
-pkgver=${_pkgver/-/}
+pkgver=2.8
 pkgrel=1
 pkgdesc="SELinux MCS translation daemon"
 arch=('i686' 'x86_64')
@@ -13,16 +12,16 @@ url='https://github.com/SELinuxProject/selinux/wiki'
 license=('GPL2')
 groups=('selinux')
 depends=('libcap' 'libselinux>=2.8rc1' 'pcre')
-source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20180510/${pkgname}-${_pkgver}.tar.gz")
-sha256sums=('0f1bbeaf693c5360386bec2a63074e0c4088e70758a1b013113d75faca12bea9')
+source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20180524/${pkgname}-${pkgver}.tar.gz")
+sha256sums=('ec6ea65660550ed6bbd2a834725ba7526ac53599753d7b95072e4afd4afc14e4')
 
 build() {
-  cd "${pkgname}-${_pkgver}"
+  cd "${pkgname}-${pkgver}"
   make
 }
 
 package() {
-  cd "${pkgname}-${_pkgver}"
+  cd "${pkgname}-${pkgver}"
   make DESTDIR="${pkgdir}" SBINDIR=/usr/bin install
 
   # Remove mcstrans init script

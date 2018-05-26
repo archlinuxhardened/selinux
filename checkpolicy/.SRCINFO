@@ -1,6 +1,6 @@
 pkgbase = checkpolicy
 	pkgdesc = SELinux policy compiler
-	pkgver = 2.8rc3
+	pkgver = 2.8
 	pkgrel = 1
 	url = http://userspace.selinuxproject.org
 	arch = i686
@@ -8,10 +8,10 @@ pkgbase = checkpolicy
 	groups = selinux
 	license = GPL2
 	makedepends = libsepol>=2.8rc1
-	provides = selinux-usr-checkpolicy=2.8rc3-1
+	provides = selinux-usr-checkpolicy=2.8-1
 	conflicts = selinux-usr-checkpolicy
-	source = https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20180510/checkpolicy-2.8-rc3.tar.gz
-	sha256sums = 9557e4beee7a337132a4a5650f1579f03c0bf385b2734b61835053e2edc4115d
+	source = https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20180524/checkpolicy-2.8.tar.gz
+	sha256sums = 9dec811c24b88e58c3bf741365eacf1dbb945531a2fcb8f284aacf68098194c8
 
 pkgname = checkpolicy
 
