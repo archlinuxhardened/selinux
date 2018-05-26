@@ -15,7 +15,7 @@ url='http://userspace.selinuxproject.org'
 license=('LGPL2.1')
 groups=('selinux')
 makedepends=('flex' 'python2' 'python' 'ruby' 'swig')
-depends=('libselinux>=2.8rc1' 'audit')
+depends=('libselinux>=2.8' 'audit')
 optdepends=('python2: python2 bindings'
             'python: python bindings'
             'ruby: ruby bindings')

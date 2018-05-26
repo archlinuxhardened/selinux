@@ -14,7 +14,7 @@ arch=('i686' 'x86_64')
 url='http://userspace.selinuxproject.org'
 license=('GPL2')
 groups=('selinux')
-makedepends=('libsepol>=2.8rc1')
+makedepends=('libsepol>=2.8')
 conflicts=("selinux-usr-${pkgname}")
 provides=("selinux-usr-${pkgname}=${pkgver}-${pkgrel}")
 source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20180524/${pkgname}-${pkgver}.tar.gz")

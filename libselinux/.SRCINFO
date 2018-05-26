@@ -13,7 +13,7 @@ pkgbase = libselinux
 	makedepends = ruby
 	makedepends = xz
 	makedepends = swig
-	depends = libsepol>=2.8rc1
+	depends = libsepol>=2.8
 	depends = pcre
 	optdepends = python2: python2 bindings
 	optdepends = python: python bindings

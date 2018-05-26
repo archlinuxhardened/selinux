@@ -11,7 +11,7 @@ arch=('i686' 'x86_64')
 url='https://github.com/SELinuxProject/selinux/wiki'
 license=('GPL2')
 groups=('selinux')
-depends=('libcap' 'libselinux>=2.8rc1' 'pcre')
+depends=('libcap' 'libselinux>=2.8' 'pcre')
 source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20180524/${pkgname}-${pkgver}.tar.gz")
 sha256sums=('ec6ea65660550ed6bbd2a834725ba7526ac53599753d7b95072e4afd4afc14e4')
 

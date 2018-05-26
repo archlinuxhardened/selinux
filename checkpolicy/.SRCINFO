@@ -7,7 +7,7 @@ pkgbase = checkpolicy
 	arch = x86_64
 	groups = selinux
 	license = GPL2
-	makedepends = libsepol>=2.8rc1
+	makedepends = libsepol>=2.8
 	provides = selinux-usr-checkpolicy=2.8-1
 	conflicts = selinux-usr-checkpolicy
 	source = https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20180524/checkpolicy-2.8.tar.gz

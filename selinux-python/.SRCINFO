@@ -10,7 +10,7 @@ pkgbase = selinux-python
 	makedepends = python2
 	makedepends = python
 	makedepends = python-ipy
-	makedepends = libsemanage>=2.8rc1
+	makedepends = libsemanage>=2.8
 	makedepends = setools>=4.0.0
 	provides = sepolgen=2.8-1
 	conflicts = sepolgen<2.7
