@@ -2,7 +2,7 @@
 # Receive every gpg keys used by packages
 
 # GnuPG key server to use
-GPG_KEYSRV="${GPG_KEYSRV:-hkps://hkps.pool.sks-keyservers.net.}"
+GPG_KEYSRV="${GPG_KEYSRV:-hkps://hkps.pool.sks-keyservers.net}"
 
 cd "$(dirname -- "$0")" || exit $?
 for DIR in $(find . -maxdepth 2 -name PKGBUILD -printf '%h\n' | sort)
