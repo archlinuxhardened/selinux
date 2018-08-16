@@ -119,7 +119,7 @@ def get_pkgbuild_pkgver(pkgbuild_filepath):
     if pkgver is None:
         logger.error("No pkgver definition found in {}".format(pkgbuild_filepath))
     elif pkgrel is None:
-        logger.warn("No pkgrel definition found in {}".format(pkgbuild_filepath))
+        logger.warning("No pkgrel definition found in {}".format(pkgbuild_filepath))
     return pkgver, pkgrel
 
 
@@ -254,7 +254,7 @@ class Package(object):
             logger.error("PKGBUILD for {} is out of date. Please remove {}".format(self.basepkgname, path_base))
             return False
         elif pkgver_base < pkgver_base2:
-            logger.warn("Downloaded PKGBUILD for {} is in testing. Beware!".format(self.basepkgname))
+            logger.warning("Downloaded PKGBUILD for {} is in testing. Beware!".format(self.basepkgname))
 
         logger.info("You can now compare {} and {} to update the SELinux package".format(path_selinux, path_base))
         logger.info("... git log of Arch package : {}".format(ARCH_GITLOG_URL.format(self.basepkgname)))
@@ -286,10 +286,10 @@ def load_package_baselist(filename=None):
                     pkgver = None
                     pkgrel = 0
                 else:
-                    logger.warn("Ignoring line {}, not in format 'repo/pkgname = pkgver-pkgrel'".format(linenum))
+                    logger.warning("Ignoring line {}, not in format 'repo/pkgname = pkgver-pkgrel'".format(linenum))
                     continue
             if pkgname in baselist:
-                logger.warn("Duplicate definition of package {}".format(pkgname))
+                logger.warning("Duplicate definition of package {}".format(pkgname))
                 continue
             baselist[pkgname] = Package(pkgname, pkgver, int(pkgrel), repo)
     return baselist
