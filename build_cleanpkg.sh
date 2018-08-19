@@ -110,7 +110,7 @@ pkgbuild mcstrans libsepol libselinux
 pkgbuild policycoreutils libsepol libselinux libsemanage
 pkgbuild_python_ipy
 pkgbuild selinux-python libsepol libselinux libsemanage setools python-ipy
-pkgbuild selinux-gui libsepol libselinux libsemanage setools selinux-python2
+pkgbuild selinux-gui libsepol libselinux libsemanage setools python-ipy selinux-python
 pkgbuild selinux-dbus-config libsepol libselinux libsemanage setools python-ipy selinux-python
 pkgbuild selinux-sandbox libsepol libselinux libsemanage setools python-ipy selinux-python
 
