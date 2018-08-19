@@ -8,37 +8,29 @@
 # SELinux Contributor: Nicky726 (Nicky726 <at> gmail <dot> com)
 
 pkgname=coreutils-selinux
-pkgver=8.29
+pkgver=8.30
 pkgrel=1
 pkgdesc='The basic file, shell and text manipulation utilities of the GNU operating system with SELinux support'
 arch=('x86_64')
 license=('GPL3')
 url='https://www.gnu.org/software/coreutils/'
 groups=('selinux')
+makedepends=('gperf' 'rsync')
 depends=('glibc' 'acl' 'attr' 'gmp' 'libcap' 'openssl' 'libselinux')
 conflicts=("${pkgname/-selinux}" "selinux-${pkgname/-selinux}")
 provides=("${pkgname/-selinux}=${pkgver}-${pkgrel}"
           "selinux-${pkgname/-selinux}=${pkgver}-${pkgrel}")
-source=("https://ftp.gnu.org/gnu/${pkgname/-selinux}/${pkgname/-selinux}-$pkgver.tar.xz"{,.sig})
+source=("${pkgname/-selinux}::git://git.sv.gnu.org/coreutils#tag=v${pkgver}")
 validpgpkeys=('6C37DC12121A5006BC1DB804DF6FD971306037D9') # Pádraig Brady
-md5sums=('960cfe75a42c9907c71439f8eb436303'
-         'SKIP')
+md5sums=('SKIP')
 
 prepare() {
-  cd ${pkgname/-selinux}-$pkgver
-  # apply patch from the source array (should be a pacman feature)
-  local filename
-  for filename in "${source[@]}"; do
-    if [[ "$filename" =~ \.patch$ ]]; then
-      msg2 "Applying patch ${filename##*/}"
-      patch -p1 -N -i "$srcdir/${filename##*/}"
-    fi
-  done
-  :
+  cd ${pkgname/-selinux}
+  ./bootstrap
 }
 
 build() {
-  cd ${pkgname/-selinux}-$pkgver
+  cd ${pkgname/-selinux}
   ./configure \
       --prefix=/usr \
       --libexecdir=/usr/lib \
@@ -48,13 +40,8 @@ build() {
   make
 }
 
-check() {
-  cd ${pkgname/-selinux}-$pkgver
-  #make check
-}
-
 package() {
-  cd ${pkgname/-selinux}-$pkgver
+  cd ${pkgname/-selinux}
   make DESTDIR="$pkgdir" install
 }
 
