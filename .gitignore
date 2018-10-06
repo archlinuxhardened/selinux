@@ -13,6 +13,8 @@
 */src
 */pkg
 
+!/_pgp_cache/*.asc
+
 /base-noselinux/
 /.pacman-db/
 /_vagrant/.vagrant/
