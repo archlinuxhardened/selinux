@@ -42,10 +42,14 @@ if [ -e /boot/syslinux/syslinux.cfg ]
 then
     if ! grep 'APPEND .*selinux=1 security=selinux' /boot/syslinux/syslinux.cfg > /dev/null
     then
-        # Replace Arch Linux entries with SELinux kernel
-        sed -i -e 's:\(^\s*LINUX \.\./vmlinuz-linux$\):\1-selinux:' /boot/syslinux/syslinux.cfg
-        sed -i -e 's:\(^\s*INITRD \.\./initramfs-linux\)\(\(-fallback\)\?\.img$\):\1-selinux\2:' /boot/syslinux/syslinux.cfg
+        # Enable SELinux in kernel command line
         sed -i -e 's:\(^\s*APPEND \):\1selinux=1 security=selinux :' /boot/syslinux/syslinux.cfg
+    fi
+    # If using the deprecated linux-selinux kernel, replace the entries
+    if grep 'LINUX \.\./vmlinuz-linux-selinux' /boot/syslinux/syslinux.cfg > /dev/null
+    then
+        sed -i -e 's:\(^\s*LINUX \.\./vmlinuz-linux\)-selinux$:\1:' /boot/syslinux/syslinux.cfg
+        sed -i -e 's:\(^\s*INITRD \.\./initramfs-linux\)-selinux\(\(-fallback\)\?\.img\)$:\1\2:' /boot/syslinux/syslinux.cfg
     fi
 fi
 
