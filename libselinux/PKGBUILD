@@ -8,7 +8,8 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=libselinux
-pkgver=2.8
+_pkgver=2.9-rc1
+pkgver=${_pkgver/-/}
 pkgrel=1
 pkgdesc="SELinux library and simple utilities"
 arch=('i686' 'x86_64' 'armv6h')
@@ -22,13 +23,13 @@ optdepends=('python2: python2 bindings'
             'ruby: ruby bindings')
 conflicts=("selinux-usr-${pkgname}")
 provides=("selinux-usr-${pkgname}=${pkgver}-${pkgrel}")
-source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20180524/${pkgname}-${pkgver}.tar.gz"
+source=("https://github.com/SELinuxProject/selinux/releases/download/20190125/${pkgname}-${_pkgver}.tar.gz"
         "libselinux.tmpfiles.d")
-sha256sums=('31db96ec7643ce10912b3c3f98506a08a9116dcfe151855fd349c3fda96187e1'
+sha256sums=('b08919fc2b8a75fbdf0b9b2d848b277aac0d8ce6cbdfd6a3b330ed55dbb26294'
             'afe23890fb2e12e6756e5d81bad3c3da33f38a95d072731c0422fbeb0b1fa1fc')
 
 build() {
-  cd "${pkgname}-${pkgver}"
+  cd "${pkgname}-${_pkgver}"
 
   # Do not build deprecated rpm_execcon() interface. It is useless on Arch Linux anyway.
   export DISABLE_RPM=y
@@ -41,7 +42,7 @@ build() {
 }
 
 package() {
-  cd "${pkgname}-${pkgver}"
+  cd "${pkgname}-${_pkgver}"
 
   export DISABLE_RPM=y
 
