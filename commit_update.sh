@@ -29,7 +29,7 @@ do
     PKGREL="$(sed -n 's/^\s*pkgrel = \(.*\)$/\1/p' "$DIR/.SRCINFO" | head -n1)"
     log_and_run git commit -m "$PKGNAME $PKGVER-$PKGREL update"
     tput bold
-    echo "$PKGNAME changes has been commited. You can now push them to the AUR with:"
+    echo "$PKGNAME changes has been committed. You can now push them to the AUR with:"
     echo "git subtree push --prefix=${DIR#./} aur-$PKGNAME master"
     tput sgr0
 done
