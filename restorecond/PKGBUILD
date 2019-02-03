@@ -4,7 +4,8 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=restorecond
-pkgver=2.8
+_pkgver=2.9-rc1
+pkgver=${_pkgver/-/}
 pkgrel=1
 pkgdesc="SELinux restorecon daemon"
 arch=('i686' 'x86_64')
@@ -13,16 +14,16 @@ license=('GPL2')
 groups=('selinux')
 depends=('dbus-glib' 'libselinux>=2.7')
 conflicts=('policycoreutils<2.7')
-source=("https://raw.githubusercontent.com/wiki/SELinuxProject/selinux/files/releases/20180524/${pkgname}-${pkgver}.tar.gz")
-sha256sums=('323cab1128e5308cd85fea0e5c98e3c8973e1ada0b659f2fce76187e192271bf')
+source=("https://github.com/SELinuxProject/selinux/releases/download/20190125/${pkgname}-${_pkgver}.tar.gz")
+sha256sums=('566a34ffce1ec2f15f46cb96a252aff6962527eec02f2275656775dc4d03a20b')
 
 build() {
-  cd "${pkgname}-${pkgver}"
+  cd "${pkgname}-${_pkgver}"
   make
 }
 
 package() {
-  cd "${pkgname}-${pkgver}"
+  cd "${pkgname}-${_pkgver}"
   make DESTDIR="${pkgdir}" SBINDIR=/usr/bin install
 
   # Remove restorecond init script
