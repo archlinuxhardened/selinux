@@ -44,7 +44,6 @@ pkgbuild semodule-utils
 pkgbuild restorecond
 pkgbuild mcstrans
 pkgbuild policycoreutils
-pkgbuild_python_ipy
 pkgbuild selinux-python
 pkgbuild selinux-gui
 pkgbuild selinux-dbus-config
