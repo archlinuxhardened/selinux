@@ -47,6 +47,9 @@ fi
 sudo -s semodule -s refpolicy -i /usr/share/selinux/refpolicy/*.pp
 sudo -s semodule --reload
 
+# Update interface_info
+sudo -s sepolgen-ifgen -o /var/lib/sepolgen/interface_info -i /usr/share/selinux/refpolicy
+
 # Fix the SELinux user of the policy store and configuration
 sudo -s restorecon -RF /etc/selinux/ /var/lib/selinux/
 echo 'Success: SELinux now uses refpolicy.'
