@@ -11,8 +11,12 @@ then
     exit 1
 fi
 
+# Unfortunately, setting the timezone with timedatectl breaks when a
+# dependency of systemd (like libidn2) is updated.
+# Do not make the failure of this command fatal.
+timedatectl set-timezone UTC || true
+
 # Configure the base system and update it
-timedatectl set-timezone UTC
 # shellcheck disable=SC2016
 sed -i -e 's/^#\?MAKEFLAGS=.*/MAKEFLAGS="-j\$(nproc)"/' /etc/makepkg.conf
 pacman --noconfirm -Syu
