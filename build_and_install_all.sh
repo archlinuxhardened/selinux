@@ -93,10 +93,10 @@ build_and_install() {
     run_conflictual_install pacman -U "./$1/"*.pkg.tar.xz
 }
 
-# Install python-ipy package from the AUR, if it is not already installed
+# Install python-ipy package from the AUR, if it is not already installed or out-dated
 install_python_ipy() {
     local MAKEPKGDIR
-    if pacman -Qi python-ipy > /dev/null 2>&1
+    if pacman -Qi python-ipy > /dev/null 2>&1 && python3 -Es -c 'import IPy' 2>&1
     then
         return 0
     fi
