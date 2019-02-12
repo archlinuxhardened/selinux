@@ -17,6 +17,14 @@ timedatectl set-timezone UTC
 sed -i -e 's/^#\?MAKEFLAGS=.*/MAKEFLAGS="-j\$(nproc)"/' /etc/makepkg.conf
 pacman --noconfirm -Syu
 
+# Install haveged in order to speed up the launch of SSH server
+if ! pacman -Qi haveged > /dev/null 2>&1
+then
+    pacman --noconfirm -S haveged
+    systemctl start haveged.service
+    systemctl enable haveged.service
+fi
+
 # Build and install SELinux packages
 sudo -su vagrant /srv/arch-selinux/recv_gpg_keys.sh
 sudo -su vagrant /srv/arch-selinux/clean.sh
