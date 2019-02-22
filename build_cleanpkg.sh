@@ -146,7 +146,7 @@ pkgbuild util-linux-selinux libsepol libselinux pambase-selinux pam-selinux
 #     FAILED: catalog/systemd.be.catalog
 #     /usr/bin/python /usr/bin/meson --internal exe /build/systemd-selinux/src/build/meson-private/meson_exe_sed_28432df3eb55010b242c7b86944416370642676d.dat
 #pkgbuild systemd-selinux libsepol libselinux libsemanage pambase-selinux pam-selinux shadow-selinux
-#pkgbuild dbus-selinux libsepol libselinux libsystemd-selinux systemd-selinux
+#pkgbuild dbus-selinux libsepol libselinux systemd-libs-selinux systemd-selinux
 pkgbuild cronie-selinux libsepol libselinux pambase-selinux pam-selinux
 
 # Finally build the kernel

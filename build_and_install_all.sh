@@ -192,7 +192,7 @@ then
     build util-linux-selinux
     run_conflictual_install pacman -U util-linux-selinux/libutil-linux-selinux-*.pkg.tar.xz
     build systemd-selinux
-    run_conflictual_install pacman -U systemd-selinux/libsystemd-selinux-*.pkg.tar.xz
+    run_conflictual_install pacman -U systemd-selinux/systemd-libs-selinux-*.pkg.tar.xz
     build_and_install util-linux-selinux
     build_and_install systemd-selinux
 fi
