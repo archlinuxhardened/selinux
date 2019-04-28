@@ -106,6 +106,23 @@ install_python_ipy() {
     rm -rf "$MAKEPKGDIR"
 }
 
+# Install libreport package from the AUR, if it is not already installed
+install_libreport() {
+    local MAKEPKGDIR
+    if pacman -Qi libreport > /dev/null 2>&1
+    then
+        return 0
+    fi
+    MAKEPKGDIR="$(mktemp -d makepkg-libreport-XXXXXX)"
+    git -C "$MAKEPKGDIR" clone https://aur.archlinux.org/rpm-org.git || exit $?
+    (cd "$MAKEPKGDIR/rpm-org" && makepkg -si --noconfirm --asdeps) || exit $?
+    git -C "$MAKEPKGDIR" clone https://aur.archlinux.org/satyr.git || exit $?
+    (cd "$MAKEPKGDIR/satyr" && makepkg -si --noconfirm --asdeps) || exit $?
+    git -C "$MAKEPKGDIR" clone https://aur.archlinux.org/libreport.git || exit $?
+    (cd "$MAKEPKGDIR/libreport" && makepkg -si --noconfirm --asdeps) || exit $?
+    rm -rf "$MAKEPKGDIR"
+}
+
 # Parse options
 UPGRADE_GIT_PACKAGE=false
 while getopts ":gh" OPT
@@ -156,6 +173,10 @@ build_and_install selinux-python
 build_and_install selinux-gui
 build_and_install selinux-dbus-config
 build_and_install selinux-sandbox
+
+# setoubleshoot
+install_libreport
+build_and_install setroubleshoot
 
 # pacman hook
 build_and_install selinux-alpm-hook
