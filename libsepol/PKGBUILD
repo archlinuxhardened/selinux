@@ -9,7 +9,7 @@
 pkgname=libsepol
 _pkgver=3.0-rc1
 pkgver=${_pkgver/-/}
-pkgrel=1
+pkgrel=2
 pkgdesc="SELinux binary policy manipulation library"
 arch=('i686' 'x86_64' 'armv6h')
 url='http://userspace.selinuxproject.org'
@@ -20,8 +20,15 @@ depends=('glibc')
 options=(staticlibs)
 conflicts=("selinux-usr-${pkgname}")
 provides=("selinux-usr-${pkgname}=${pkgver}-${pkgrel}")
-source=("https://github.com/SELinuxProject/selinux/releases/download/20191031/${pkgname}-${_pkgver}.tar.gz")
-sha256sums=('94240759783744efde424d884e3de8ffb7375a35b854497069fa053eb6f23fd1')
+source=("https://github.com/SELinuxProject/selinux/releases/download/20191031/${pkgname}-${_pkgver}.tar.gz"
+        '0001-libsepol-cil-Report-disabling-an-optional-block-only.patch')
+sha256sums=('94240759783744efde424d884e3de8ffb7375a35b854497069fa053eb6f23fd1'
+            '89cb525d6345117bf1b0454a4ac269e06b9c3249b63955654740d8b5bbb4f4ff')
+
+prepare() {
+  cd "${pkgname}-${_pkgver}"
+  patch -Np2 -i ../0001-libsepol-cil-Report-disabling-an-optional-block-only.patch
+}
 
 build() {
   cd "${pkgname}-${_pkgver}"
