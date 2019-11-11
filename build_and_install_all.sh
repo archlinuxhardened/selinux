@@ -100,7 +100,7 @@ install_python_ipy() {
     then
         return 0
     fi
-    MAKEPKGDIR="$(mktemp -d makepkg-python-ipy-XXXXXX)"
+    MAKEPKGDIR="$(mktemp -d -p "${TMPDIR:-/tmp}" makepkg-python-ipy-XXXXXX)"
     git -C "$MAKEPKGDIR" clone https://aur.archlinux.org/python-ipy.git || exit $?
     (cd "$MAKEPKGDIR/python-ipy" && makepkg -si --noconfirm --asdeps) || exit $?
     rm -rf "$MAKEPKGDIR"
@@ -113,7 +113,7 @@ install_libreport() {
     then
         return 0
     fi
-    MAKEPKGDIR="$(mktemp -d makepkg-libreport-XXXXXX)"
+    MAKEPKGDIR="$(mktemp -d -p "${TMPDIR:-/tmp}" makepkg-libreport-XXXXXX)"
     git -C "$MAKEPKGDIR" clone https://aur.archlinux.org/rpm-org.git || exit $?
     (cd "$MAKEPKGDIR/rpm-org" && makepkg -si --noconfirm --asdeps) || exit $?
     git -C "$MAKEPKGDIR" clone https://aur.archlinux.org/satyr.git || exit $?
