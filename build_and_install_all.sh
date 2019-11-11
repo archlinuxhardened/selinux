@@ -93,19 +93,6 @@ build_and_install() {
     run_conflictual_install pacman -U "./$1/"*.pkg.tar.xz
 }
 
-# Install python-ipy package from the AUR, if it is not already installed or out-dated
-install_python_ipy() {
-    local MAKEPKGDIR
-    if pacman -Qi python-ipy > /dev/null 2>&1 && python3 -Es -c 'import IPy' 2>&1
-    then
-        return 0
-    fi
-    MAKEPKGDIR="$(mktemp -d -p "${TMPDIR:-/tmp}" makepkg-python-ipy-XXXXXX)"
-    git -C "$MAKEPKGDIR" clone https://aur.archlinux.org/python-ipy.git || exit $?
-    (cd "$MAKEPKGDIR/python-ipy" && makepkg -si --noconfirm --asdeps) || exit $?
-    rm -rf "$MAKEPKGDIR"
-}
-
 # Install libreport package from the AUR, if it is not already installed
 install_libreport() {
     local MAKEPKGDIR
@@ -168,7 +155,6 @@ build_and_install mcstrans
 build_and_install policycoreutils
 build_and_install semodule-utils
 build_and_install restorecond
-install_python_ipy
 build_and_install selinux-python
 build_and_install selinux-gui
 build_and_install selinux-dbus-config

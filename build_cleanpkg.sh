@@ -86,15 +86,6 @@ pkgbuild() {
     return 1
 }
 
-# Build python-ipy from the AUR into base-noselinux/ directory
-pkgbuild_python_ipy() {
-    mkdir -p base-noselinux
-    if ! [ -e base-noselinux/python-ipy ] ; then
-        git -C base-noselinux clone https://aur.archlinux.org/python-ipy.git
-    fi
-    pkgbuild base-noselinux/python-ipy
-}
-
 # Build SELinux userspace packages
 pkgbuild libsepol
 pkgbuild libselinux libsepol
@@ -108,7 +99,6 @@ pkgbuild semodule-utils libsepol
 pkgbuild restorecond libsepol libselinux
 pkgbuild mcstrans libsepol libselinux
 pkgbuild policycoreutils libsepol libselinux libsemanage
-pkgbuild_python_ipy
 pkgbuild selinux-python libsepol libselinux libsemanage setools python-ipy
 pkgbuild selinux-gui libsepol libselinux libsemanage setools python-ipy selinux-python
 pkgbuild selinux-dbus-config libsepol libselinux libsemanage setools python-ipy selinux-python
