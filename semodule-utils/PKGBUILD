@@ -4,7 +4,7 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=semodule-utils
-_pkgver=3.0-rc1
+_pkgver=3.0-rc2
 pkgver=${_pkgver/-/}
 pkgrel=1
 pkgdesc="SELinux module tools"
@@ -14,8 +14,8 @@ license=('GPL2')
 groups=('selinux')
 depends=('libsepol>=2.7')
 conflicts=('policycoreutils<2.7')
-source=("https://github.com/SELinuxProject/selinux/releases/download/20191031/${pkgname}-${_pkgver}.tar.gz")
-sha256sums=('d58fa3ea84e876bd80d2edc7739360df9c538352617774ae54e559e045c6e9e6')
+source=("https://github.com/SELinuxProject/selinux/releases/download/20191122/${pkgname}-${_pkgver}.tar.gz")
+sha256sums=('c32744321d06372354f955a97e2e8631611cdc970da50220b069c03195568fbd')
 
 build() {
   cd "${pkgname}-${_pkgver}"
