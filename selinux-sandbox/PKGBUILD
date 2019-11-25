@@ -4,7 +4,7 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=selinux-sandbox
-_pkgver=3.0-rc1
+_pkgver=3.0-rc2
 pkgver=${_pkgver/-/}
 pkgrel=1
 pkgdesc="sandboxing tool for SELinux"
@@ -14,8 +14,8 @@ license=('GPL2')
 groups=('selinux')
 depends=('libcap-ng' 'selinux-python')
 conflicts=('policycoreutils<2.7')
-source=("https://github.com/SELinuxProject/selinux/releases/download/20191031/${pkgname}-${_pkgver}.tar.gz")
-sha256sums=('d6d41f922900aae6f9e52afb264695e81c3620c36b825d2b002a828b99ada051')
+source=("https://github.com/SELinuxProject/selinux/releases/download/20191122/${pkgname}-${_pkgver}.tar.gz")
+sha256sums=('d8ffa6739bedb9cdb56853380347fe106e3cd7c472508cdd8d067da844a3b46d')
 
 build() {
   cd "${pkgname}-${_pkgver}"
