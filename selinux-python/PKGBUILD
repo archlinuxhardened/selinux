@@ -4,7 +4,7 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=selinux-python
-_pkgver=3.0-rc1
+_pkgver=3.0-rc2
 pkgver=${_pkgver/-/}
 pkgrel=1
 pkgdesc="SELinux python tools and libraries"
@@ -15,8 +15,8 @@ license=('GPL2')
 depends=('python' 'python-audit' 'python-ipy' 'libsemanage>=2.8' 'setools>=4.0.0')
 conflicts=('sepolgen<2.7' 'policycoreutils<2.7')
 provides=("sepolgen=${pkgver}-${pkgrel}")
-source=("https://github.com/SELinuxProject/selinux/releases/download/20191031/${pkgname}-${_pkgver}.tar.gz")
-sha256sums=('7d22a99532f8b127a8c67c17fe694cd8485647a527ca160d92292103d4cdd411')
+source=("https://github.com/SELinuxProject/selinux/releases/download/20191122/${pkgname}-${_pkgver}.tar.gz")
+sha256sums=('d0be504cdb725f4dbc045513e4a5fabf23d3592db4485841de79fa98de44ec32')
 
 build() {
   cd "${pkgbase}-${_pkgver}"
