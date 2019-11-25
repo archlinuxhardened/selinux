@@ -4,7 +4,7 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=secilc
-_pkgver=3.0-rc1
+_pkgver=3.0-rc2
 pkgver=${_pkgver/-/}
 pkgrel=1
 pkgdesc="SELinux Common Intermediate Language Compiler"
@@ -14,8 +14,8 @@ url='https://github.com/SELinuxProject/cil/wiki'
 license=('custom')
 makedepends=('xmlto' 'docbook-xml' 'docbook-xsl')
 depends=('libsepol>=3.0rc1')
-source=("https://github.com/SELinuxProject/selinux/releases/download/20191031/${pkgname}-${_pkgver}.tar.gz")
-sha256sums=('fc565542d74ff8475e3509934844aaa76264b59fa7dd5e9ef44a17d5537f5b8d')
+source=("https://github.com/SELinuxProject/selinux/releases/download/20191122/${pkgname}-${_pkgver}.tar.gz")
+sha256sums=('4a4fb6bf58a80107b93dccc652eb2b19824feba8a5cd85ed5a099874d8c658f5')
 
 build() {
   cd "${pkgname}-${_pkgver}"
