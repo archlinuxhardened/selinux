@@ -1,7 +1,7 @@
 pkgbase = libsepol
 	pkgdesc = SELinux binary policy manipulation library
-	pkgver = 3.0rc1
-	pkgrel = 2
+	pkgver = 3.0rc2
+	pkgrel = 1
 	url = http://userspace.selinuxproject.org
 	arch = i686
 	arch = x86_64
@@ -10,13 +10,11 @@ pkgbase = libsepol
 	license = LGPL2.1
 	makedepends = flex
 	depends = glibc
-	provides = selinux-usr-libsepol=3.0rc1-2
+	provides = selinux-usr-libsepol=3.0rc2-1
 	conflicts = selinux-usr-libsepol
 	options = staticlibs
-	source = https://github.com/SELinuxProject/selinux/releases/download/20191031/libsepol-3.0-rc1.tar.gz
-	source = 0001-libsepol-cil-Report-disabling-an-optional-block-only.patch
-	sha256sums = 94240759783744efde424d884e3de8ffb7375a35b854497069fa053eb6f23fd1
-	sha256sums = 89cb525d6345117bf1b0454a4ac269e06b9c3249b63955654740d8b5bbb4f4ff
+	source = https://github.com/SELinuxProject/selinux/releases/download/20191122/libsepol-3.0-rc2.tar.gz
+	sha256sums = c6e0c1df0f82af7035a45866bb1c3d4a18322fa3903c1f7af2dbe3c003478aa9
 
 pkgname = libsepol
 
