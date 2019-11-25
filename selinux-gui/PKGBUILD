@@ -4,7 +4,7 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=selinux-gui
-_pkgver=3.0-rc1
+_pkgver=3.0-rc2
 pkgver=${_pkgver/-/}
 pkgrel=1
 pkgdesc="SELinux GUI tools"
@@ -14,8 +14,8 @@ url='https://github.com/SELinuxProject/selinux/wiki'
 license=('GPL2')
 depends=('python-gobject' 'hicolor-icon-theme' 'selinux-python' 'gtk3')
 conflicts=('policycoreutils<2.7')
-source=("https://github.com/SELinuxProject/selinux/releases/download/20191031/${pkgname}-${_pkgver}.tar.gz")
-sha256sums=('98a6861aa6bea3331f6280ff867c93d704a8caba70de4c351cc4650dbe05650c')
+source=("https://github.com/SELinuxProject/selinux/releases/download/20191122/${pkgname}-${_pkgver}.tar.gz")
+sha256sums=('e408dd58571e7407a4f5d040c3bf293aedb7472a6458f3bd66aae4e98b47faeb')
 
 build() {
   cd "${pkgname}-${_pkgver}"
