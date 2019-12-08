@@ -7,27 +7,26 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=checkpolicy
-_pkgver=3.0-rc2
-pkgver=${_pkgver/-/}
+pkgver=3.0
 pkgrel=1
 pkgdesc="SELinux policy compiler"
 arch=('i686' 'x86_64')
 url='http://userspace.selinuxproject.org'
 license=('GPL2')
 groups=('selinux')
-makedepends=('libsepol>=3.0rc1')
+makedepends=('libsepol>=3.0')
 conflicts=("selinux-usr-${pkgname}")
 provides=("selinux-usr-${pkgname}=${pkgver}-${pkgrel}")
-source=("https://github.com/SELinuxProject/selinux/releases/download/20191122/${pkgname}-${_pkgver}.tar.gz")
-sha256sums=('2528452c77fefb67060dc3c130be1497cd728b44cacd5755dc746e232098f004')
+source=("https://github.com/SELinuxProject/selinux/releases/download/20191204/${pkgname}-${pkgver}.tar.gz")
+sha256sums=('c88c719a141dd5c1202d49c378c7f063349d630522d5e04dc6e0c53da81aa4f8')
 
 build() {
-  cd "${pkgname}-${_pkgver}"
+  cd "${pkgname}-${pkgver}"
   make
 }
 
 package() {
-  cd "${pkgname}-${_pkgver}"
+  cd "${pkgname}-${pkgver}"
   make DESTDIR="${pkgdir}" install
   install -m 0755 test/dismod "${pkgdir}"/usr/bin/sedismod
   install -m 0755 test/dispol "${pkgdir}"/usr/bin/sedispol
