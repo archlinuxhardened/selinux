@@ -7,8 +7,7 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=libsemanage
-_pkgver=3.0-rc2
-pkgver=${_pkgver/-/}
+pkgver=3.0
 pkgrel=1
 pkgdesc="SELinux binary policy manipulation library"
 arch=('i686' 'x86_64')
@@ -16,20 +15,20 @@ url='http://userspace.selinuxproject.org'
 license=('LGPL2.1')
 groups=('selinux')
 makedepends=('flex' 'python' 'ruby' 'swig')
-depends=('libselinux>=3.0rc1' 'audit')
+depends=('libselinux>=3.0' 'audit')
 optdepends=('python: python bindings'
             'ruby: ruby bindings')
 options=(!emptydirs) # For /var/lib/selinux
 install=libsemanage.install
 conflicts=("selinux-usr-${pkgname}")
 provides=("selinux-usr-${pkgname}=${pkgver}-${pkgrel}")
-source=("https://github.com/SELinuxProject/selinux/releases/download/20191122/${pkgname}-${_pkgver}.tar.gz"
+source=("https://github.com/SELinuxProject/selinux/releases/download/20191204/${pkgname}-${pkgver}.tar.gz"
         "semanage.conf")
-sha256sums=('fb0748f902200b27b9a06d34c754265daebbb897d7b2e298cffbc999b2fdf532'
+sha256sums=('a497b0720d54eac427f1f3f618eed417e50ed8f4e47ed0f7a1d391bd416e84cf'
             '5b0e6929428e095b561701ccdfa9c8b0c3d70dad3fc46e667eb46a85b246a4a0')
 
 build() {
-  cd "${pkgname}-${_pkgver}"
+  cd "${pkgname}-${pkgver}"
   make swigify
   make all
   make PYTHON=/usr/bin/python3 pywrap
@@ -37,11 +36,12 @@ build() {
 }
 
 package() {
-  cd "${pkgname}-${_pkgver}"
+  cd "${pkgname}-${pkgver}"
   make DESTDIR="${pkgdir}" LIBEXECDIR=/usr/lib SHLIBDIR=/usr/lib install
   make DESTDIR="${pkgdir}" PYTHON=/usr/bin/python3 LIBEXECDIR=/usr/lib SHLIBDIR=/usr/lib install-pywrap
   make DESTDIR="${pkgdir}" RUBY=/usr/bin/ruby LIBEXECDIR=/usr/lib SHLIBDIR=/usr/lib install-rubywrap
   /usr/bin/python3 -m compileall "${pkgdir}/$(/usr/bin/python3 -c 'from distutils.sysconfig import *; print(get_python_lib(plat_specific=1))')"
+  /usr/bin/python3 -O -m compileall "${pkgdir}/$(/usr/bin/python3 -c 'from distutils.sysconfig import *; print(get_python_lib(plat_specific=1))')"
 
   install -D -m0644 "${srcdir}/semanage.conf" "${pkgdir}/etc/selinux/semanage.conf"
 
