@@ -11,7 +11,7 @@ Vagrant.configure(2) do |config|
   config.vm.define "arch-selinux" do |machine|
     # Use Arch Linux Vagrant Base box
     # https://wiki.archlinux.org/index.php/Vagrant#Base_Boxes_for_Vagrant
-    machine.vm.box = "archlinux"
+    machine.vm.box = "archlinux/archlinux"
 
     # SETools 4 requires more than 1024 MB of RAM
     machine.vm.provider :libvirt do |v|
