@@ -19,6 +19,7 @@ timedatectl set-timezone UTC || true
 # Configure the base system and update it
 # shellcheck disable=SC2016
 sed -i -e 's/^#\?MAKEFLAGS=.*/MAKEFLAGS="-j\$(nproc)"/' /etc/makepkg.conf
+pacman --noconfirm -Sy archlinux-keyring
 pacman --noconfirm -Syu
 
 # Install haveged in order to speed up the launch of SSH server
