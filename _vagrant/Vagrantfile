@@ -26,7 +26,10 @@ Vagrant.configure(2) do |config|
       v.memory = 2048
     end
 
-    machine.vm.synced_folder "..", "/srv/arch-selinux"
+    # Do not use a shared folder for packages, as VirtualBox shared folders
+    # cause issues when using "install" files.
+    machine.vm.synced_folder "..", "/srv/arch-selinux", type: "rsync",
+      rsync__exclude: [".git/", "_vagrant/.vagrant/"]
 
     # Build and install packages and configure SELinux
     machine.vm.provision :shell, path: "step1_install_and_configure.sh"
