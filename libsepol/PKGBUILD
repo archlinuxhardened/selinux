@@ -25,6 +25,8 @@ sha256sums=('9d5917638f1a58282fa5ba3e82c9cf2740ea9329acd0cbaa538793d49e54b459')
 
 build() {
   cd "${pkgname}-${_pkgver}"
+
+  export CFLAGS="${CFLAGS} -fno-semantic-interposition"
   make
 }
 

@@ -30,6 +30,8 @@ sha256sums=('01dac1e735035721ce0ff0980d17a78a88012c7c575d359cb826d7e7f28ca2a3'
 
 build() {
   cd "${pkgname}-${_pkgver}"
+
+  export CFLAGS="${CFLAGS} -fno-semantic-interposition"
   make swigify
   make all
   make PYTHON=/usr/bin/python3 pywrap

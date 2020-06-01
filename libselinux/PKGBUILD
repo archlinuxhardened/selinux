@@ -33,6 +33,7 @@ build() {
   # Do not build deprecated rpm_execcon() interface. It is useless on Arch Linux anyway.
   export DISABLE_RPM=y
 
+  export CFLAGS="${CFLAGS} -fno-semantic-interposition"
   make swigify
   make all
   make PYTHON=/usr/bin/python3 pywrap
