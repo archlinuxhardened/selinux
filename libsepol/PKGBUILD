@@ -7,7 +7,7 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=libsepol
-_pkgver=3.1-rc1
+_pkgver=3.1-rc2
 pkgver=${_pkgver/-/}
 pkgrel=1
 pkgdesc="SELinux binary policy manipulation library"
@@ -20,8 +20,8 @@ depends=('glibc')
 options=(staticlibs)
 conflicts=("selinux-usr-${pkgname}")
 provides=("selinux-usr-${pkgname}=${pkgver}-${pkgrel}")
-source=("https://github.com/SELinuxProject/selinux/releases/download/20200518/${pkgname}-${_pkgver}.tar.gz")
-sha256sums=('9d5917638f1a58282fa5ba3e82c9cf2740ea9329acd0cbaa538793d49e54b459')
+source=("https://github.com/SELinuxProject/selinux/releases/download/20200619/${pkgname}-${_pkgver}.tar.gz")
+sha256sums=('c5a79769fb6ac42e06e0438546122cfb7d05cbbbfc052ecd49c803d9f68f21f0')
 
 build() {
   cd "${pkgname}-${_pkgver}"
