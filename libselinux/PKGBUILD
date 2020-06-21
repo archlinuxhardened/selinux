@@ -8,7 +8,7 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=libselinux
-_pkgver=3.1-rc1
+_pkgver=3.1-rc2
 pkgver=${_pkgver/-/}
 pkgrel=1
 pkgdesc="SELinux library and simple utilities"
@@ -22,9 +22,9 @@ optdepends=('python: python bindings'
             'ruby: ruby bindings')
 conflicts=("selinux-usr-${pkgname}")
 provides=("selinux-usr-${pkgname}=${pkgver}-${pkgrel}")
-source=("https://github.com/SELinuxProject/selinux/releases/download/20200518/${pkgname}-${_pkgver}.tar.gz"
+source=("https://github.com/SELinuxProject/selinux/releases/download/20200619/${pkgname}-${_pkgver}.tar.gz"
         "libselinux.tmpfiles.d")
-sha256sums=('11501ade9f2fba55389007673c3f70ea28d889fe7925711027af91362a38b610'
+sha256sums=('9e496cf8988b6ce232712b65f2186613d1a286121cad229c7b6dba764db4029f'
             'afe23890fb2e12e6756e5d81bad3c3da33f38a95d072731c0422fbeb0b1fa1fc')
 
 build() {
