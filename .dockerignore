@@ -11,8 +11,12 @@ Dockerfile
 */pkg
 */*x86_64.pkg.tar.xz
 */*x86_64.pkg.tar.xz.sig
+*/*x86_64.pkg.tar.zstd
+*/*x86_64.pkg.tar.zstd.sig
 */*any.pkg.tar.xz
 */*any.pkg.tar.xz.sig
+*/*any.pkg.tar.zstd
+*/*any.pkg.tar.zstd.sig
 */*.src.tar.gz
 
 base-noselinux/
