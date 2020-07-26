@@ -22,6 +22,7 @@ pkgbuild() {
     # Clean up the package folder
     rm -rf "./$1/src" "./$1/pkg"
     rm -f "./$1/"*.pkg.tar.xz "./$1/"*.pkg.tar.xz.sig
+    rm -f "./$1/"*.pkg.tar.zstd "./$1/"*.pkg.tar.zstd.sig
 
     # makepkg options:
     # -s (--syncdeps): Install missing dependencies
