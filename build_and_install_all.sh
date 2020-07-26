@@ -52,6 +52,7 @@ needs_install() {
 build() {
     rm -rf "./$1/src" "./$1/pkg"
     rm -f "./$1/"*.pkg.tar.xz "./$1/"*.pkg.tar.xz.sig
+    rm -f "./$1/"*.pkg.tar.zstd "./$1/"*.pkg.tar.zstd.sig
     (cd "./$1" && shift && makepkg -s -C --noconfirm "$@") || exit $?
 }
 
