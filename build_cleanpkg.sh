@@ -89,8 +89,8 @@ pkgbuild() {
 # Build SELinux userspace packages
 pkgbuild libsepol
 pkgbuild libselinux libsepol
-pkgbuild secilc libsepol
 pkgbuild checkpolicy libsepol libselinux
+pkgbuild secilc libsepol libselinux checkpolicy
 pkgbuild setools libsepol libselinux checkpolicy
 pkgbuild libsemanage libsepol libselinux
 pkgbuild sepolgen libsepol libselinux # old package (<2.7)

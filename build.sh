@@ -36,8 +36,8 @@ pkgbuild() {
 # Build SELinux userspace packages
 pkgbuild libsepol
 pkgbuild libselinux
-pkgbuild secilc
 pkgbuild checkpolicy
+pkgbuild secilc
 pkgbuild setools
 pkgbuild libsemanage
 pkgbuild sepolgen
