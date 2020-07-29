@@ -22,7 +22,7 @@ pkgbuild() {
     # Clean up the package folder
     rm -rf "./$1/src" "./$1/pkg"
     rm -f "./$1/"*.pkg.tar.xz "./$1/"*.pkg.tar.xz.sig
-    rm -f "./$1/"*.pkg.tar.zstd "./$1/"*.pkg.tar.zstd.sig
+    rm -f "./$1/"*.pkg.tar.zst "./$1/"*.pkg.tar.zst.sig
 
     # makepkg options:
     # -s (--syncdeps): Install missing dependencies
@@ -30,7 +30,7 @@ pkgbuild() {
     (cd "./$1" && makepkg -s -C) || exit $?
 
     # Uncomment the following line to install or update the non-debug packages
-    #sudo pacman -U $(ls "./$1/"*.pkg.tar.xz | grep -vE '[-]debug') || exit $?
+    #sudo pacman -U $(ls "./$1/"*.pkg.tar.zst | grep -vE '[-]debug') || exit $?
 }
 
 # Build SELinux userspace packages

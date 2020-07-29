@@ -9,7 +9,7 @@
 *.sign
 *.part
 *.xz
-*.zstd
+*.zst
 
 */src
 */pkg

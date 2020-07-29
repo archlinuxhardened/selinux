@@ -65,4 +65,4 @@ RUN \
 WORKDIR /build
 
 # Copy packages to /packages when running, so that they can be easily exported.
-CMD ["sh", "-c", "cp /build/*/*.pkg.tar.xz /packages"]
+CMD ["sh", "-c", "cp /build/*/*.pkg.tar.zst /packages"]

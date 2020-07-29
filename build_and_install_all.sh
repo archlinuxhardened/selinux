@@ -9,6 +9,14 @@ then
     exit 1
 fi
 
+# Gather the package extension from /etc/makepkg.conf
+PKGEXT="$(bash -c 'source /etc/makepkg.conf ; echo "$PKGEXT"')"
+if [ -z "$PKGEXT" ]
+then
+    # Use zstd compression by default
+    PKGEXT='.pkg.tar.zst'
+fi
+
 # Verify whether a package needs to be installed
 needs_install() {
     local CURRENT_VERSION PKGREL PKGVER
@@ -52,7 +60,7 @@ needs_install() {
 build() {
     rm -rf "./$1/src" "./$1/pkg"
     rm -f "./$1/"*.pkg.tar.xz "./$1/"*.pkg.tar.xz.sig
-    rm -f "./$1/"*.pkg.tar.zstd "./$1/"*.pkg.tar.zstd.sig
+    rm -f "./$1/"*.pkg.tar.zst "./$1/"*.pkg.tar.zst.sig
     (cd "./$1" && shift && makepkg -s -C --noconfirm "$@") || exit $?
 }
 
@@ -91,7 +99,7 @@ run_conflictual_install() {
 build_and_install() {
     needs_install "$1" || return 0
     build "$@"
-    run_conflictual_install pacman -U "./$1/"*.pkg.tar.xz
+    run_conflictual_install pacman -U "./$1/"*"$PKGEXT"
 }
 
 # Install libreport package from the AUR, if it is not already installed
@@ -191,16 +199,16 @@ then
         exit 1
     fi
     run_conflictual_install sh -c \
-        '{ pacman -U sudo-selinux/sudo-selinux-*.pkg.tar.xz && if test -e /etc/sudoers.pacsave ; then mv /etc/sudoers.pacsave /etc/sudoers ; fi }'
+        '{ pacman -U sudo-selinux/sudo-selinux-*'"$PKGEXT"' && if test -e /etc/sudoers.pacsave ; then mv /etc/sudoers.pacsave /etc/sudoers ; fi }'
 fi
 
 # Handle util-linux/systemd build-time cycle dependency (https://bugs.archlinux.org/task/39767)
 if needs_install util-linux-selinux || needs_install systemd-selinux
 then
     build util-linux-selinux
-    run_conflictual_install pacman -U util-linux-selinux/libutil-linux-selinux-*.pkg.tar.xz
+    run_conflictual_install pacman -U util-linux-selinux/libutil-linux-selinux-*"$PKGEXT"
     build systemd-selinux
-    run_conflictual_install pacman -U systemd-selinux/systemd-libs-selinux-*.pkg.tar.xz
+    run_conflictual_install pacman -U systemd-selinux/systemd-libs-selinux-*"$PKGEXT"
     build_and_install util-linux-selinux
     build_and_install systemd-selinux
 fi

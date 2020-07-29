@@ -9,8 +9,8 @@ cd "$(dirname -- "$0")"
 rm -frv ./*/src/ ./*/pkg/
 rm -fv ./*/*.pkg.tar.xz
 rm -fv ./*/*.pkg.tar.xz.sig
-rm -fv ./*/*.pkg.tar.zstd
-rm -fv ./*/*.pkg.tar.zstd.sig
+rm -fv ./*/*.pkg.tar.zst
+rm -fv ./*/*.pkg.tar.zst.sig
 rm -fv ./*/*.src.tar.gz
 rm -fv ./*/*.log
 
