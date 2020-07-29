@@ -110,8 +110,6 @@ install_libreport() {
         return 0
     fi
     MAKEPKGDIR="$(mktemp -d -p "${TMPDIR:-/tmp}" makepkg-libreport-XXXXXX)"
-    git -C "$MAKEPKGDIR" clone https://aur.archlinux.org/rpm-org.git || exit $?
-    (cd "$MAKEPKGDIR/rpm-org" && makepkg -si --noconfirm --asdeps) || exit $?
     git -C "$MAKEPKGDIR" clone https://aur.archlinux.org/satyr.git || exit $?
     (cd "$MAKEPKGDIR/satyr" && makepkg -si --noconfirm --asdeps) || exit $?
     git -C "$MAKEPKGDIR" clone https://aur.archlinux.org/libreport.git || exit $?
