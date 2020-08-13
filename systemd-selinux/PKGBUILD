@@ -99,9 +99,6 @@ prepare() {
 
   # Replace cdrom/dialout/tape groups with optical/uucp/storage
   patch -Np1 -i ../0001-Use-Arch-Linux-device-access-groups.patch
-
-  # Make homed/userdbd/repart services installable (to allow uninstalling)
-  patch -Np1 -i ../0002-make-homed-userdbd-repart-services-installable.patch
 }
 
 build() {
