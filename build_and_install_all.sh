@@ -169,7 +169,7 @@ build_and_install selinux-sandbox
 
 # setoubleshoot
 install_libreport
-build_and_install setroubleshoot
+#build_and_install setroubleshoot
 
 # pacman hook
 build_and_install selinux-alpm-hook
