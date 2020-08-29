@@ -20,10 +20,6 @@ Build order
 Remember to build as a non-root user, and to keep a root logged-in console to
 install packages (especially for sudo/shadow/pam packages).
 
-* linux-selinux (support in Arch Official kernel on the way:
-  https://bugs.archlinux.org/task/37578) can be built at any time.
-  linux-hardened package provides SELinux.
-
 First, we build all packages from the SELinux userspace projet. They do not
 replace any official Arch Linux packages:
 

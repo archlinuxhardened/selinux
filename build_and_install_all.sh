@@ -212,13 +212,6 @@ then
 fi
 build_and_install dbus-selinux
 
-# Kernel with SELinux support
-# This is no longer needed, as the official kernel has been enabling SELinux
-# support since 4.18.8-arch1 (2018-09-15).
-# cf. https://git.archlinux.org/svntogit/packages.git/commit/trunk?h=packages/linux&id=c46609a4b0325c363455264844091b71de01eddc
-# and https://github.com/archlinuxhardened/selinux/issues/19
-#build_and_install linux-selinux
-
 # Reference policy source package
 build_and_install selinux-refpolicy-src
 

@@ -138,6 +138,3 @@ pkgbuild util-linux-selinux libsepol libselinux pambase-selinux pam-selinux
 #pkgbuild systemd-selinux libsepol libselinux libsemanage pambase-selinux pam-selinux shadow-selinux
 #pkgbuild dbus-selinux libsepol libselinux systemd-libs-selinux systemd-selinux
 pkgbuild cronie-selinux libsepol libselinux pambase-selinux pam-selinux
-
-# Finally build the kernel
-pkgbuild linux-selinux
