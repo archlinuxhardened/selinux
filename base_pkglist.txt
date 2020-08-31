@@ -10,7 +10,6 @@ core/cronie
 core/dbus
 core/findutils
 core/iproute2
-core/linux
 core/logrotate
 core/openssh
 core/pam
