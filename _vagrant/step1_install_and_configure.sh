@@ -85,12 +85,6 @@ then
         # Enable SELinux in kernel command line
         sed -i -e 's:\(^\s*APPEND \):\1selinux=1 security=selinux :' /boot/syslinux/syslinux.cfg
     fi
-    # If using the deprecated linux-selinux kernel, replace the entries
-    if grep 'LINUX \.\./vmlinuz-linux-selinux' /boot/syslinux/syslinux.cfg > /dev/null
-    then
-        sed -i -e 's:\(^\s*LINUX \.\./vmlinuz-linux\)-selinux$:\1:' /boot/syslinux/syslinux.cfg
-        sed -i -e 's:\(^\s*INITRD \.\./initramfs-linux\)-selinux\(\(-fallback\)\?\.img\)$:\1\2:' /boot/syslinux/syslinux.cfg
-    fi
 fi
 
 if [ -d /vagrant/refpolicy ]
