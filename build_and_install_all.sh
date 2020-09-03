@@ -61,6 +61,13 @@ build() {
     rm -rf "./$1/src" "./$1/pkg"
     rm -f "./$1/"*.pkg.tar.xz "./$1/"*.pkg.tar.xz.sig
     rm -f "./$1/"*.pkg.tar.zst "./$1/"*.pkg.tar.zst.sig
+    # When building in a container, systemd's tests fail because of default Seccomp filters
+    if [ "$1" = 'systemd-selinux' ] && \
+        (systemd-detect-virt -q --container || systemd-detect-virt -q --private-users ) && \
+        grep '^Seccomp:\s*2$' /proc/self/status > /dev/null
+    then
+        set -- "$@" --nocheck
+    fi
     (cd "./$1" && shift && makepkg -s -C --noconfirm "$@") || exit $?
 }
 
