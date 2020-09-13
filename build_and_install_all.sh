@@ -211,7 +211,7 @@ fi
 if needs_install util-linux-selinux || needs_install systemd-selinux
 then
     build util-linux-selinux
-    run_conflictual_install pacman -U util-linux-selinux/libutil-linux-selinux-*"$PKGEXT"
+    run_conflictual_install pacman -U util-linux-selinux/util-linux-libs-selinux-*"$PKGEXT"
     build systemd-selinux
     run_conflictual_install pacman -U systemd-selinux/systemd-libs-selinux-*"$PKGEXT"
     build_and_install util-linux-selinux
