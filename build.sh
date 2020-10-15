@@ -51,8 +51,8 @@ pkgbuild selinux-dbus-config
 pkgbuild selinux-sandbox
 
 # Build core packages with SELinux support
-pkgbuild pam-selinux
 pkgbuild pambase-selinux
+pkgbuild pam-selinux
 pkgbuild coreutils-selinux
 pkgbuild findutils-selinux
 pkgbuild iproute2-selinux

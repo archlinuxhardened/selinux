@@ -6,7 +6,6 @@ pkgbase = pambase-selinux
 	arch = any
 	groups = selinux
 	license = GPL
-	depends = pam-selinux>=1.4.0
 	provides = pambase=20200721.1-2
 	provides = selinux-pambase=20200721.1-2
 	conflicts = pambase
