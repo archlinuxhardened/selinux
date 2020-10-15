@@ -182,8 +182,8 @@ install_libreport
 build_and_install selinux-alpm-hook
 
 # Core packages with SELinux support
-build_and_install pam-selinux
 build_and_install pambase-selinux
+build_and_install pam-selinux
 build_and_install coreutils-selinux
 build_and_install findutils-selinux
 build_and_install iproute2-selinux
