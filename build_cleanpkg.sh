@@ -113,8 +113,8 @@ pkgbuild selinux-refpolicy-arch libsepol libselinux libsemanage semodule-utils c
 pkgbuild selinux-refpolicy-git libsepol libselinux libsemanage semodule-utils checkpolicy policycoreutils
 
 # Build core packages with SELinux support
-pkgbuild pam-selinux libsepol libselinux
-pkgbuild pambase-selinux pam-selinux
+pkgbuild pambase-selinux
+pkgbuild pam-selinux libsepol libselinux pambase-selinux
 pkgbuild coreutils-selinux libsepol libselinux
 pkgbuild findutils-selinux libsepol libselinux
 pkgbuild iproute2-selinux libsepol libselinux
