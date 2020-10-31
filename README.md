@@ -59,7 +59,7 @@ Policy
 
 There is not yet a SELinux policy for Arch.  To build a policy, here are some useful links:
 
-* https://github.com/TresysTechnology/refpolicy The Reference Policy
+* https://github.com/SELinuxProject/refpolicy The Reference Policy
 * https://github.com/pebenito/refpolicy ongoing work to include a systemd policy in the refpolicy (announcement: http://oss.tresys.com/pipermail/refpolicy/2014-October/007430.html)
 * http://anonscm.debian.org/cgit/selinux/refpolicy.git/tree/debian/patches Debian patches for refpolicy package (including systemd patches)
 * https://github.com/selinux-policy/selinux-policy/tree/rawhide-base Fedora policy
