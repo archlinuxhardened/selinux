@@ -20,7 +20,7 @@ COPY . /startdir
 #   weird issues can occur for example when python or ruby is up to date but not
 #   their dependencies (like libxcrypt, openssl, etc.).
 # * Configure the system to be able to build packages as builduser, like makechrootpkg:
-#   https://git.archlinux.org/devtools.git/tree/makechrootpkg.in?h=20200407#n155
+#   https://github.com/archlinux/devtools/blob/20200407/makechrootpkg.in#L155
 # * Sync GPG keys used to verify package sources
 # * Build and install every package, using /build as build directory
 # * Remove temporary files
