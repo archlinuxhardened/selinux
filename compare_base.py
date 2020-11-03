@@ -46,7 +46,7 @@ BASE_PKGLIST_FILE = os.path.join(CURRENT_DIR, 'base_pkglist.txt')
 PACMAN_DB_DIR = os.path.join(CURRENT_DIR, '.pacman-db')
 PACMAN_CONF_FILE = os.path.join(CURRENT_DIR, 'local-pacman.conf')
 
-ARCH_GITLOG_URL = 'https://git.archlinux.org/svntogit/packages.git/log/trunk?h=packages/{}'
+ARCH_GITLOG_URL = 'https://github.com/archlinux/svntogit-packages/commits/packages/{}/trunk'
 ARCH_GITREMOTE = 'https://git.archlinux.org/svntogit/packages.git'
 
 
