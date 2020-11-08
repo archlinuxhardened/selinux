@@ -12,7 +12,8 @@ Authors are credited in the PKGBUILD file for each package.
 Binary repository
 -----------------
 
-No binary repository available at the moment.
+An experimental binary repository is available at http://selinux.tqre.fi/selinux-testing  
+The packages are compiled with `build_and_install_all.sh` -script, and the repository can be used to install a fresh Arch Linux with SELinux support using `base-selinux` -meta package. The repository is not signed at the moment. The documentation will be available in ArchWiki soon.
 
 Build order
 -----------
