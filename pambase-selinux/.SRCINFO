@@ -10,7 +10,7 @@ pkgbase = pambase-selinux
 	provides = selinux-pambase=20200721.1-2
 	conflicts = pambase
 	conflicts = selinux-pambase
-	conflicts = pam-selinux>=1.4.0
+	conflicts = pam-selinux<1.4.0
 	backup = etc/pam.d/system-auth
 	backup = etc/pam.d/system-local-login
 	backup = etc/pam.d/system-login
