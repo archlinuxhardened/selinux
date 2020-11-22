@@ -227,3 +227,20 @@ build_and_install selinux-refpolicy-arch
 
 # Refpolicy git master
 build_and_install selinux-refpolicy-git
+
+# Build base-selinux and base-devel-selinux meta packages
+
+# Dependency checks are skipped with -d flag as these packages are only lists
+# of packages that are to be installed. Also possible conflicts with the
+# original base and base-devel -packages is the reason these are only built
+# and not installed. Namely base-selinux is intended to be used when installing
+# Arch Linux, and base-devel-selinux takes care that sudo has selinux support.
+
+build_nodeps() {
+    rm -rf "./$1/src" "./$1/pkg"
+    rm -f "./$1/"*.pkg.tar.zst "./$1/"*.pkg.tar.zst.sig
+    (cd "./$1" && shift && makepkg -d -C --noconfirm "$@") || exit $?
+}
+
+build_nodeps base-selinux
+build_nodeps base-devel-selinux
