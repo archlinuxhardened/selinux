@@ -13,7 +13,7 @@ core/iproute2
 core/logrotate
 core/openssh
 core/pam
-core/pambase
+core/pambase = 20200721.1-2
 core/psmisc
 core/shadow
 core/sudo
