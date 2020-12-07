@@ -1,13 +1,12 @@
 # Build SELinux packages for Arch linux in Docker/Podman container
 
-# NOTE: docker build fails on systemd tests (20201207)
 # Usage:
-#    sudo docker build -t arch-selinux-build .
+#    docker build -t arch-selinux-build .
 # or   
 #    sudo podman build -t arch-selinux-build .
 #
 # Once the container is built, you can get the packages in "pkgs" directory with:
-#    sudo docker run -v "$(pwd)/pkgs:/packages" --rm -ti arch-selinux-build
+#    docker run -v "$(pwd)/pkgs:/packages" --rm -ti arch-selinux-build
 # or
 #    podman run -v "$(pwd)/pkgs:/packages" --rm -ti arch-selinux-build
 
