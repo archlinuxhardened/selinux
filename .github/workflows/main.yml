@@ -3,6 +3,13 @@ name: Build
 on:
   push:
     branches: [ github-actions ]
+    paths:
+    - 'Dockerfile'
+    - 'build_and_install_all.sh'
+    - 'clean.sh'
+    - 'recv_gpg_keys.sh'
+    - '*/PKGBUILD'
+    - '.github/workflows/main.yml'
   workflow_dispatch:
 
 jobs:
