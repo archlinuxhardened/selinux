@@ -1,0 +1,14 @@
+name: Build all packages
+
+on:
+  push:
+    branches: [ github-actions ]
+  workflow_dispatch:
+
+jobs:
+  build_all:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build and install Arch Linux's SELinux support packages in a docker container
+        run: docker build -t arch-selinux-build .
