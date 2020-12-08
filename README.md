@@ -1,3 +1,5 @@
+![build](https://github.com/tqre/selinux/workflows/Build/badge.svg)
+
 PKGBUILDs for SELinux support in Arch Linux
 ===========================================
 
