@@ -10,7 +10,8 @@
 # or
 #    podman run -v "$(pwd)/pkgs:/packages" --rm -ti arch-selinux-build
 
-# Use official Arch Linux Docker image (https://hub.docker.com/r/archlinux/archlinux)
+# Use official Arch Linux Docker image:
+# https://gitlab.archlinux.org/archlinux/archlinux-docker
 FROM docker.io/archlinux/archlinux:latest
 LABEL Description="Build SELinux packages for Arch Linux"
 
