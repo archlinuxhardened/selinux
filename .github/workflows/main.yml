@@ -2,7 +2,7 @@ name: Build
 
 on:
   push:
-    branches: [ github-actions ]
+    branches: [ master ]
     paths:
     - 'Dockerfile'
     - 'build_and_install_all.sh'
