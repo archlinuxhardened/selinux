@@ -18,6 +18,8 @@ jobs:
   build_all_packages:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v2
+
       - name: Build and install Arch Linux's SELinux support packages in a docker container
         run: docker build -t arch-selinux-build .
 
