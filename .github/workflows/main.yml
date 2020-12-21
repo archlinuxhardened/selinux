@@ -6,12 +6,12 @@ on:
       - master
       - github-actions
     paths:
-    - 'Dockerfile'
-    - 'build_and_install_all.sh'
-    - 'clean.sh'
-    - 'recv_gpg_keys.sh'
-    - '*/PKGBUILD'
-    - '.github/workflows/main.yml'
+      - 'Dockerfile'
+      - 'build_and_install_all.sh'
+      - 'clean.sh'
+      - 'recv_gpg_keys.sh'
+      - '*/PKGBUILD'
+      - '.github/workflows/main.yml'
   workflow_dispatch:
 
 jobs:
@@ -44,9 +44,6 @@ jobs:
       - name: Download latest ArchISO bootstrap image
         run: curl https://mirror.pkgbuild.com/iso/latest/archlinux-bootstrap-2020.12.01-x86_64.tar.gz --output archbootstrap.tar.gz
 
-      - name: Extract the archlinux-bootstrap to a directory
-        run: sudo tar xf archbootstrap.tar.gz -C /tmp/boots --strip-components 1
-
       - name: Create new raw image for Arch Linux and mount it as a loop device
         run: |
           qemu-img create -f raw archlinux.raw 8G
@@ -58,17 +55,16 @@ jobs:
           sudo tune2fs -L ROOT /dev/loop0p1
           sudo mount /dev/loop0p1 /tmp/arch
 
-      - name: Get the SELinux packages
+      - name: Get the SELinux packages from build job
         uses: actions/download-artifact@v2
         with:
           name: Arch Linux packages for SELinux support
           path: repo
 
-      - name: Copy the SELinux packages to bootstrap mount
-        run: sudo cp -v repo/* /tmp/boots/var/cache/pacman/pkg
-
-      - name: Chroot into the arch-bootstrap directory and install Arch with SELinux support to loop mounted raw image
+      - name: Prepare arch-bootstrap directory, chroot into it and install Arch with SELinux support to loop-mounted raw image
         run: |
+          sudo tar xf archbootstrap.tar.gz -C /tmp/boots --strip-components 1
+          sudo cp -v repo/* /tmp/boots/var/cache/pacman/pkg
           sudo /tmp/boots/usr/bin/arch-chroot /tmp/boots /bin/bash -c \
            'pacman-key --init;
             pacman-key --populate archlinux;
@@ -100,14 +96,14 @@ jobs:
             sed -i "/LINUX_DEF/c\GRUB_CMDLINE_LINUX_DEFAULT=\"security=selinux selinux=1 console=ttyS0\"" /etc/default/grub;
             grub-mkconfig -o /boot/grub/grub.cfg'
 
-      - name: Unmount loops and convert the QEMU image to qcow2
+      - name: Unmount loop devices and convert the QEMU image to qcow2
         run: |
           sudo umount /tmp/boots/mnt
           sudo umount /tmp/arch
           sudo losetup -d /dev/loop0
           qemu-img convert -f raw -O qcow2 archlinux.raw archlinux.qcow2
 
-      - name: Run configurations and tests with the image
+      - name: Run test commands on the image
         run: |
           qemu-system-x86_64 archlinux.qcow2 \
             -net nic -net user,hostfwd=tcp::10022-:22 \
@@ -137,9 +133,8 @@ jobs:
           tag_name: ArchLinux-SELinux
           files: packages/*
           body: |
-            Arch Linux packages to enable SELinux support
+            # Arch Linux packages to enable SELinux support
             https://wiki.archlinux.org/index.php/SELinux
-
             ```
             ${{ github.event.head_commit.message }}
             ```
