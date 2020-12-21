@@ -112,13 +112,13 @@ jobs:
           qemu-system-x86_64 archlinux.qcow2 \
             -net nic -net user,hostfwd=tcp::10022-:22 \
             -nographic -m 2048 &
-          sleep 30
-          ssh -o "StrictHostKeyChecking=no" root@localhost -p 10022 'ls -laZ; restorecon -R /; sestatus'
+          sleep 25
+          ssh -o "StrictHostKeyChecking=no" root@localhost -p 10022 'restorecon -Rv /; ls -laZ /; sestatus'
 
   release:
     runs-on: ubuntu-latest
     needs: test_packages_on_qemu
-    if: github.ref == 'refs/heads/github-actions'
+    if: github.ref == 'refs/heads/github-actions' || github.ref == 'refs/heads/master'
     steps:
       - name: Get packages from build artifacts
         uses: actions/download-artifact@v2
@@ -136,6 +136,13 @@ jobs:
         with:
           tag_name: ArchLinux-SELinux
           files: packages/*
+          body: |
+            Arch Linux packages to enable SELinux support
+            https://wiki.archlinux.org/index.php/SELinux
+
+            ```
+            ${{ github.event.head_commit.message }}
+            ```
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   
