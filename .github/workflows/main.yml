@@ -29,7 +29,7 @@ jobs:
           name: Arch Linux packages for SELinux support
           path: pkgs
 
-  test_packages_bootstrap_qemu:
+  test_packages_on_qemu:
     runs-on: ubuntu-latest
     needs: build_all_packages
     steps:
@@ -52,6 +52,7 @@ jobs:
           sudo parted -a optimal /dev/loop0 mkpart primary 0% 100%
           sudo parted /dev/loop0 set 1 boot on
           sudo mkfs.ext4 /dev/loop0p1
+          sudo tune2fs -L ROOT /dev/loop0p1
           sudo mount /dev/loop0p1 /tmp/arch
 
       - name: Get the SELinux packages
@@ -72,14 +73,42 @@ jobs:
             echo "Server = https://mirror.pkgbuild.com/\$repo/os/\$arch" >> /etc/pacman.d/mirrorlist;
             echo -e "[selinux-testing]\nSigLevel = Never\nServer = file:///var/cache/pacman/pkg" >> /etc/pacman.conf;
             repo-add /var/cache/pacman/pkg/selinux-testing.db.tar.xz /var/cache/pacman/pkg/*;
-            pacstrap /mnt base-selinux linux grub'
+            pacstrap /mnt base-selinux base-devel-selinux openssh-selinux linux grub;
+            genfstab -L /mnt >> /mnt/etc/fstab'
 
-      - name: Work on the loop mounted raw image
+      - name: Make testing configurations for the raw image
         run: |
           sudo /tmp/boots/usr/bin/arch-chroot /tmp/arch /bin/bash -c \
-           'ls -la;
-            cat /etc/pacman.d/mirrorlist;
-            lsblk'
+           'ln -sfv /usr/share/zoneinfo/UTC /etc/localtime;
+            hwclock --systohc;
+            sed -i 's/#en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen;
+            locale-gen;
+            echo LANG=en_US.UTF-8 > /etc/locale.conf;
+            echo qemu-arch-selinux > /etc/hostname;
+            echo -e "127.0.0.1 localhost\n::1 localhost" > /etc/hosts;
+            echo -e "[Match]\nName=en*\n[Network]\nDHCP=ipv4" > /etc/systemd/network/dhcp.network;
+            systemctl enable systemd-networkd.service;
+            sed -i "s/#PermitRootLogin prohibit-password/PermitRootLogin yes/" /etc/ssh/sshd_config;
+            sed -i "s/#PermitEmptyPasswords no/PermitEmptyPasswords yes/" /etc/ssh/sshd_config;
+            systemctl enable sshd;
+            sed -i 's/root:x:/root::/' /etc/passwd;
+            grub-install --target=i386-pc /dev/loop0;
+            sed -i 's/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/' /etc/default/grub;
+            sed -i '/LINUX_DEF/c\GRUB_CMDLINE_LINUX_DEFAULT="console=ttyS0"' /etc/default/grub;
+            grub-mkconfig -o /boot/grub/grub.cfg'
 
+      - name: Unmount loops and convert the QEMU image to qcow2
+        run: |
+          sudo umount /tmp/boots/mnt
+          sudo umount /tmp/arch
+          sudo losetup -d /dev/loop0
+          qemu-img convert -f raw -O qcow2 archlinux.raw archlinux.qcow2
 
+      - name: Run configurations and tests with the image
+        run: |
+          qemu-system-x86_64 archlinux.qcow2 \
+            -net nic -net user,hostfwd=tcp::10022-:22 \
+            -nographic -m 2048 &
+          sleep 30
+          ssh -o "StrictHostKeyChecking=no" root@localhost -p 10022 'restorecon -R /; sestatus'
 
