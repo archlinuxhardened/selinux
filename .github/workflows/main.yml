@@ -42,7 +42,7 @@ jobs:
           mkdir -v repo /tmp/{boots,arch}
 
       - name: Download latest ArchISO bootstrap image
-        run: curl https://mirror.pkgbuild.com/iso/latest/archlinux-bootstrap-2020.12.01-x86_64.tar.gz --output archbootstrap.tar.gz
+        run: curl https://mirror.pkgbuild.com/iso/latest/archlinux-bootstrap-$(date +"%Y.%m.01")-x86_64.tar.gz --output archbootstrap.tar.gz
 
       - name: Create new raw image for Arch Linux and mount it as a loop device
         run: |
