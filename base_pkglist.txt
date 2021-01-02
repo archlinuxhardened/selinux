@@ -9,7 +9,7 @@ core/coreutils
 core/cronie
 core/dbus
 core/findutils
-core/iproute2
+core/iproute2 = 5.10.0-2
 core/logrotate
 core/openssh
 core/pam
