@@ -5,7 +5,7 @@ on:
     branches:
       - master
     tags:
-      - 'testbuild'
+      - testbuild*
     paths:
       - 'Dockerfile'
       - 'build_and_install_all.sh'
