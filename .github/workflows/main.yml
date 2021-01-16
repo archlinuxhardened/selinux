@@ -4,7 +4,8 @@ on:
   push:
     branches:
       - master
-      - github-actions
+    tags:
+      - 'testbuild'
     paths:
       - 'Dockerfile'
       - 'build_and_install_all.sh'
@@ -114,7 +115,7 @@ jobs:
   release:
     runs-on: ubuntu-18.04
     needs: test_packages_on_qemu
-    if: github.ref == 'refs/heads/github-actions' || github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/master'
     steps:
       - name: Get packages from build artifacts
         uses: actions/download-artifact@v2
