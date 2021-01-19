@@ -38,6 +38,7 @@ jobs:
     steps:
       - name: Install QEMU to the runner and make needed directories
         run: |
+          sudo apt-get update
           sudo apt-get install qemu
           mkdir -v repo /tmp/{boots,arch}
 
