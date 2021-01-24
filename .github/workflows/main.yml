@@ -23,7 +23,7 @@ jobs:
           name: Arch Linux packages for SELinux support
           path: pkgs
 
-  test_packages_on_qemu:
+  prepare_testing:
     runs-on: ubuntu-18.04
     needs: build_all_packages
     steps:
@@ -95,24 +95,85 @@ jobs:
           sudo losetup -d /dev/loop0
           qemu-img convert -f raw -O qcow2 archlinux.raw archlinux.qcow2
 
+      - name: Upload VM to artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: Arch Linux VM with SELinux support
+          path: archlinux.qcow2 
+
+  test_SELinux_functionality:
+    runs-on: ubuntu-18.04
+    needs: prepare_testing
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install QEMU to the runner and make needed directories
+        run: |
+          sudo apt-get update
+          sudo apt-get install qemu
+
+      - name: Download VM artifact for testing
+        uses: actions/download-artifact@v2
+        with:
+          name: Arch Linux VM with SELinux support
+
+      - name: Use the initial VM image as a backing file
+        run: |
+          qemu-img create -f qcow2 -F qcow2 -b archlinux.qcow2 archselinux.qcow2
+
       - name: Run test commands on the image
         run: |
-          qemu-system-x86_64 archlinux.qcow2 \
+          qemu-system-x86_64 archselinux.qcow2 \
             -net nic -net user,hostfwd=tcp::10022-:22 \
             -nographic -m 2048 &
           sleep 25
           ssh -o "StrictHostKeyChecking=no" root@localhost -p 10022 'restorecon -Rv /; ls -laZ /; sestatus'
 
+      - name: Upload the qcow2 file containing VM image changes to artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: Arch Linux VM after tests and restorecon
+          path: archselinux.qcow2
+
+  prepare_release:
+    runs-on: ubuntu-18.04
+    needs: test_SELinux_functionality
+    if: github.ref == 'refs/heads/github-actions'
+    steps:
+      - name: Prepare Arch specific binaries for use
+        run: |
+          mkdir -v /tmp/boots
+          curl https://mirror.pkgbuild.com/iso/latest/archlinux-bootstrap-$(date +"%Y.%m.01")-x86_64.tar.gz --output archbootstrap.tar.gz
+          sudo tar xf archbootstrap.tar.gz -C /tmp/boots --strip-components 1
+          mkdir -v /tmp/boots/repo
+
+      - name: Get the SELinux packages from build job
+        uses: actions/download-artifact@v2
+        with:
+          name: Arch Linux packages for SELinux support
+          path: /tmp/boots/repo
+
+      - name: Create package repository files
+        run: |
+          sudo /tmp/boots/usr/bin/arch-chroot /tmp/boots /bin/bash -c \
+           'repo-add /repo/selinux.db.tar.xz /repo/*'
+
+      - name: Upload the ready repository as an artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: SELinux pacman repository
+          path: /tmp/boots/repo
+
   release:
     runs-on: ubuntu-18.04
-    needs: test_packages_on_qemu
-    if: github.ref == 'refs/heads/master'
+    needs: prepare_release
+    if: github.ref == 'refs/heads/github-actions'
     steps:
       - name: Get packages from build artifacts
         uses: actions/download-artifact@v2
         with:
-          name: Arch Linux packages for SELinux support
-          path: packages
+          name: SELinux pacman repository
+          path: release
 
       - name: Remove old release
         uses: ame-yu/action-delete-latest-release@v2
@@ -123,7 +184,7 @@ jobs:
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ArchLinux-SELinux
-          files: packages/*
+          files: release/*
           body: |
             # Arch Linux packages to enable SELinux support
             https://wiki.archlinux.org/index.php/SELinux  
