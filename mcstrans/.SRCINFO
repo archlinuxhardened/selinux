@@ -1,6 +1,6 @@
 pkgbase = mcstrans
 	pkgdesc = SELinux MCS translation daemon
-	pkgver = 3.1
+	pkgver = 3.2rc1
 	pkgrel = 1
 	url = https://github.com/SELinuxProject/selinux/wiki
 	arch = i686
@@ -8,10 +8,10 @@ pkgbase = mcstrans
 	groups = selinux
 	license = GPL2
 	depends = libcap
-	depends = libselinux>=3.1
+	depends = libselinux>=3.1rc1
 	depends = pcre
-	source = https://github.com/SELinuxProject/selinux/releases/download/20200710/mcstrans-3.1.tar.gz
-	sha256sums = cc918576c17340fc944849d785e2a7400b269ef079a36b871c140504164d6a45
+	source = https://github.com/SELinuxProject/selinux/releases/download/3.2-rc1/mcstrans-3.2-rc1.tar.gz
+	sha256sums = 22623708c057610a968fc2bba80698e0793cc1fc232c2766b84f984fffa248e6
 
 pkgname = mcstrans
 
