@@ -19,13 +19,13 @@
 
 pkgname=setools
 pkgver=4.3.0
-pkgrel=2
+pkgrel=2.1
 pkgdesc="Policy analysis tools for SELinux"
 groups=('selinux')
 arch=('i686' 'x86_64')
 url="https://github.com/SELinuxProject/setools/wiki"
 license=('GPL' 'LGPL')
-depends=('libsepol>=2.8' 'libselinux>=2.8' 'python' 'python-networkx>=2.0' 'python-setuptools')
+depends=('libsepol>=3.2rc1' 'libselinux>=2.8' 'python' 'python-networkx>=2.0' 'python-setuptools')
 optdepends=('python-pyqt5: needed for graphical tools'
             'qt5-tools: display apol help with Qt Assistant')
 makedepends=('cython' 'python-tox')
@@ -33,15 +33,21 @@ checkdepends=('checkpolicy')
 conflicts=("selinux-${pkgname}")
 provides=("selinux-${pkgname}=${pkgver}-${pkgrel}")
 source=("https://github.com/SELinuxProject/setools/releases/download/${pkgver}/${pkgname}-${pkgver}.tar.bz2"
-        '0001-Disable-deprecated-function-warnings-to-fix-build-wi.patch')
+        '0001-Disable-deprecated-function-warnings-to-fix-build-wi.patch'
+        '0002-Adapt-to-new-libsepol-filename-transition-structures.patch')
 sha256sums=('315df3ae0eb29b399123c5e3330480c5d1c0da038671c9fd62a439c49a6f9105'
-            '95973be9faf3380986b0cf5969b9e28d1ba4d8eea7d78e24786c49871977cd40')
+            '95973be9faf3380986b0cf5969b9e28d1ba4d8eea7d78e24786c49871977cd40'
+            '8890c35d2b5619a91f93a255c6bc5ea5f67eb5fbfb2e3fea75c0dd514c8a410a')
 
 prepare() {
   cd "${pkgname}"
   # Fix compatibility issues with Cython 0.29.21 and Python 3.9
   # https://github.com/SELinuxProject/setools/issues/54
   patch -Np1 -i ../0001-Disable-deprecated-function-warnings-to-fix-build-wi.patch
+
+  # Adapt setools to the new libsepol's filename transition representation
+  # https://github.com/SELinuxProject/setools/pull/50
+  patch -Np1 -i ../0002-Adapt-to-new-libsepol-filename-transition-structures.patch
 }
 
 build() {

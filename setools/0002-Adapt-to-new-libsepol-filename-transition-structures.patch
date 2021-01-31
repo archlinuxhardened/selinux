@@ -1,0 +1,134 @@
+From ff63681d85da03e178714e516006123e1f7fa9bb Mon Sep 17 00:00:00 2001
+From: Ondrej Mosnacek <omosnace@redhat.com>
+Date: Fri, 17 Jul 2020 11:28:08 +0200
+Subject: [PATCH 2/2] Adapt to new libsepol filename transition structures
+
+Adapt setools to the new libsepol internal API for filename transitions
+which allows for more efficient filename trans rule representation in
+memory and binary policy.
+
+Signed-off-by: Ondrej Mosnacek <omosnace@redhat.com>
+---
+ README.md                    |  2 +-
+ setools/policyrep/sepol.pxd  |  9 ++++----
+ setools/policyrep/terule.pxi | 41 ++++++++++++++++++++++++++++++------
+ 3 files changed, 40 insertions(+), 12 deletions(-)
+
+diff --git a/README.md b/README.md
+index e68725b5c218..5cc0fe2acbf5 100644
+--- a/README.md
++++ b/README.md
+@@ -17,7 +17,7 @@ To run SETools command line tools, the following packages are required:
+ * NetworkX 2.0+
+ * setuptools
+ * libselinux
+-* libsepol 2.8+
++* libsepol 3.2+
+ 
+ To run SETools graphical tools, the following packages are also required:
+ * PyQt5
+diff --git a/setools/policyrep/sepol.pxd b/setools/policyrep/sepol.pxd
+index 6d0d5e4fcc89..298db4034c44 100644
+--- a/setools/policyrep/sepol.pxd
++++ b/setools/policyrep/sepol.pxd
+@@ -543,21 +543,22 @@ cdef extern from "<sepol/policydb/policydb.h>":
+     ctypedef cond_bool_datum cond_bool_datum_t
+ 
+     #
+-    # filename_trans_t
++    # filename_trans_key_t
+     #
+-    cdef struct filename_trans:
+-        uint32_t stype
++    cdef struct filename_trans_key:
+         uint32_t ttype
+         uint32_t tclass
+         char *name
+ 
+-    ctypedef filename_trans filename_trans_t
++    ctypedef filename_trans_key filename_trans_key_t
+ 
+     #
+     # filename_trans_datum_t
+     #
+     cdef struct filename_trans_datum:
++        ebitmap_t stypes
+         uint32_t otype
++        filename_trans_datum *next
+ 
+     ctypedef filename_trans_datum filename_trans_datum_t
+ 
+diff --git a/setools/policyrep/terule.pxi b/setools/policyrep/terule.pxi
+index 59aeea5d8190..ba0b41dbb711 100644
+--- a/setools/policyrep/terule.pxi
++++ b/setools/policyrep/terule.pxi
+@@ -464,17 +464,18 @@ cdef class FileNameTERule(BaseTERule):
+         readonly str filename
+ 
+     @staticmethod
+-    cdef inline FileNameTERule factory(SELinuxPolicy policy, sepol.filename_trans_t *key,
+-                                       sepol.filename_trans_datum_t *datum):
++    cdef inline FileNameTERule factory(SELinuxPolicy policy,
++                                       sepol.filename_trans_key_t *key,
++                                       Type stype, size_t otype):
+         """Factory function for creating FileNameTERule objects."""
+         cdef FileNameTERule r = FileNameTERule.__new__(FileNameTERule)
+         r.policy = policy
+         r.key = <uintptr_t>key
+         r.ruletype = TERuletype.type_transition
+-        r.source = type_or_attr_factory(policy, policy.type_value_to_datum(key.stype - 1))
++        r.source = stype
+         r.target = type_or_attr_factory(policy, policy.type_value_to_datum(key.ttype - 1))
+         r.tclass = ObjClass.factory(policy, policy.class_value_to_datum(key.tclass - 1))
+-        r.dft = Type.factory(policy, policy.type_value_to_datum(datum.otype - 1))
++        r.dft = Type.factory(policy, policy.type_value_to_datum(otype - 1))
+         r.filename = intern(key.name)
+         r.origin = None
+         return r
+@@ -702,6 +703,10 @@ cdef class FileNameTERuleIterator(HashtabIterator):
+ 
+     """Iterate over FileNameTERules in the policy."""
+ 
++    cdef:
++        sepol.filename_trans_datum_t *datum
++        TypeEbitmapIterator stypei
++
+     @staticmethod
+     cdef factory(SELinuxPolicy policy, sepol.hashtab_t *table):
+         """Factory function for creating FileNameTERule iterators."""
+@@ -711,7 +716,29 @@ cdef class FileNameTERuleIterator(HashtabIterator):
+         i.reset()
+         return i
+ 
++    def _next_stype(self):
++        while True:
++            if self.datum == NULL:
++                super().__next__()
++                self.datum = <sepol.filename_trans_datum_t *>self.curr.datum
++                self.stypei = TypeEbitmapIterator.factory(self.policy, &self.datum.stypes)
++            try:
++                return next(self.stypei)
++            except StopIteration:
++                pass
++            self.datum = self.datum.next
++            if self.datum != NULL:
++                self.stypei = TypeEbitmapIterator.factory(self.policy, &self.datum.stypes)
++
+     def __next__(self):
+-        super().__next__()
+-        return FileNameTERule.factory(self.policy, <sepol.filename_trans_t *>self.curr.key,
+-                                      <sepol.filename_trans_datum_t *>self.curr.datum)
++        stype = self._next_stype()
++        return FileNameTERule.factory(self.policy,
++                                      <sepol.filename_trans_key_t *>self.curr.key,
++                                      stype, self.datum.otype)
++
++    def __len__(self):
++        return sum(1 for r in FileNameTERuleIterator.factory(self.policy, self.table))
++
++    def reset(self):
++        super().reset()
++        self.datum = NULL
+-- 
+2.30.0
+
