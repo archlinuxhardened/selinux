@@ -11,7 +11,7 @@ pkgbase = selinux-python
 	depends = python-audit
 	depends = python-ipy
 	depends = libsemanage>=3.1rc1
-	depends = setools>=4.0.0
+	depends = setools>=4.3.0-2.1
 	provides = sepolgen=3.2rc1-1
 	conflicts = sepolgen<2.7
 	conflicts = policycoreutils<2.7
