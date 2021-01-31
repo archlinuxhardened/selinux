@@ -14,8 +14,16 @@ Authors are credited in the PKGBUILD file for each package.
 Binary repository
 -----------------
 
-An experimental binary repository is available at http://selinux.tqre.fi/selinux-testing  
-The packages are compiled with `build_and_install_all.sh` -script, and the repository can be used to install a fresh Arch Linux with SELinux support using `base-selinux` -meta package. The repository is not signed at the moment. The documentation will be available in ArchWiki soon.
+The releases page functions as a pacman repository. It can also be used when
+installing Arch Linux using `base-selinux` -package instead of plain `base`.
+
+To use it, add the following lines to your `/etc/pacman.conf`:
+```
+[selinux]
+Server = https://github.com/archlinuxhardened/selinux/releases/download/ArchLinux-SELinux
+SigLevel = Never
+```
+While the repository remains unsigned, SigLevel has to be set to Never.
 
 Build order
 -----------
