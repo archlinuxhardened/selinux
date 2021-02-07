@@ -106,7 +106,7 @@ jobs:
             sed -i 's/root:x:/root::/' /etc/passwd;
             grub-install --target=i386-pc /dev/loop0;
             sed -i 's/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/' /etc/default/grub;
-            sed -i "/LINUX_DEF/c\GRUB_CMDLINE_LINUX_DEFAULT=\"security=selinux selinux=1 console=ttyS0\"" /etc/default/grub;
+            sed -i "/LINUX_DEF/c\GRUB_CMDLINE_LINUX_DEFAULT=\"lsm=selinux selinux=1 console=ttyS0\"" /etc/default/grub;
             grub-mkconfig -o /boot/grub/grub.cfg'
 
       - name: Unmount loop devices and convert the QEMU image to qcow2
