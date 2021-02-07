@@ -78,7 +78,7 @@ jobs:
         run: |
           sudo tar xf archbootstrap.tar.gz -C /tmp/boots --strip-components 1
           sudo cp -v repo/* /tmp/boots/var/cache/pacman/pkg
-          sudo /tmp/boots/usr/bin/arch-chroot /tmp/boots /bin/bash -c \
+          sudo /tmp/boots/usr/bin/arch-chroot /tmp/boots /bin/bash -ex -c \
            'pacman-key --init;
             pacman-key --populate archlinux;
             mount /dev/loop0p1 /mnt;
@@ -90,7 +90,7 @@ jobs:
 
       - name: Make testing configurations for the raw image
         run: |
-          sudo /tmp/boots/usr/bin/arch-chroot /tmp/arch /bin/bash -c \
+          sudo /tmp/boots/usr/bin/arch-chroot /tmp/arch /bin/bash -ex -c \
            'ln -sfv /usr/share/zoneinfo/UTC /etc/localtime;
             hwclock --systohc;
             sed -i 's/#en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen;
