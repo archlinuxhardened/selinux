@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-18.04
     container:
       image: archlinux/archlinux:latest
-      options: --privileged
+      options: --security-opt=seccomp=unconfined
 
     steps:
       - uses: actions/checkout@v2
