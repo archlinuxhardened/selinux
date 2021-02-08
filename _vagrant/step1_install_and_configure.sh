@@ -72,18 +72,18 @@ systemctl enable restorecond.service
 # Configure the bootloader to launch SELinux kernel
 if [ -e /etc/default/grub ]
 then
-    if ! grep 'GRUB_CMDLINE_LINUX=".*selinux=1 security=selinux' /etc/default/grub > /dev/null
+    if ! grep 'GRUB_CMDLINE_LINUX=".*selinux=1 lsm=lockdown,yama,selinux,bpf' /etc/default/grub > /dev/null
     then
-        sed -i -e 's/\(GRUB_CMDLINE_LINUX="\)/\1selinux=1 security=selinux /' /etc/default/grub
+        sed -i -e 's/\(GRUB_CMDLINE_LINUX="\)/\1selinux=1 lsm=lockdown,yama,selinux,bpf /' /etc/default/grub
     fi
     grub-mkconfig -o /boot/grub/grub.cfg
 fi
 if [ -e /boot/syslinux/syslinux.cfg ]
 then
-    if ! grep 'APPEND .*selinux=1 security=selinux' /boot/syslinux/syslinux.cfg > /dev/null
+    if ! grep 'APPEND .*selinux=1 lsm=lockdown,yama,selinux,bpf' /boot/syslinux/syslinux.cfg > /dev/null
     then
         # Enable SELinux in kernel command line
-        sed -i -e 's:\(^\s*APPEND \):\1selinux=1 security=selinux :' /boot/syslinux/syslinux.cfg
+        sed -i -e 's:\(^\s*APPEND \):\1selinux=1 lsm=lockdown,yama,selinux,bpf :' /boot/syslinux/syslinux.cfg
     fi
 fi
 
