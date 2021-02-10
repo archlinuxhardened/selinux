@@ -1,6 +1,6 @@
 pkgbase = libsemanage
 	pkgdesc = SELinux binary policy manipulation library
-	pkgver = 3.2rc1
+	pkgver = 3.2rc2
 	pkgrel = 1
 	url = https://github.com/SELinuxProject/selinux
 	install = libsemanage.install
@@ -17,12 +17,12 @@ pkgbase = libsemanage
 	depends = audit
 	optdepends = python: python bindings
 	optdepends = ruby: ruby bindings
-	provides = selinux-usr-libsemanage=3.2rc1-1
+	provides = selinux-usr-libsemanage=3.2rc2-1
 	conflicts = selinux-usr-libsemanage
 	options = !emptydirs
-	source = https://github.com/SELinuxProject/selinux/releases/download/3.2-rc1/libsemanage-3.2-rc1.tar.gz
+	source = https://github.com/SELinuxProject/selinux/releases/download/3.2-rc2/libsemanage-3.2-rc2.tar.gz
 	source = semanage.conf
-	sha256sums = 06065d0c90dbb8cc1d549d8a98cfea07af7dd8494e53362321cbd06ff4ade134
+	sha256sums = c81f836d336b9f90692198460573ee2e1fe66c82f4fb522667ffe59a979210cf
 	sha256sums = 5b0e6929428e095b561701ccdfa9c8b0c3d70dad3fc46e667eb46a85b246a4a0
 
 pkgname = libsemanage
