@@ -1,6 +1,6 @@
 pkgbase = restorecond
 	pkgdesc = SELinux restorecon daemon
-	pkgver = 3.2rc1
+	pkgver = 3.2rc2
 	pkgrel = 1
 	url = https://github.com/SELinuxProject/selinux/wiki
 	arch = i686
@@ -11,8 +11,8 @@ pkgbase = restorecond
 	depends = dbus-glib
 	depends = libselinux>=2.7
 	conflicts = policycoreutils<2.7
-	source = https://github.com/SELinuxProject/selinux/releases/download/3.2-rc1/restorecond-3.2-rc1.tar.gz
-	sha256sums = cb3654472ce6ab4fd7d340e95b293eec5361c9b5bf7e7f6ba75414e8e7896b70
+	source = https://github.com/SELinuxProject/selinux/releases/download/3.2-rc2/restorecond-3.2-rc2.tar.gz
+	sha256sums = 3843fad64bda5080dcab85af4801d151c6435fe9e80f161ce946ea49f8af3c70
 
 pkgname = restorecond
 
