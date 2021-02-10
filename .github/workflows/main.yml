@@ -8,20 +8,41 @@ on:
 jobs:
   build_all_packages:
     runs-on: ubuntu-18.04
+    container:
+      image: archlinux/archlinux:latest
+      options: --security-opt=seccomp=unconfined
+
     steps:
       - uses: actions/checkout@v2
 
       - name: Build and install Arch Linux's SELinux support packages in a docker container
-        run: docker build -t arch-selinux-build .
-
-      - name: Run the container - built packages are transferred to build host
-        run: docker run -v "$(pwd)/pkgs:/packages" --rm arch-selinux-build
+        run: |
+          mkdir -vp /startdir && \
+          cp -Rv . /startdir && \
+          pacman -q --noconfirm -Syu base base-devel expect git && \
+          pacman --noconfirm -Sc && \
+          rm -rf /var/cache/pacman/pkg/* && \
+          ln -sf /usr/share/zoneinfo/UTC /etc/localtime && \
+          useradd -g users -m builduser && \
+          echo 'builduser ALL=(ALL) NOPASSWD: /usr/bin/pacman' >> /etc/sudoers && \
+          echo 'builduser ALL=(ALL) NOPASSWD: /usr/bin/sh -c { pacman --noconfirm --ask=4 -U sudo-selinux/sudo-selinux-*.pkg.tar.zst && if test -e /etc/sudoers.pacsave ; then mv /etc/sudoers.pacsave /etc/sudoers ; fi }' >> /etc/sudoers && \
+          echo 'MAKEFLAGS="-j$(nproc)"' >> /etc/makepkg.conf && \
+          echo 'BUILDDIR=/build' >> /etc/makepkg.conf && \
+          echo 'LOGDEST=/logdest' >> /etc/makepkg.conf && \
+          mkdir -vp /packages /build /logdest && \
+          chown -R builduser /startdir /packages /build /logdest && \
+          sudo -u builduser /startdir/clean.sh && \
+          sudo -u builduser /startdir/recv_gpg_keys.sh && \
+          sudo -u builduser /startdir/build_and_install_all.sh && \
+          rm -rf /startdir/*/src/ /startdir/*/pkg/ && \
+          pacman --noconfirm -Sc && rm -rf /var/cache/pacman/pkg/* && \
+          cp /startdir/*/*.pkg.tar.zst /packages
 
       - name: Upload packages as artifacts
         uses: actions/upload-artifact@v2
         with:
           name: Arch Linux packages for SELinux support
-          path: pkgs
+          path: /packages
 
   prepare_testing:
     runs-on: ubuntu-18.04
@@ -57,7 +78,7 @@ jobs:
         run: |
           sudo tar xf archbootstrap.tar.gz -C /tmp/boots --strip-components 1
           sudo cp -v repo/* /tmp/boots/var/cache/pacman/pkg
-          sudo /tmp/boots/usr/bin/arch-chroot /tmp/boots /bin/bash -c \
+          sudo /tmp/boots/usr/bin/arch-chroot /tmp/boots /bin/bash -ex -c \
            'pacman-key --init;
             pacman-key --populate archlinux;
             mount /dev/loop0p1 /mnt;
@@ -69,7 +90,7 @@ jobs:
 
       - name: Make testing configurations for the raw image
         run: |
-          sudo /tmp/boots/usr/bin/arch-chroot /tmp/arch /bin/bash -c \
+          sudo /tmp/boots/usr/bin/arch-chroot /tmp/arch /bin/bash -ex -c \
            'ln -sfv /usr/share/zoneinfo/UTC /etc/localtime;
             hwclock --systohc;
             sed -i 's/#en_US.UTF-8/en_US.UTF-8/' /etc/locale.gen;
@@ -85,8 +106,9 @@ jobs:
             sed -i 's/root:x:/root::/' /etc/passwd;
             grub-install --target=i386-pc /dev/loop0;
             sed -i 's/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/' /etc/default/grub;
-            sed -i "/LINUX_DEF/c\GRUB_CMDLINE_LINUX_DEFAULT=\"security=selinux selinux=1 console=ttyS0\"" /etc/default/grub;
-            grub-mkconfig -o /boot/grub/grub.cfg'
+            sed -i "/LINUX_DEF/c\GRUB_CMDLINE_LINUX_DEFAULT=\"lsm=lockdown,yama,selinux,bpf selinux=1 console=ttyS0\"" /etc/default/grub;
+            grub-mkconfig -o /boot/grub/grub.cfg;
+            restorecon -RF /'
 
       - name: Unmount loop devices and convert the QEMU image to qcow2
         run: |
