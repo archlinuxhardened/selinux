@@ -7,7 +7,7 @@ on:
 
 jobs:
   build_all_packages:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     container:
       image: archlinux/archlinux:latest
       options: --security-opt=seccomp=unconfined
@@ -45,13 +45,13 @@ jobs:
           path: /packages
 
   prepare_testing:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     needs: build_all_packages
     steps:
       - name: Install QEMU to the runner and make needed directories
         run: |
           sudo apt-get update
-          sudo apt-get install qemu
+          sudo apt-get install qemu-utils
           mkdir -v repo /tmp/{boots,arch}
 
       - name: Download latest ArchISO bootstrap image
@@ -126,7 +126,7 @@ jobs:
           path: archselinux.qcow2
 
   test_SELinux_functionality:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     needs: prepare_testing
     steps:
       - uses: actions/checkout@v2
@@ -134,7 +134,7 @@ jobs:
       - name: Install QEMU to the runner and make needed directories
         run: |
           sudo apt-get update
-          sudo apt-get install qemu
+          sudo apt-get install qemu-system-x86 qemu-utils
 
       - name: Download VM artifact for testing
         uses: actions/download-artifact@v2
@@ -160,7 +160,7 @@ jobs:
           path: archselinux_test.qcow2
 
   prepare_release:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     needs: test_SELinux_functionality
     steps:
       - name: Prepare Arch specific binaries for use
@@ -188,7 +188,7 @@ jobs:
           path: /tmp/boots/repo
 
   release:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     needs: prepare_release
     if: github.ref == 'refs/heads/master'
     steps:
