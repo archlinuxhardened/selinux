@@ -4,7 +4,7 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=restorecond
-_pkgver=3.2-rc2
+_pkgver=3.2-rc3
 pkgver=${_pkgver/-/}
 pkgrel=1
 pkgdesc="SELinux restorecon daemon"
@@ -16,7 +16,7 @@ makedepends=('pkgconf')
 depends=('dbus-glib' 'libselinux>=2.7')
 conflicts=('policycoreutils<2.7')
 source=("https://github.com/SELinuxProject/selinux/releases/download/${_pkgver}/${pkgname}-${_pkgver}.tar.gz")
-sha256sums=('3843fad64bda5080dcab85af4801d151c6435fe9e80f161ce946ea49f8af3c70')
+sha256sums=('7f64b750c2db977b9d3f29c434e0e917a9ef6e7eb71324ffdbc3453d0a8220c5')
 
 build() {
   cd "${pkgname}-${_pkgver}"
