@@ -7,8 +7,7 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=libsepol
-_pkgver=3.2-rc3
-pkgver=${_pkgver/-/}
+pkgver=3.2
 pkgrel=1
 pkgdesc="SELinux binary policy manipulation library"
 arch=('i686' 'x86_64' 'armv6h')
@@ -20,11 +19,11 @@ depends=('glibc')
 options=(staticlibs)
 conflicts=("selinux-usr-${pkgname}")
 provides=("selinux-usr-${pkgname}=${pkgver}-${pkgrel}")
-source=("https://github.com/SELinuxProject/selinux/releases/download/${_pkgver}/${pkgname}-${_pkgver}.tar.gz")
-sha256sums=('36ce63e4782b6685a2d1415ebff5bac9831d4bb7fee685003b2b51e3921550aa')
+source=("https://github.com/SELinuxProject/selinux/releases/download/${pkgver}/${pkgname}-${pkgver}.tar.gz")
+sha256sums=('dfc7f662af8000116e56a01de6a0394ed79be1b34b999e551346233c5dd19508')
 
 build() {
-  cd "${pkgname}-${_pkgver}"
+  cd "${pkgname}-${pkgver}"
 
   export CFLAGS="${CFLAGS} -fno-semantic-interposition"
   make
@@ -35,7 +34,7 @@ build() {
 }
 
 package() {
-  cd "${pkgname}-${_pkgver}"
+  cd "${pkgname}-${pkgver}"
   make DESTDIR="${pkgdir}" SHLIBDIR=/usr/lib install
 
   install -Dm755 src/libsepol.so.1 "${pkgdir}/usr/lib"
