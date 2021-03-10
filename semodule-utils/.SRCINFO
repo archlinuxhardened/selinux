@@ -1,6 +1,6 @@
 pkgbase = semodule-utils
 	pkgdesc = SELinux module tools
-	pkgver = 3.2rc3
+	pkgver = 3.2
 	pkgrel = 1
 	url = https://github.com/SELinuxProject/selinux/wiki
 	arch = i686
@@ -9,8 +9,8 @@ pkgbase = semodule-utils
 	license = GPL2
 	depends = libsepol>=2.7
 	conflicts = policycoreutils<2.7
-	source = https://github.com/SELinuxProject/selinux/releases/download/3.2-rc3/semodule-utils-3.2-rc3.tar.gz
-	sha256sums = 29535f22b43fa1a38313384a9990e5ce1b1bbf4b530bb6ab3fba671ec228ab69
+	source = https://github.com/SELinuxProject/selinux/releases/download/3.2/semodule-utils-3.2.tar.gz
+	sha256sums = be155654883c8dc4d05493e04a3eb9e56d28803009f1fdd721d42c68b878f757
 
 pkgname = semodule-utils
 
