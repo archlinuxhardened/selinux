@@ -4,8 +4,7 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=selinux-gui
-_pkgver=3.2-rc3
-pkgver=${_pkgver/-/}
+pkgver=3.2
 pkgrel=1
 pkgdesc="SELinux GUI tools"
 groups=('selinux')
@@ -14,16 +13,16 @@ url='https://github.com/SELinuxProject/selinux/wiki'
 license=('GPL2')
 depends=('python-gobject' 'hicolor-icon-theme' 'selinux-python' 'gtk3')
 conflicts=('policycoreutils<2.7')
-source=("https://github.com/SELinuxProject/selinux/releases/download/${_pkgver}/${pkgname}-${_pkgver}.tar.gz")
-sha256sums=('9bce1fb55602c1df30c76fa7884e19cd8d56cfe1f467efebe8c5e96dcaeca394')
+source=("https://github.com/SELinuxProject/selinux/releases/download/${pkgver}/${pkgname}-${pkgver}.tar.gz")
+sha256sums=('82d31559f7e186c117f1651bcefdbcee7dde86449577ff752ae1d3a7d4e4d494')
 
 build() {
-  cd "${pkgname}-${_pkgver}"
+  cd "${pkgname}-${pkgver}"
   make
 }
 
 package() {
-  cd "${pkgname}-${_pkgver}"
+  cd "${pkgname}-${pkgver}"
   make DESTDIR="${pkgdir}" install
 
   # Compile Python files into bytecode
