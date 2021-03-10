@@ -8,8 +8,7 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=libselinux
-_pkgver=3.2-rc3
-pkgver=${_pkgver/-/}
+pkgver=3.2
 pkgrel=1
 pkgdesc="SELinux library and simple utilities"
 arch=('i686' 'x86_64' 'armv6h')
@@ -17,18 +16,18 @@ url='https://github.com/SELinuxProject/selinux'
 license=('custom')
 groups=('selinux')
 makedepends=('pkgconf' 'python' 'ruby' 'xz' 'swig')
-depends=('libsepol>=3.1rc1' 'pcre')
+depends=('libsepol>=3.2' 'pcre')
 optdepends=('python: python bindings'
             'ruby: ruby bindings')
 conflicts=("selinux-usr-${pkgname}")
 provides=("selinux-usr-${pkgname}=${pkgver}-${pkgrel}")
-source=("https://github.com/SELinuxProject/selinux/releases/download/${_pkgver}/${pkgname}-${_pkgver}.tar.gz"
+source=("https://github.com/SELinuxProject/selinux/releases/download/${pkgver}/${pkgname}-${pkgver}.tar.gz"
         "libselinux.tmpfiles.d")
-sha256sums=('57904343a0a3eaba7cd06e42747ff98baf3d6a799a8ab66d49f6b273346e38f3'
+sha256sums=('df758ef1d9d4811051dd901ea6b029ae334ffd7c671c128beb16bce1e25ac161'
             'afe23890fb2e12e6756e5d81bad3c3da33f38a95d072731c0422fbeb0b1fa1fc')
 
 build() {
-  cd "${pkgname}-${_pkgver}"
+  cd "${pkgname}-${pkgver}"
 
   # Do not build deprecated rpm_execcon() interface. It is useless on Arch Linux anyway.
   export DISABLE_RPM=y
@@ -41,7 +40,7 @@ build() {
 }
 
 package() {
-  cd "${pkgname}-${_pkgver}"
+  cd "${pkgname}-${pkgver}"
 
   export DISABLE_RPM=y
 
