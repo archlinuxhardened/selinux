@@ -100,6 +100,12 @@ def get_pkgbuild_pkgver(pkgbuild_filepath):
                 pkgver = matches.group(1)
                 continue
 
+            # systemd package defines _tag_name
+            matches = re.match(r'^_tag_name=([0-9.]+)\s$', line)
+            if matches is not None:
+                pkgver = matches.group(1)
+                continue
+
             # util-linux package defines _pkgmajor
             matches = re.match(r'^_pkgmajor=([0-9a-zA-Z-.]+)\s*$', line)
             if matches is not None:
