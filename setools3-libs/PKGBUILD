@@ -9,7 +9,7 @@ pkgver=3.3.8
 pkgrel=1
 pkgdesc="Policy analysis tools for SELinux - libraries of setools3 for policycoreutils<2.6"
 groups=('selinux')
-arch=('i686' 'x86_64')
+arch=('i686' 'x86_64' 'aarch64')
 url="https://github.com/TresysTechnology/setools3/wiki"
 license=('GPL' 'LGPL')
 depends=('flex' 'bison' 'libselinux>=2.4' 'libsepol>=2.4' 'libsepol<2.7' 'sqlite3>=3.6.20' 'python2')
