@@ -208,10 +208,10 @@ fi
 # Handle util-linux/systemd build-time cycle dependency (https://bugs.archlinux.org/task/39767)
 if needs_install util-linux-selinux || needs_install systemd-selinux
 then
-    build util-linux-selinux
-    run_conflictual_install pacman -U util-linux-selinux/util-linux-libs-selinux-*"$PKGEXT"
+    build_and_install util-linux-selinux
     build systemd-selinux
     run_conflictual_install pacman -U systemd-selinux/systemd-libs-selinux-*"$PKGEXT"
+    # Rebuild util-linux-selinux, with systemd dependencies
     build_and_install util-linux-selinux
     build_and_install systemd-selinux
 fi
