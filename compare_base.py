@@ -77,6 +77,7 @@ def get_pkgbuild_pkgver(pkgbuild_filepath):
     pkgver = None
     pkgrel = None
     pkgmajor_value = None
+    realver_value = None
     with open(pkgbuild_filepath, 'r') as fd:
         for line in fd:
             matches = re.match(r'^pkgver=([0-9a-zA-Z-.]+)\s*$', line)
@@ -106,15 +107,19 @@ def get_pkgbuild_pkgver(pkgbuild_filepath):
                 pkgver = matches.group(1)
                 continue
 
-            # util-linux package defines _pkgmajor
+            # util-linux package defines _pkgmajor and _realver
             matches = re.match(r'^_pkgmajor=([0-9a-zA-Z-.]+)\s*$', line)
             if matches is not None:
                 pkgmajor_value = matches.group(1)
                 continue
             if pkgmajor_value is not None:
-                matches = re.match(r'^pkgver=\${_pkgmajor}([0-9a-zA-Z-.]*)\s*$', line)
+                if line == '_realver=${_pkgmajor}\n':
+                    realver_value = pkgmajor_value
+                    continue
+            if realver_value is not None:
+                matches = re.match(r'^pkgver=\${_realver/-/}([0-9a-zA-Z-.]*)\s*$', line)
                 if matches is not None:
-                    pkgver = pkgmajor_value + matches.group(1)
+                    pkgver = realver_value.replace('-', '') + matches.group(1)
                     continue
 
             # Retrieve pkgrel
