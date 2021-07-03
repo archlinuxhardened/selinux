@@ -73,9 +73,9 @@ build() {
 # and answer yes to ":: $PKG-selinux and $PKG are in conflict. Remove $PKG? [y/N]"
 # Use undocumented pacman's --ask=4 option to do this while in --noconfirm
 #
-# 4 is ALPM_QUESTION_CONFLICT_PKG in https://git.archlinux.org/pacman.git/tree/lib/libalpm/alpm.h?h=v5.0.2#n602
+# 4 is ALPM_QUESTION_CONFLICT_PKG in https://gitlab.archlinux.org/pacman/pacman/-/blob/v5.2.2/lib/libalpm/alpm.h#L572
 # and --ask=... inverts the default answer of the interactive question according
-# to https://git.archlinux.org/pacman.git/tree/src/pacman/callback.c?h=v5.0.2#n490
+# to https://gitlab.archlinux.org/pacman/pacman/-/blob/v5.2.2/src/pacman/callback.c#L473
 run_conflictual_install() {
     local SUBCOMMAND
 
