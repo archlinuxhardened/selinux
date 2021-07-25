@@ -80,23 +80,23 @@ def get_pkgbuild_pkgver(pkgbuild_filepath):
     realver_value = None
     with open(pkgbuild_filepath, 'r') as fd:
         for line in fd:
-            matches = re.match(r'^pkgver=([0-9a-zA-Z-.]+)\s*$', line)
+            matches = re.match(r'^pkgver=([0-9a-zA-Z.-]+)\s*$', line)
             if matches is not None:
                 pkgver = matches.group(1)
                 continue
 
             # linux package defines _srcver
-            matches = re.match(r'^_srcver=([0-9a-zA-Z-.]+)\s*$', line)
+            matches = re.match(r'^_srcver=([0-9a-zA-Z.-]+)\s*$', line)
             if matches is not None:
                 pkgver = matches.group(1).replace('-', '.')
                 continue
 
             # sudo package defines _sudover
-            matches = re.match(r'^_sudover=([0-9a-zA-Z-.]+)(p[0-9]+)\s*$', line)
+            matches = re.match(r'^_sudover=([0-9a-zA-Z.-]+)(p[0-9]+)\s*$', line)
             if matches is not None:
                 pkgver = '.'.join(matches.groups())
                 continue
-            matches = re.match(r'^_sudover=([0-9a-zA-Z-.]+)\s$', line)
+            matches = re.match(r'^_sudover=([0-9a-zA-Z.-]+)\s$', line)
             if matches is not None:
                 pkgver = matches.group(1)
                 continue
@@ -108,17 +108,17 @@ def get_pkgbuild_pkgver(pkgbuild_filepath):
                 continue
 
             # util-linux package defines _pkgmajor and _realver
-            matches = re.match(r'^_pkgmajor=([0-9a-zA-Z-.]+)\s*$', line)
+            matches = re.match(r'^_pkgmajor=([0-9a-zA-Z.-]+)\s*$', line)
             if matches is not None:
                 pkgmajor_value = matches.group(1)
                 continue
             if pkgmajor_value is not None:
-                matches = re.match(r'^_realver=\$\{_pkgmajor\}([0-9a-zA-Z-.]*)$', line)
+                matches = re.match(r'^_realver=\$\{_pkgmajor\}([0-9a-zA-Z.-]*)$', line)
                 if matches is not None:
                     realver_value = pkgmajor_value + matches.group(1)
                     continue
             if realver_value is not None:
-                matches = re.match(r'^pkgver=\${_realver/-/}([0-9a-zA-Z-.]*)\s*$', line)
+                matches = re.match(r'^pkgver=\${_realver/-/}([0-9a-zA-Z.-]*)\s*$', line)
                 if matches is not None:
                     pkgver = realver_value.replace('-', '') + matches.group(1)
                     continue
@@ -154,7 +154,7 @@ class Package(object):
             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         for line in p.stdout:
             sline = line.decode('ascii', errors='ignore').strip()
-            matches = re.match(r'^Version\s*:\s*([0-9a-z-.]+)-([0-9]+)\s*$', sline, re.I)
+            matches = re.match(r'^Version\s*:\s*([0-9a-z.-]+)-([0-9]+)\s*$', sline, re.I)
             if matches is not None:
                 return matches.group(1), int(matches.group(2))
         retval = p.wait()
