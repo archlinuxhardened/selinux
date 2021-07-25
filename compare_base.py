@@ -113,8 +113,9 @@ def get_pkgbuild_pkgver(pkgbuild_filepath):
                 pkgmajor_value = matches.group(1)
                 continue
             if pkgmajor_value is not None:
-                if line == '_realver=${_pkgmajor}\n':
-                    realver_value = pkgmajor_value
+                matches = re.match(r'^_realver=\$\{_pkgmajor\}([0-9a-zA-Z-.]*)$', line)
+                if matches is not None:
+                    realver_value = pkgmajor_value + matches.group(1)
                     continue
             if realver_value is not None:
                 matches = re.match(r'^pkgver=\${_realver/-/}([0-9a-zA-Z-.]*)\s*$', line)
