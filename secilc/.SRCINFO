@@ -1,6 +1,6 @@
 pkgbase = secilc
 	pkgdesc = SELinux Common Intermediate Language Compiler
-	pkgver = 3.2
+	pkgver = 3.3rc2
 	pkgrel = 1
 	url = https://github.com/SELinuxProject/cil/wiki
 	arch = i686
@@ -13,7 +13,7 @@ pkgbase = secilc
 	makedepends = docbook-xml
 	makedepends = docbook-xsl
 	depends = libsepol>=3.1
-	source = https://github.com/SELinuxProject/selinux/releases/download/3.2/secilc-3.2.tar.gz
-	sha256sums = 5f6e6528a281b29ac5e558babffc3d8aab682fd8df8977daff5f266a50292cc3
+	source = https://github.com/SELinuxProject/selinux/releases/download/3.3-rc2/secilc-3.3-rc2.tar.gz
+	sha256sums = 9ec78871e8d20e20d0f894dee8fb5806ed60bcf3f8d0de309bd2ac722c52b09d
 
 pkgname = secilc
