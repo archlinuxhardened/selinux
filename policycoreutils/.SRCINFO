@@ -1,6 +1,6 @@
 pkgbase = policycoreutils
 	pkgdesc = SELinux policy core utilities
-	pkgver = 3.3rc2
+	pkgver = 3.3rc3
 	pkgrel = 1
 	url = https://github.com/SELinuxProject/selinux
 	arch = i686
@@ -17,9 +17,9 @@ pkgbase = policycoreutils
 	optdepends = selinux-python: Python tools and libraries for SELinux
 	optdepends = selinux-sandbox: sandboxing tool for SELinux
 	optdepends = semodule-utils: SELinux module tools
-	provides = selinux-usr-policycoreutils=3.3rc2-1
+	provides = selinux-usr-policycoreutils=3.3rc3-1
 	conflicts = selinux-usr-policycoreutils
-	source = https://github.com/SELinuxProject/selinux/releases/download/3.3-rc2/policycoreutils-3.3-rc2.tar.gz
-	sha256sums = e872b2b62df89bf3b0adaa54664fc656c28b53681c467d91546afb2b6b319003
+	source = https://github.com/SELinuxProject/selinux/releases/download/3.3-rc3/policycoreutils-3.3-rc3.tar.gz
+	sha256sums = a22948a4e337e905e15ac24ba1495a463eff095d6629b19015dda3f4019f56e5
 
 pkgname = policycoreutils

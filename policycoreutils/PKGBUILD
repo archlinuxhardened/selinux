@@ -8,7 +8,7 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=policycoreutils
-_pkgver=3.3-rc2
+_pkgver=3.3-rc3
 pkgver=${_pkgver/-/}
 pkgrel=1
 pkgdesc="SELinux policy core utilities"
@@ -27,7 +27,7 @@ optdepends=('mcstrans: SELinux MCS translation daemon'
 conflicts=("selinux-usr-${pkgname}")
 provides=("selinux-usr-${pkgname}=${pkgver}-${pkgrel}")
 source=("https://github.com/SELinuxProject/selinux/releases/download/${_pkgver}/${pkgname}-${_pkgver}.tar.gz")
-sha256sums=('e872b2b62df89bf3b0adaa54664fc656c28b53681c467d91546afb2b6b319003')
+sha256sums=('a22948a4e337e905e15ac24ba1495a463eff095d6629b19015dda3f4019f56e5')
 
 build() {
   cd "${pkgname}-${_pkgver}"
