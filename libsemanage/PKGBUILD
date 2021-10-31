@@ -7,8 +7,7 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=libsemanage
-_pkgver=3.3-rc3
-pkgver=${_pkgver/-/}
+pkgver=3.3
 pkgrel=1
 pkgdesc="SELinux binary policy manipulation library"
 arch=('i686' 'x86_64' 'aarch64')
@@ -16,20 +15,20 @@ url='https://github.com/SELinuxProject/selinux'
 license=('LGPL2.1')
 groups=('selinux')
 makedepends=('flex' 'pkgconf' 'python' 'ruby' 'swig')
-depends=('libselinux>=3.3rc1' 'audit')
+depends=('libselinux>=3.3' 'audit')
 optdepends=('python: python bindings'
             'ruby: ruby bindings')
 options=(!emptydirs) # For /var/lib/selinux
 install=libsemanage.install
 conflicts=("selinux-usr-${pkgname}")
 provides=("selinux-usr-${pkgname}=${pkgver}-${pkgrel}")
-source=("https://github.com/SELinuxProject/selinux/releases/download/${_pkgver}/${pkgname}-${_pkgver}.tar.gz"
+source=("https://github.com/SELinuxProject/selinux/releases/download/${pkgver}/${pkgname}-${pkgver}.tar.gz"
         "semanage.conf")
-sha256sums=('c11d06ebf5df69df88d3ab29a5f076a886650831d5afa81cc8a4c82c1db0a55b'
+sha256sums=('84d0ec5afa34bbbb471f602d8c1bf317d12443d07852a34b60741d428d597ce8'
             '5b0e6929428e095b561701ccdfa9c8b0c3d70dad3fc46e667eb46a85b246a4a0')
 
 build() {
-  cd "${pkgname}-${_pkgver}"
+  cd "${pkgname}-${pkgver}"
 
   export CFLAGS="${CFLAGS} -fno-semantic-interposition"
   make swigify
@@ -39,7 +38,7 @@ build() {
 }
 
 package() {
-  cd "${pkgname}-${_pkgver}"
+  cd "${pkgname}-${pkgver}"
   make DESTDIR="${pkgdir}" LIBEXECDIR=/usr/lib SHLIBDIR=/usr/lib install
   make DESTDIR="${pkgdir}" PYTHON=/usr/bin/python3 LIBEXECDIR=/usr/lib SHLIBDIR=/usr/lib install-pywrap
   make DESTDIR="${pkgdir}" RUBY=/usr/bin/ruby LIBEXECDIR=/usr/lib SHLIBDIR=/usr/lib install-rubywrap
