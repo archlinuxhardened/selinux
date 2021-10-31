@@ -15,7 +15,7 @@ core/openssh
 core/pam
 core/pambase
 core/psmisc
-core/shadow
+core/shadow = 4.8.1-4
 core/sudo
 core/systemd
 core/util-linux
