@@ -5,7 +5,7 @@ set -e
 
 cd "$(dirname -- "$0")"
 
-find . \( -name base-noselinux -prune \) -o -name PKGBUILD -printf '%h\n' | sort | \
+find . \( -name base-noselinux -prune \) -o \( -name .git -prune \) -o -name PKGBUILD -printf '%h\n' | sort | \
 while read -r DIR
 do
     echo "Generating $DIR/.SRCINFO"
