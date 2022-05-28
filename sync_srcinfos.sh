@@ -9,12 +9,13 @@ find . \( -name base-noselinux -prune \) -o \( -name .git -prune \) -o -name PKG
 while read -r DIR
 do
     echo "Generating $DIR/.SRCINFO"
-    (cd "$DIR" && updpkgsums && makepkg --printsrcinfo > .SRCINFO)
 
-    # For base-selinux and base-devel-selinux, updpkgsums introduces an blank
-    # line at the end of the file. Delete it.
+    # For base-selinux and base-devel-selinux, updpkgsums does not work
+    # (there is no sources)
     if [ "$DIR" = ./base-devel-selinux ] || [ "$DIR" = ./base-selinux ]
     then
-        sed '${/^$/d}' -i "$DIR/PKGBUILD"
+        (cd "$DIR" && makepkg --printsrcinfo > .SRCINFO)
+    else
+        (cd "$DIR" && updpkgsums && makepkg --printsrcinfo > .SRCINFO)
     fi
 done
