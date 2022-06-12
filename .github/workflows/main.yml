@@ -56,9 +56,9 @@ jobs:
 
       - name: Download latest ArchISO bootstrap image
         run: |
-          ISO_NAME="$(curl https://mirror.pkgbuild.com/iso/latest/sha256sums.txt | sed -n 's/^[0-9a-f]\+  \(archlinux-bootstrap-[0-9.]\+-x86_64\.tar\.gz\)$/\1/p')"
+          ISO_NAME="$(curl https://geo.mirror.pkgbuild.com/iso/latest/sha256sums.txt | sed -n 's/^[0-9a-f]\+  \(archlinux-bootstrap-[0-9.]\+-x86_64\.tar\.gz\)$/\1/p')"
           echo "Downloading ${ISO_NAME}"
-          curl "https://mirror.pkgbuild.com/iso/latest/${ISO_NAME}" --output archbootstrap.tar.gz
+          curl "https://geo.mirror.pkgbuild.com/iso/latest/${ISO_NAME}" --output archbootstrap.tar.gz
 
       - name: Create new raw image for Arch Linux and mount it as a loop device
         run: |
@@ -87,7 +87,7 @@ jobs:
            'pacman-key --init;
             pacman-key --populate archlinux;
             mount "'"${LOOP_DEVICE}p1"'" /mnt;
-            echo "Server = https://mirror.pkgbuild.com/\$repo/os/\$arch" >> /etc/pacman.d/mirrorlist;
+            echo "Server = https://geo.mirror.pkgbuild.com/\$repo/os/\$arch" >> /etc/pacman.d/mirrorlist;
             echo -e "[selinux-testing]\nSigLevel = Never\nServer = file:///var/cache/pacman/pkg" >> /etc/pacman.conf;
             repo-add /var/cache/pacman/pkg/selinux-testing.db.tar.xz /var/cache/pacman/pkg/*;
             pacstrap /mnt base-selinux base-devel-selinux openssh-selinux linux grub;
@@ -169,9 +169,9 @@ jobs:
       - name: Prepare Arch specific binaries for use
         run: |
           mkdir -v /tmp/boots
-          ISO_NAME="$(curl https://mirror.pkgbuild.com/iso/latest/sha256sums.txt | sed -n 's/^[0-9a-f]\+  \(archlinux-bootstrap-[0-9.]\+-x86_64\.tar\.gz\)$/\1/p')"
+          ISO_NAME="$(curl https://geo.mirror.pkgbuild.com/iso/latest/sha256sums.txt | sed -n 's/^[0-9a-f]\+  \(archlinux-bootstrap-[0-9.]\+-x86_64\.tar\.gz\)$/\1/p')"
           echo "Downloading ${ISO_NAME}"
-          curl "https://mirror.pkgbuild.com/iso/latest/${ISO_NAME}" --output archbootstrap.tar.gz
+          curl "https://geo.mirror.pkgbuild.com/iso/latest/${ISO_NAME}" --output archbootstrap.tar.gz
           sudo tar xf archbootstrap.tar.gz -C /tmp/boots --strip-components 1
           mkdir -v /tmp/boots/repo
 
