@@ -56,9 +56,8 @@ jobs:
 
       - name: Download latest ArchISO bootstrap image
         run: |
-          ISO_NAME="$(curl https://geo.mirror.pkgbuild.com/iso/latest/sha256sums.txt | sed -n 's/^[0-9a-f]\+  \(archlinux-bootstrap-[0-9.]\+-x86_64\.tar\.gz\)$/\1/p')"
-          echo "Downloading ${ISO_NAME}"
-          curl "https://geo.mirror.pkgbuild.com/iso/latest/${ISO_NAME}" --output archbootstrap.tar.gz
+          echo "Downloading archlinux-bootstrap-x86_64.tar.gz"
+          curl -LO "https://geo.mirror.pkgbuild.com/iso/latest/archlinux-bootstrap-x86_64.tar.gz"
 
       - name: Create new raw image for Arch Linux and mount it as a loop device
         run: |
@@ -81,7 +80,7 @@ jobs:
 
       - name: Prepare arch-bootstrap directory, chroot into it and install Arch with SELinux support to loop-mounted raw image
         run: |
-          sudo tar xf archbootstrap.tar.gz -C /tmp/boots --strip-components 1
+          sudo tar xf archlinux-bootstrap-x86_64.tar.gz -C /tmp/boots --strip-components 1
           sudo cp -v repo/* /tmp/boots/var/cache/pacman/pkg
           sudo /tmp/boots/usr/bin/arch-chroot /tmp/boots /bin/bash -ex -c \
            'pacman-key --init;
@@ -169,10 +168,9 @@ jobs:
       - name: Prepare Arch specific binaries for use
         run: |
           mkdir -v /tmp/boots
-          ISO_NAME="$(curl https://geo.mirror.pkgbuild.com/iso/latest/sha256sums.txt | sed -n 's/^[0-9a-f]\+  \(archlinux-bootstrap-[0-9.]\+-x86_64\.tar\.gz\)$/\1/p')"
-          echo "Downloading ${ISO_NAME}"
-          curl "https://geo.mirror.pkgbuild.com/iso/latest/${ISO_NAME}" --output archbootstrap.tar.gz
-          sudo tar xf archbootstrap.tar.gz -C /tmp/boots --strip-components 1
+          echo "Downloading archlinux-bootstrap-x86_64.tar.gz"
+          curl -LO "https://geo.mirror.pkgbuild.com/iso/latest/archlinux-bootstrap-x86_64.tar.gz"
+          sudo tar xf archlinux-bootstrap-x86_64.tar.gz -C /tmp/boots --strip-components 1
           mkdir -v /tmp/boots/repo
 
       - name: Get the SELinux packages from build job
