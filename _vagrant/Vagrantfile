@@ -19,8 +19,8 @@ Vagrant.configure(2) do |config|
 
       # Disable "Copy host CPU Configuration" to prevent the following KVM error on Intel CPUs:
       #   "the CPU is incompatible with host CPU: Host CPU does not provide required features: svm"
-      v.cpu_mode = "custom"
-      v.cpu_model = nil
+      #v.cpu_mode = "custom"
+      #v.cpu_model = nil
     end
     machine.vm.provider :virtualbox do |v|
       v.memory = 2048
