@@ -118,6 +118,8 @@ install_libreport() {
     git -C "$MAKEPKGDIR" clone https://aur.archlinux.org/satyr.git || exit $?
     (cd "$MAKEPKGDIR/satyr" && makepkg -si --noconfirm --asdeps) || exit $?
     git -C "$MAKEPKGDIR" clone https://aur.archlinux.org/libreport.git || exit $?
+    # Remove python2 dependency
+    sed "s/^\(makedepends=.*\) 'python2'/\1/" -i "$MAKEPKGDIR/libreport/PKGBUILD"
     (cd "$MAKEPKGDIR/libreport" && makepkg -si --noconfirm --asdeps) || exit $?
     rm -rf "$MAKEPKGDIR"
 }
