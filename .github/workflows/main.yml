@@ -156,6 +156,13 @@ jobs:
             -net nic -net user,hostfwd=tcp::10022-:22 \
             -nographic -m 2048 &
           sleep 25
+          for TRY_COUNT in $(seq 5) ; do
+            if timeout 60 ssh -o "StrictHostKeyChecking=no" root@localhost -p 10022 true ; then
+              break
+            fi
+            echo "Failed to connect to the VM after $TRY_COUNT attempts, retrying..."
+            sleep 10
+          done
           ssh -o "StrictHostKeyChecking=no" root@localhost -p 10022 'restorecon -Rv /; ls -laZ /; sestatus'
 
       - name: Upload the qcow2 file containing VM image changes to artifacts
