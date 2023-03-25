@@ -8,7 +8,7 @@
 core/coreutils
 core/cronie
 core/dbus
-core/findutils
+core/findutils = 4.9.0-3
 core/iproute2
 core/logrotate
 core/openssh
