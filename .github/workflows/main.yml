@@ -211,10 +211,15 @@ jobs:
           name: SELinux pacman repository
           path: release
 
+      # Like https://github.com/ame-yu/action-delete-latest-release
       - name: Remove old release
-        uses: ame-yu/action-delete-latest-release@v2
+        uses: actions/github-script@v6
         with:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { owner, repo } = context.repo
+            const { data: { id } } = await github.rest.repos.getLatestRelease({ owner, repo })
+            await github.rest.repos.deleteRelease({ owner, repo, release_id: id })
 
       - name: Release all packages
         uses: softprops/action-gh-release@v1
@@ -223,7 +228,7 @@ jobs:
           files: release/*
           body: |
             # Arch Linux packages to enable SELinux support
-            https://wiki.archlinux.org/index.php/SELinux  
+            https://wiki.archlinux.org/index.php/SELinux
 
             Latest commit:
             ```
@@ -231,4 +236,3 @@ jobs:
             ```
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  
