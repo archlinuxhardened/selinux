@@ -46,8 +46,8 @@ BASE_PKGLIST_FILE = os.path.join(CURRENT_DIR, 'base_pkglist.txt')
 PACMAN_DB_DIR = os.path.join(CURRENT_DIR, '.pacman-db')
 PACMAN_CONF_FILE = os.path.join(CURRENT_DIR, 'local-pacman.conf')
 
-ARCH_GITLOG_URL = 'https://github.com/archlinux/svntogit-packages/commits/packages/{}/trunk'
-ARCH_GITREMOTE = 'https://github.com/archlinux/svntogit-packages.git'
+ARCH_GITLOG_URL = 'https://gitlab.archlinux.org/archlinux/packaging/packages/{}/-/commits/main'
+ARCH_GITREMOTE = 'https://gitlab.archlinux.org/archlinux/packaging/packages/{}.git'
 
 
 def sync_local_pacman_db():
@@ -178,26 +178,18 @@ class Package(object):
                 return False
 
         logger.info("Getting the source package of {}".format(self.basepkgname))
-        git_dirname = 'gitclone-{}'.format(self.basepkgname)
+        git_dirname = self.basepkgname
         proc = subprocess.Popen(
             [
                 'git', 'clone',
-                '--branch', 'packages/{}'.format(self.basepkgname),
-                '--single-branch', '--depth', '1', ARCH_GITREMOTE, git_dirname],
+                '--branch', 'main',
+                '--single-branch', '--depth', '1', ARCH_GITREMOTE.format(self.basepkgname), git_dirname],
             cwd=BASE_PACKAGES_DIR)
         retval = proc.wait()
         if retval:
             logger.error("git clone exited with code {}".format(retval))
             return False
-        for arch in ('x86_64', 'any'):
-            srcpath = os.path.join(BASE_PACKAGES_DIR, git_dirname, 'repos', self.repo + '-' + arch)
-            if os.path.exists(srcpath):
-                shutil.move(srcpath, os.path.join(BASE_PACKAGES_DIR, self.basepkgname))
-                shutil.rmtree(os.path.join(BASE_PACKAGES_DIR, git_dirname))
-                return True
-
-        logger.error("Unable to find repos/{}-$ARCH in source package".format(self.repo))
-        return False
+        return True
 
     def compare_package(self, use_system_db=False):
         """Compare a base package with its -selinux equivalent"""
@@ -258,7 +250,7 @@ class Package(object):
                 return False
 
         if not os.path.exists(pkgbuild_base):
-            logger.error("yaourt hasn't created {}".format(pkgbuild_base))
+            logger.error("git clone hasn't created {}".format(pkgbuild_base))
             return False
 
         pkgver_base2 = get_pkgbuild_pkgver(pkgbuild_base)
