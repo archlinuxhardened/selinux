@@ -104,7 +104,7 @@ def get_pkgbuild_pkgver(pkgbuild_filepath: Path) -> Optional[Tuple[str, int]]:
                 continue
 
             # systemd package defines _tag_name
-            matches = re.match(r"^_tag_name=([0-9.]+)\s$", line)
+            matches = re.match(r"^_tag_name=([0-9.rc-]+)\s$", line)
             if matches is not None:
                 pkgver = matches.group(1)
                 continue
