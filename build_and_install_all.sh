@@ -218,6 +218,7 @@ then
     build_and_install systemd-selinux
 fi
 build_and_install dbus-selinux
+build_and_install dbus-broker-selinux
 
 # Reference policy source package
 build_and_install selinux-refpolicy-src

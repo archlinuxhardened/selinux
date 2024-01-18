@@ -64,6 +64,7 @@ pkgbuild sudo-selinux
 pkgbuild util-linux-selinux
 pkgbuild systemd-selinux
 pkgbuild dbus-selinux
+pkgbuild dbus-broker-selinux
 pkgbuild cronie-selinux
 
 # Build refpolicy source package and Arch Linux policy and pacman hook
