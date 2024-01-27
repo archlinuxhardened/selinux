@@ -13,7 +13,7 @@ jobs:
       options: --security-opt=seccomp=unconfined
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Build and install Arch Linux's SELinux support packages in a docker container
         run: |
@@ -39,7 +39,7 @@ jobs:
           cp /startdir/*/*.pkg.tar.zst /packages
 
       - name: Upload packages as artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: Arch Linux packages for SELinux support
           path: /packages
@@ -73,7 +73,7 @@ jobs:
           sudo mount "${LOOP_DEVICE}p1" /tmp/arch
 
       - name: Get the SELinux packages from build job
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: Arch Linux packages for SELinux support
           path: repo
@@ -125,7 +125,7 @@ jobs:
           qemu-img convert -f raw -O qcow2 archselinux.raw archselinux.qcow2
 
       - name: Upload VM to artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: Arch Linux VM with SELinux support
           path: archselinux.qcow2
@@ -134,7 +134,7 @@ jobs:
     runs-on: ubuntu-22.04
     needs: prepare_testing
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Install QEMU to the runner and make needed directories
         run: |
@@ -142,7 +142,7 @@ jobs:
           sudo apt-get install qemu-system-x86 qemu-utils
 
       - name: Download VM artifact for testing
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: Arch Linux VM with SELinux support
 
@@ -166,7 +166,7 @@ jobs:
           ssh -o "StrictHostKeyChecking=no" root@localhost -p 10022 'restorecon -Rv /; ls -laZ /; sestatus'
 
       - name: Upload the qcow2 file containing VM image changes to artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: Arch Linux VM after tests and restorecon
           path: archselinux_test.qcow2
@@ -184,7 +184,7 @@ jobs:
           mkdir -v /tmp/boots/repo
 
       - name: Get the SELinux packages from build job
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: Arch Linux packages for SELinux support
           path: /tmp/boots/repo
@@ -195,7 +195,7 @@ jobs:
            'repo-add /repo/selinux.db.tar.xz /repo/*'
 
       - name: Upload the ready repository as an artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: SELinux pacman repository
           path: /tmp/boots/repo
@@ -206,14 +206,14 @@ jobs:
     if: github.ref == 'refs/heads/master'
     steps:
       - name: Get packages from build artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: SELinux pacman repository
           path: release
 
       # Like https://github.com/ame-yu/action-delete-latest-release
       - name: Remove old release
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
