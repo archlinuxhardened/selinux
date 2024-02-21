@@ -8,7 +8,7 @@
 
 pkgname=libsepol
 pkgver=3.6
-pkgrel=1
+pkgrel=2
 pkgdesc="SELinux binary policy manipulation library"
 arch=('i686' 'x86_64' 'armv6h' 'aarch64')
 url='https://github.com/SELinuxProject/selinux'
@@ -16,7 +16,8 @@ license=('LGPL2.1')
 groups=('selinux')
 makedepends=('flex')
 depends=('glibc')
-options=(staticlibs)
+# Disable LTO as it is incompatible with the static library
+options=(staticlibs '!lto')
 conflicts=("selinux-usr-${pkgname}")
 provides=("selinux-usr-${pkgname}=${pkgver}-${pkgrel}")
 validpgpkeys=(
@@ -35,6 +36,10 @@ build() {
 }
 
 package() {
+  provides=(
+    libsepol.so
+  )
+
   cd "${pkgname}-${pkgver}"
   make DESTDIR="${pkgdir}" SHLIBDIR=/usr/lib install
 }
