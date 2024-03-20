@@ -6,7 +6,7 @@
 ; the same pkgrel as the base package.
 
 core/coreutils
-core/cronie
+extra/cronie
 core/dbus
 core/dbus-broker
 core/findutils = 4.9.0-3
