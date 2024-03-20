@@ -99,10 +99,10 @@ pkgbuild semodule-utils libsepol
 pkgbuild restorecond libsepol libselinux
 pkgbuild mcstrans libsepol libselinux
 pkgbuild policycoreutils libsepol libselinux libsemanage
-pkgbuild selinux-python libsepol libselinux libsemanage setools python-ipy
-pkgbuild selinux-gui libsepol libselinux libsemanage setools python-ipy selinux-python
-pkgbuild selinux-dbus-config libsepol libselinux libsemanage setools python-ipy selinux-python
-pkgbuild selinux-sandbox libsepol libselinux libsemanage setools python-ipy selinux-python
+pkgbuild selinux-python libsepol libselinux libsemanage setools
+pkgbuild selinux-gui libsepol libselinux libsemanage setools selinux-python
+pkgbuild selinux-dbus-config libsepol libselinux libsemanage setools selinux-python
+pkgbuild selinux-sandbox libsepol libselinux libsemanage setools selinux-python
 
 # Build pacman hook
 pkgbuild selinux-alpm-hook libsepol libselinux libsemanage policycoreutils
