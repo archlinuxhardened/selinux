@@ -109,21 +109,11 @@ def get_pkgbuild_pkgver(pkgbuild_filepath: Path) -> Optional[Tuple[str, int]]:
                 pkgver = matches.group(1)
                 continue
 
-            # util-linux package defines _pkgmajor and _realver
-            matches = re.match(r"^_pkgmajor=([0-9a-zA-Z.-]+)\s*$", line)
+            # util-linux package defines _tag
+            matches = re.match(r"^_tag='([0-9.rc-]+)'\s*$", line)
             if matches is not None:
-                pkgmajor_value = matches.group(1)
+                pkgver = matches.group(1).replace("-rc", "rc")
                 continue
-            if pkgmajor_value is not None:
-                matches = re.match(r"^_realver=\$\{_pkgmajor\}([0-9a-zA-Z.-]*)$", line)
-                if matches is not None:
-                    realver_value = pkgmajor_value + matches.group(1)
-                    continue
-            if realver_value is not None:
-                matches = re.match(r"^pkgver=\${_realver/-/}([0-9a-zA-Z.-]*)\s*$", line)
-                if matches is not None:
-                    pkgver = realver_value.replace("-", "") + matches.group(1)
-                    continue
 
             # Retrieve pkgrel
             matches = re.match(r"^pkgrel=([0-9]+)\s*$", line)
