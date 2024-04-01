@@ -33,6 +33,7 @@ jobs:
           chown -R builduser /startdir /packages /build /logdest && \
           sudo -u builduser /startdir/clean.sh && \
           sudo -u builduser /startdir/recv_gpg_keys.sh && \
+          sudo -u builduser git config --global http.postBuffer 536870912 && \
           sudo -u builduser /startdir/build_and_install_all.sh && \
           rm -rf /startdir/*/src/ /startdir/*/pkg/ && \
           pacman --noconfirm -Sc && rm -rf /var/cache/pacman/pkg/* && \
