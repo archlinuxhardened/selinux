@@ -18,22 +18,30 @@
 #   - replace setools 3.3.8 with setools3-libs and install setools then.
 
 pkgname=setools
-pkgver=4.4.4
+pkgver=4.5.0
 pkgrel=1
 pkgdesc="Policy analysis tools for SELinux"
 groups=('selinux')
 arch=('i686' 'x86_64' 'aarch64')
 url="https://github.com/SELinuxProject/setools/wiki"
 license=('GPL' 'LGPL')
-depends=('libsepol>=3.2' 'libselinux>=3.2' 'python' 'python-networkx>=2.0' 'python-setuptools')
-optdepends=('python-pyqt5: needed for graphical tools'
-            'qt5-tools: display apol help with Qt Assistant')
+depends=('libsepol>=3.2' 'libselinux>=3.2' 'python' 'python-networkx>=2.6' 'python-setuptools')
+optdepends=('python-graphviz: for seinfoflow, sedta, apol'
+            'python-pyqt6: needed for graphical tools'
+            'qt6-tools: display apol help with Qt Assistant')
 makedepends=('cython' 'python-tox')
-checkdepends=('checkpolicy')
+checkdepends=('checkpolicy' 'python-pytest')
 conflicts=("selinux-${pkgname}")
 provides=("selinux-${pkgname}=${pkgver}-${pkgrel}")
 source=("https://github.com/SELinuxProject/setools/releases/download/${pkgver}/${pkgname}-${pkgver}.tar.bz2")
-sha256sums=('3c5fa76a674fe3f6890d900df59b9d142e4b63c9ffbde653904f90ed6e666ef9')
+sha256sums=('68469ae9bd114b42bba4cb41795577ca1e4f50e3e4234817f13ff1a8bbd9ce77')
+
+prepare() {
+  cd "${pkgname}"
+
+  # Fix https://github.com/SELinuxProject/setools/issues/124
+  sed "s/package_data={'': \['\*\.html'\],/package_data={'': ['*.html', '*.css'],/" -i setup.py
+}
 
 build() {
   cd "${pkgname}"
