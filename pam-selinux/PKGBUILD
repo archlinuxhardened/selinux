@@ -9,13 +9,13 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=pam-selinux
-pkgver=1.6.0
-pkgrel=4
+pkgver=1.6.1
+pkgrel=2
 pkgdesc="SELinux aware PAM (Pluggable Authentication Modules) library"
 arch=('x86_64' 'aarch64')
-license=('GPL2')
+license=('GPL-2.0-only')
 url="http://linux-pam.org"
-depends=('glibc' 'libtirpc' 'audit' 'libselinux' 'pambase-selinux' 'libaudit.so' 'libxcrypt' 'libcrypt.so')
+depends=('glibc' 'libtirpc' 'audit' 'libselinux' 'pambase-selinux' 'libaudit.so' 'libxcrypt' 'libcrypt.so' 'libnsl')
 makedepends=('flex' 'w3m' 'docbook-xml>=4.4' 'docbook-xsl')
 conflicts=("${pkgname/-selinux}" "selinux-${pkgname/-selinux}")
 provides=('libpam.so' 'libpamc.so' 'libpam_misc.so'
@@ -24,20 +24,16 @@ provides=('libpam.so' 'libpamc.so' 'libpam_misc.so'
 backup=(etc/security/{access.conf,faillock.conf,group.conf,limits.conf,namespace.conf,namespace.init,pwhistory.conf,pam_env.conf,time.conf} etc/environment)
 groups=('selinux')
 source=(https://github.com/linux-pam/linux-pam/releases/download/v$pkgver/Linux-PAM-$pkgver{,-docs}.tar.xz{,.asc}
-        https://github.com/linux-pam/linux-pam/commit/470b5bdd8fd29d6b35e3a80f9a57bdd4b2438200.patch
-        https://github.com/linux-pam/linux-pam/commit/b7b96362087414e52524d3d9d9b3faa21e1db620.patch
         ${pkgname/-selinux}.tmpfiles)
 validpgpkeys=(
         '8C6BFD92EE0F42EDF91A6A736D1A7F052E5924BB' # Thorsten Kukuk
         '296D6F29A020808E8717A8842DB5BD89A340AEB7' #Dimitry V. Levin <ldv@altlinux.org>
 )
 
-sha256sums=('fff4a34e5bbee77e2e8f1992f27631e2329bcbf8a0563ddeb5c3389b4e3169ad'
+sha256sums=('f8923c740159052d719dbfc2a2f81942d68dd34fcaf61c706a02c9b80feeef8e'
             'SKIP'
-            '3e82730d3350795c42f3708f6609a92c1df841d518aa17c28fd702fe5ec23a32'
+            'fd7b13b9993c94677e78e84d12387b8da104b5ba668eda3f17360abe4277e79c'
             'SKIP'
-            'ee7333ad2c8b2a710c73d8a2d202027d0c79d3628fefe58073f2d78ecefa121e'
-            '450760e1989f036acee157f91a3028264f8ce7fb0cbdd65eccf8a0fc0084497c'
             '5631f224e90c4f0459361c2a5b250112e3a91ba849754bb6f67d69d683a2e5ac')
 
 options=('!emptydirs')
