@@ -1,6 +1,6 @@
 pkgbase = systemd-selinux
-	pkgver = 255.4
-	pkgrel = 2
+	pkgver = 255.5
+	pkgrel = 4
 	url = https://www.github.com/systemd/systemd
 	arch = x86_64
 	arch = aarch64
@@ -55,7 +55,7 @@ pkgbase = systemd-selinux
 	makedepends = python-pefile
 	makedepends = libselinux
 	conflicts = mkinitcpio<38-1
-	source = git+https://github.com/systemd/systemd-stable#tag=4003dd6754e3446691402d3cc389fbfd4faccc90?signed
+	source = git+https://github.com/systemd/systemd-stable#tag=v255.5?signed
 	source = git+https://github.com/systemd/systemd#tag=v255?signed
 	source = 0001-Use-Arch-Linux-device-access-groups.patch
 	source = arch.conf
@@ -77,8 +77,8 @@ pkgbase = systemd-selinux
 	validpgpkeys = A9EA9081724FFAE0484C35A1A81CEA22BC8C7E2E
 	validpgpkeys = 9A774DB5DB996C154EBBFBFDA0099A18E29326E1
 	validpgpkeys = 5C251B5FC54EB2F80F407AAAC54CA336CFEB557E
-	sha512sums = SKIP
-	sha512sums = SKIP
+	sha512sums = ab0d47a29d60cb88f0934a9204c71cd78e2f5f568b9da532fdd4f8da55a352fce51cbcbaf17dc1a6f5b3c43ed7579876c724abcc2af5d8c4d3979f2ede60982f
+	sha512sums = d430427987309483c99062adb02741d25239ba5fbb97053ef817c0c5a0a935328af9c8b651de2b119b0e851dcf6623f01343859735ff81d7013ab0133e67c7ea
 	sha512sums = 3ccf783c28f7a1c857120abac4002ca91ae1f92205dcd5a84aff515d57e706a3f9240d75a0a67cff5085716885e06e62597baa86897f298662ec36a940cf410e
 	sha512sums = 61032d29241b74a0f28446f8cf1be0e8ec46d0847a61dadb2a4f096e8686d5f57fe5c72bcf386003f6520bc4b5856c32d63bf3efe7eb0bc0deefc9f68159e648
 	sha512sums = c416e2121df83067376bcaacb58c05b01990f4614ad9de657d74b6da3efa441af251d13bf21e3f0f71ddcb4c9ea658b81da3d915667dc5c309c87ec32a1cb5a5
@@ -103,6 +103,7 @@ pkgname = systemd-selinux
 	license = CC0-1.0
 	license = GPL-2.0-or-later
 	license = MIT-0
+	depends = systemd-libs-selinux=255.5
 	depends = acl
 	depends = libacl.so
 	depends = bash
@@ -119,7 +120,6 @@ pkgname = systemd-selinux
 	depends = libgcrypt
 	depends = libxcrypt
 	depends = libcrypt.so
-	depends = systemd-libs-selinux
 	depends = libidn2
 	depends = lz4
 	depends = pam-selinux
@@ -151,9 +151,9 @@ pkgname = systemd-selinux
 	optdepends = libp11-kit: support PKCS#11
 	optdepends = tpm2-tss: unlocking LUKS2 volumes with TPM2
 	provides = nss-myhostname
-	provides = systemd-tools=255.4
-	provides = udev=255.4
-	provides = systemd=255.4-2
+	provides = systemd-tools=255.5
+	provides = udev=255.5
+	provides = systemd=255.5-4
 	conflicts = nss-myhostname
 	conflicts = systemd-tools
 	conflicts = udev
@@ -194,7 +194,7 @@ pkgname = systemd-libs-selinux
 	provides = libsystemd.so
 	provides = libudev.so
 	provides = libsystemd-selinux
-	provides = systemd-libs=255.4-2
+	provides = systemd-libs=255.5-4
 	conflicts = libsystemd
 	conflicts = libsystemd-selinux
 	conflicts = systemd-libs
@@ -202,29 +202,29 @@ pkgname = systemd-libs-selinux
 
 pkgname = systemd-resolvconf-selinux
 	pkgdesc = systemd resolvconf replacement with SELinux support (for use with systemd-resolved)
-	depends = systemd-selinux
+	depends = systemd-selinux=255.5
 	provides = openresolv
 	provides = resolvconf
-	provides = systemd-resolvconf=255.4-2
+	provides = systemd-resolvconf=255.5-4
 	conflicts = resolvconf
-	conflicts = systemd-resolvconf=255.4-2
+	conflicts = systemd-resolvconf=255.5-4
 
 pkgname = systemd-sysvcompat-selinux
 	pkgdesc = sysvinit compat for systemd with SELinux support
-	depends = systemd-selinux
-	provides = systemd-sysvcompat=255.4-2
-	provides = selinux-systemd-sysvcompat=255.4-2
+	depends = systemd-selinux=255.5
+	provides = systemd-sysvcompat=255.5-4
+	provides = selinux-systemd-sysvcompat=255.5-4
 	conflicts = sysvinit
 	conflicts = systemd-sysvcompat
 	conflicts = selinux-systemd-sysvcompat
 
 pkgname = systemd-ukify-selinux
-	pkgdesc = Combine kernel and initrd into a signed Unified Kernel Image
+	pkgdesc = Combine kernel and initrd into a signed Unified Kernel Image with SELinux support
+	depends = systemd-selinux=255.5
 	depends = binutils
 	depends = python-cryptography
 	depends = python-pefile
-	depends = systemd
 	optdepends = python-pillow: Show the size of splash image
 	optdepends = sbsigntools: Sign the embedded kernel
 	provides = ukify
-	provides = systemd-ukify=255.4-2
+	provides = systemd-ukify=255.5-4
