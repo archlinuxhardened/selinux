@@ -1,7 +1,7 @@
 pkgbase = selinux-python
 	pkgdesc = SELinux python tools and libraries
 	pkgver = 3.6
-	pkgrel = 2
+	pkgrel = 3
 	url = https://github.com/SELinuxProject/selinux/wiki
 	arch = i686
 	arch = x86_64
@@ -14,7 +14,7 @@ pkgbase = selinux-python
 	depends = python-audit
 	depends = libsemanage>=3.6
 	depends = setools>=4.4.0
-	provides = sepolgen=3.6-2
+	provides = sepolgen=3.6-3
 	conflicts = sepolgen<2.7
 	conflicts = policycoreutils<2.7
 	source = https://github.com/SELinuxProject/selinux/releases/download/3.6/selinux-python-3.6.tar.gz
