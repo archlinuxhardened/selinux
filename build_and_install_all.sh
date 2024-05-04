@@ -211,8 +211,11 @@ fi
 if needs_install util-linux-selinux || needs_install systemd-selinux
 then
     build_and_install util-linux-selinux
-    build systemd-selinux
-    run_conflictual_install pacman -U systemd-selinux/systemd-libs-selinux-*"$PKGEXT"
+    # Since systemd 255.5, systemd depends on systemd-libs with a precise pkgver
+    # so it is no longer possible to do partial upgrade
+    #build systemd-selinux
+    #run_conflictual_install pacman -U systemd-selinux/systemd-libs-selinux-*"$PKGEXT"
+    build_and_install systemd-selinux
     # Rebuild util-linux-selinux, with systemd dependencies
     build_and_install util-linux-selinux
     build_and_install systemd-selinux
