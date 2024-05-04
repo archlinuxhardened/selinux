@@ -8,7 +8,7 @@
 
 pkgname=iproute2-selinux
 pkgver=6.8.0
-pkgrel=1
+pkgrel=2
 pkgdesc='IP Routing Utilities with SELinux support'
 arch=('x86_64' 'aarch64')
 license=('GPL2')
