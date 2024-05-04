@@ -13,9 +13,9 @@ Vagrant.configure(2) do |config|
     # https://wiki.archlinux.org/index.php/Vagrant#Base_Boxes_for_Vagrant
     machine.vm.box = "archlinux/archlinux"
 
-    # SETools 4 requires more than 1024 MB of RAM
+    # SETools 4 requires more than 2048 MB of RAM
     machine.vm.provider :libvirt do |v|
-      v.memory = 2048
+      v.memory = 3072
 
       # Disable "Copy host CPU Configuration" to prevent the following KVM error on Intel CPUs:
       #   "the CPU is incompatible with host CPU: Host CPU does not provide required features: svm"
@@ -23,7 +23,7 @@ Vagrant.configure(2) do |config|
       #v.cpu_model = nil
     end
     machine.vm.provider :virtualbox do |v|
-      v.memory = 2048
+      v.memory = 3072
     end
 
     # Do not use a shared folder for packages, as VirtualBox shared folders
