@@ -8,7 +8,7 @@
 
 pkgname=libsemanage
 pkgver=3.6
-pkgrel=2
+pkgrel=3
 pkgdesc="SELinux binary policy manipulation library"
 arch=('i686' 'x86_64' 'aarch64')
 url='https://github.com/SELinuxProject/selinux'
