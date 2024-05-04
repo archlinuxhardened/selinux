@@ -1,7 +1,7 @@
 pkgbase = util-linux-selinux
 	pkgdesc = SELinux aware miscellaneous system utilities for Linux
 	pkgver = 2.40
-	pkgrel = 1
+	pkgrel = 3
 	url = https://github.com/util-linux/util-linux
 	arch = x86_64
 	arch = aarch64
@@ -73,8 +73,8 @@ pkgname = util-linux-selinux
 	optdepends = words: default dictionary for look
 	provides = rfkill
 	provides = hardlink
-	provides = util-linux=2.40-1
-	provides = selinux-util-linux=2.40-1
+	provides = util-linux=2.40-3
+	provides = selinux-util-linux=2.40-3
 	conflicts = rfkill
 	conflicts = hardlink
 	conflicts = util-linux
@@ -100,7 +100,7 @@ pkgname = util-linux-libs-selinux
 	provides = libmount.so
 	provides = libsmartcols.so
 	provides = libuuid.so
-	provides = util-linux-libs=2.40-1
+	provides = util-linux-libs=2.40-3
 	provides = libutil-linux-selinux
 	conflicts = util-linux-libs
 	conflicts = libutil-linux-selinux
