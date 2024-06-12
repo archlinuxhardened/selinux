@@ -1,23 +1,23 @@
 pkgbase = findutils-selinux
 	pkgdesc = GNU utilities to locate files with SELinux support
-	pkgver = 4.9.0
-	pkgrel = 2
+	pkgver = 4.10.0
+	pkgrel = 1
 	url = https://www.gnu.org/software/findutils/
 	arch = x86_64
 	arch = aarch64
 	groups = selinux
-	license = GPL3
+	license = GPL-3.0-or-later
 	depends = glibc
 	depends = sh
 	depends = libselinux
-	provides = findutils=4.9.0-2
-	provides = selinux-findutils=4.9.0-2
+	provides = findutils=4.10.0-1
+	provides = selinux-findutils=4.10.0-1
 	conflicts = findutils
 	conflicts = selinux-findutils
-	source = https://ftp.gnu.org/pub/gnu/findutils/findutils-4.9.0.tar.xz
-	source = https://ftp.gnu.org/pub/gnu/findutils/findutils-4.9.0.tar.xz.sig
+	source = https://ftp.gnu.org/pub/gnu/findutils/findutils-4.10.0.tar.xz
+	source = https://ftp.gnu.org/pub/gnu/findutils/findutils-4.10.0.tar.xz.sig
 	validpgpkeys = A5189DB69C1164D33002936646502EF796917195
-	sha256sums = a2bfb8c09d436770edc59f50fa483e785b161a3b7b9d547573cb08065fd462fe
+	sha256sums = 1387e0b67ff247d2abde998f90dfbf70c1491391a59ddfecb8ae698789f0a4f5
 	sha256sums = SKIP
 
 pkgname = findutils-selinux
