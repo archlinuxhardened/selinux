@@ -7,11 +7,11 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=findutils-selinux
-pkgver=4.9.0
-pkgrel=2
+pkgver=4.10.0
+pkgrel=1
 pkgdesc="GNU utilities to locate files with SELinux support"
 arch=('x86_64' 'aarch64')
-license=('GPL3')
+license=('GPL-3.0-or-later')
 groups=('selinux')
 depends=('glibc' 'sh' 'libselinux')
 conflicts=("${pkgname/-selinux}" "selinux-${pkgname/-selinux}")
@@ -19,7 +19,7 @@ provides=("${pkgname/-selinux}=${pkgver}-${pkgrel}"
           "selinux-${pkgname/-selinux}=${pkgver}-${pkgrel}")
 url='https://www.gnu.org/software/findutils/'
 source=("https://ftp.gnu.org/pub/gnu/findutils/${pkgname/-selinux}-${pkgver}.tar.xz"{,.sig})
-sha256sums=('a2bfb8c09d436770edc59f50fa483e785b161a3b7b9d547573cb08065fd462fe'
+sha256sums=('1387e0b67ff247d2abde998f90dfbf70c1491391a59ddfecb8ae698789f0a4f5'
             'SKIP')
 validpgpkeys=('A5189DB69C1164D33002936646502EF796917195') # Bernhard Voelker <mail@bernhard-voelker.de>
 
