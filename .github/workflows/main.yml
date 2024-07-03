@@ -21,9 +21,6 @@ jobs:
           cp -Rv . /startdir && \
           pacman -q --noconfirm -Syu base base-devel expect git && \
           pacman --noconfirm -Sc && \
-          curl -sSO https://archive.archlinux.org/packages/l/libxml2/libxml2-2.12.7-1-x86_64.pkg.tar.zst && \
-          pacman --noconfirm -U libxml2-2.12.7-1-x86_64.pkg.tar.zst && \
-          rm libxml2-2.12.7-1-x86_64.pkg.tar.zst && \
           rm -rf /var/cache/pacman/pkg/* && \
           ln -sf /usr/share/zoneinfo/UTC /etc/localtime && \
           useradd -g users -m builduser && \
