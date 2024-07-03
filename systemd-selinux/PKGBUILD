@@ -12,7 +12,7 @@ pkgname=('systemd-selinux'
          'systemd-resolvconf-selinux'
          'systemd-sysvcompat-selinux'
          'systemd-ukify-selinux')
-_tag='255.7'
+_tag='256.1'
 # Upstream versioning is incompatible with pacman's version comparisons, one
 # way or another. So we replace dashes and tildes with the empty string to
 # make sure pacman's version comparing does the right thing for rc versions:
@@ -35,8 +35,7 @@ validpgpkeys=('63CDA1E5D3FC22B998D20DD6327F26951A015CC4'  # Lennart Poettering <
               'A9EA9081724FFAE0484C35A1A81CEA22BC8C7E2E'  # Luca Boccassi <luca.boccassi@gmail.com>
               '9A774DB5DB996C154EBBFBFDA0099A18E29326E1'  # Yu Watanabe <watanabe.yu+github@gmail.com>
               '5C251B5FC54EB2F80F407AAAC54CA336CFEB557E') # Zbigniew Jędrzejewski-Szmek <zbyszek@in.waw.pl>
-source=("git+https://github.com/systemd/systemd-stable#tag=v${_tag}?signed"
-        "git+https://github.com/systemd/systemd#tag=v${_tag%.*}?signed"
+source=("git+https://github.com/systemd/systemd#tag=v${_tag}?signed"
         '0001-Use-Arch-Linux-device-access-groups.patch'
         # bootloader files
         'arch.conf'
@@ -56,8 +55,7 @@ source=("git+https://github.com/systemd/systemd-stable#tag=v${_tag}?signed"
         '30-systemd-tmpfiles.hook'
         '30-systemd-udev-reload.hook'
         '30-systemd-update.hook')
-sha512sums=('224648e176fe48d0cb96ac740b4f239e7ddbbb6aed6299976f1df2d5825757021c7be243d187446c274715214c8175bf925ebb27eece18a02ce1884bac2c1f20'
-            'd430427987309483c99062adb02741d25239ba5fbb97053ef817c0c5a0a935328af9c8b651de2b119b0e851dcf6623f01343859735ff81d7013ab0133e67c7ea'
+sha512sums=('1ba38dd45cd910c7a2b4c7f23f982c5b0e5b13cd5874571ebc9b609ff85c058cecdb61019141ef2010fd4882c3ffc5a13a2b0d6370db4067ad90c28b83de6760'
             '3ccf783c28f7a1c857120abac4002ca91ae1f92205dcd5a84aff515d57e706a3f9240d75a0a67cff5085716885e06e62597baa86897f298662ec36a940cf410e'
             '61032d29241b74a0f28446f8cf1be0e8ec46d0847a61dadb2a4f096e8686d5f57fe5c72bcf386003f6520bc4b5856c32d63bf3efe7eb0bc0deefc9f68159e648'
             'c416e2121df83067376bcaacb58c05b01990f4614ad9de657d74b6da3efa441af251d13bf21e3f0f71ddcb4c9ea658b81da3d915667dc5c309c87ec32a1cb5a5'
@@ -76,12 +74,14 @@ sha512sums=('224648e176fe48d0cb96ac740b4f239e7ddbbb6aed6299976f1df2d5825757021c7
             '825b9dd0167c072ba62cabe0677e7cd20f2b4b850328022540f122689d8b25315005fa98ce867cf6e7460b2b26df16b88bb3b5c9ebf721746dce4e2271af7b97')
 
 _meson_version="${pkgver}-${pkgrel}"
+_meson_vcs_tag='false'
 _meson_mode='release'
 _meson_compile=()
 _meson_install=()
 
 if ((_systemd_UPSTREAM)); then
   _meson_version="${pkgver}"
+  _meson_vcs_tag='true'
   _meson_mode='developer'
   pkgname+=('systemd-tests')
   makedepends+=('libarchive')
@@ -94,18 +94,13 @@ if ((_systemd_UPSTREAM)); then
 fi
 
 _backports=(
-  # 99-systemd.rules: rework SYSTEMD_READY logic for device mapper
-  'c072860593329293e19580b337504adb52248462'
 )
 
 _reverts=(
 )
 
 prepare() {
-  cd "${pkgbase/-selinux}-stable"
-
-  # add upstream repository for cherry-picking
-  git remote add -f upstream ../systemd
+  cd "${pkgbase/-selinux}"
 
   local _c _l
   for _c in "${_backports[@]}"; do
@@ -140,20 +135,21 @@ build() {
 
   local _meson_options=(
     -Dversion-tag="${_meson_version}-arch"
+    -Dvcs-tag="${_meson_vcs_tag}"
     -Dshared-lib-tag="${_meson_version}"
     -Dmode="${_meson_mode}"
 
-    -Dapparmor=false
-    -Dbootloader=true
-    -Dxenctrl=false
-    -Dbpf-framework=true
+    -Dapparmor=disabled
+    -Dbootloader=enabled
+    -Dxenctrl=disabled
+    -Dbpf-framework=enabled
     -Dima=false
     -Dinstall-tests=true
-    -Dlibidn2=true
-    -Dlz4=true
-    -Dman=true
+    -Dlibidn2=enabled
+    -Dlz4=enabled
+    -Dman=enabled
     -Dnscd=false
-    -Dselinux=true
+    -Dselinux=enabled
 
     # We disable DNSSEC by default, it still causes trouble:
     # https://github.com/systemd/systemd/issues/10579
@@ -180,7 +176,7 @@ build() {
     -Dsbat-distro-url="https://aur.archlinux.org/packages/${pkgname}/"
   )
 
-  arch-meson "${pkgbase/-selinux}-stable" build "${_meson_options[@]}" $MESON_EXTRA_CONFIGURE_OPTIONS
+  arch-meson "${pkgbase/-selinux}" build "${_meson_options[@]}" $MESON_EXTRA_CONFIGURE_OPTIONS
 
   meson compile -C build "${_meson_compile[@]}"
 }
@@ -198,7 +194,7 @@ package_systemd-selinux() {
   )
   depends=("systemd-libs-selinux=${pkgver}"
            'acl' 'libacl.so' 'bash' 'cryptsetup' 'libcryptsetup.so' 'dbus'
-           'dbus-units' 'kbd' 'kmod' 'libkmod.so' 'hwdata' 'libcap' 'libcap.so'
+           'dbus-units' 'kbd' 'kmod' 'hwdata' 'libcap' 'libcap.so'
            'libgcrypt' 'libxcrypt' 'libcrypt.so' 'libidn2' 'lz4' 'pam-selinux'
            'libelf' 'libseccomp' 'libseccomp.so' 'util-linux-selinux' 'libblkid.so'
            'libmount.so' 'xz' 'pcre2' 'audit' 'libaudit.so'
