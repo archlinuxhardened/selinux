@@ -8,20 +8,25 @@
 
 pkgname=iproute2-selinux
 pkgver=6.9.0
-pkgrel=1
+pkgrel=2
 pkgdesc='IP Routing Utilities with SELinux support'
 arch=('x86_64' 'aarch64')
 license=('GPL2')
 groups=('selinux')
 url='https://git.kernel.org/pub/scm/network/iproute2/iproute2.git'
-depends=('glibc' 'iptables' 'libcap' 'libelf' 'libbpf' 'libselinux')
+depends=('glibc'
+         'libxtables.so' # from iptables or iptables-nft
+         'libcap' 'libcap.so'
+         'libelf'
+         'libbpf' 'libbpf.so'
+         'libselinux')
 makedepends=('db5.3')
 optdepends=('db5.3: userspace arp daemon'
             'linux-atm: ATM support'
             'python: for routel')
 provides=('iproute' "${pkgname/-selinux}=${pkgver}-${pkgrel}")
 conflicts=("${pkgname/-selinux}")
-makedepends=('linux-atm')
+makedepends=('linux-atm' 'iptables')
 options=('staticlibs')
 validpgpkeys=('9F6FC345B05BE7E766B83C8F80A77F6095CDE47E') # Stephen Hemminger
 source=("https://www.kernel.org/pub/linux/utils/net/${pkgname/-selinux}/${pkgname/-selinux}-${pkgver}.tar."{xz,sign}
