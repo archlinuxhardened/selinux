@@ -1,4 +1,4 @@
-From 51121d5484938ec0e939deebf216f94402bf0552 Mon Sep 17 00:00:00 2001
+From 81b4093db458e214a686aca5bdcc887581b6095d Mon Sep 17 00:00:00 2001
 From: David Runge <dvzrv@archlinux.org>
 Date: Mon, 31 Oct 2022 09:45:13 +0100
 Subject: [PATCH 2/3] Adapt login.defs for PAM and util-linux
@@ -695,5 +695,5 @@ index 05ef5125..1ddf537e 100644
    </refsect1>
  
 -- 
-2.44.0
+2.45.2
 

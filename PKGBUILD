@@ -10,7 +10,7 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=shadow-selinux
-pkgver=4.15.1
+pkgver=4.16.0
 pkgrel=1
 pkgdesc="Password and account management tool suite with support for shadow files and PAM - SELinux support"
 arch=(x86_64 aarch64)
@@ -44,9 +44,9 @@ conflicts=("${pkgname/-selinux}" "selinux-${pkgname/-selinux}")
 provides=("${pkgname/-selinux}=${pkgver}-${pkgrel}"
           "selinux-${pkgname/-selinux}=${pkgver}-${pkgrel}")
 options=(!emptydirs)
-# NOTE: distribution patches are taken from https://gitlab.archlinux.org/archlinux/packaging/upstream/shadow/-/commits/4.14.6.arch1
+# NOTE: distribution patches are taken from https://gitlab.archlinux.org/archlinux/packaging/upstream/shadow/-/commits/4.16.0.arch1
 source=(
-  $url/releases/download/$pkgver/${pkgname/-selinux}-$pkgver.tar.xz{,.asc}
+  git+$url.git?signed#tag=$pkgver
   0001-Disable-replaced-tools-their-man-pages-and-PAM-integ.patch
   0002-Adapt-login.defs-for-PAM-and-util-linux.patch
   0003-Add-Arch-Linux-defaults-for-login.defs.patch
@@ -54,21 +54,19 @@ source=(
   shadow.{sysusers,tmpfiles}
   useradd.defaults
 )
-sha512sums=('e3ae51bf53bfa1662d81bbe0150ada19c116514f1e56391d877045d48e16776326446561759edbf5006c0f97ab1d5f4bae63521bf1fae67e118ddda0d4a8f6cb'
-            'SKIP'
-            '839b83a3824be89930207e635f7aaa10cf3660ba2f4a6e95b3366d083fe2c76295d1d54b108bdfe317e5ebb049a8bbbf7b5859907d201cee43af330abb2091b6'
-            'a3da00d0368a9397be00ce1fc06416e5261f2000b99f69bd83202cf56e7d0ebea34562fbf35fdf43e7cf52a82f6720f6299defed9fa1d6436648e2f29d10512b'
-            'c41e2cef30930a79a6ad4eb63a8106688fde49b3bfc22ec68833e1974d6932e856244dc5f0fbe63943dcd09c05d06db6aa71783aa09a25708f78898189436683'
+sha512sums=('9b01725da77dd76efc3a22f2a31c6727e5cf2bab64e803c3e5e3bfb4921ed5344de2b359c07253bbb6a1cd846c4fc6168604ba6ac455e32d5f3ec2ebac2ebf2a'
+            '8550c2df5d38b375aa2da28ba65e9c658c69a18a455e3f5977aa2cc7af976a69a86a71d22a8857bf3a1ebedcc1fa4bc169c51655a7636bed2242bd420b9a084f'
+            '4b1ff03841cb924e82d0d118158105d4a0d1d19285610b0b81cb640c3dcfcd83f3ee384ea451934adcbf13aadc731140a1e963d6f5d31761847ff8f5dc8128d8'
+            '173d9607e4010d1d7d7fcd9f0ee2eb68b55998816228447a4e02bef150bb475c40aa23bfdce2de4260b02f448513975791bd1d88d1b6ff17ede7631f0b76f5a2'
             'e4edf705dd04e088c6b561713eaa1afeb92f42ac13722bff037aede6ac5ad7d4d00828cfb677f7b1ff048db8b6788238c1ab6a71dfcfd3e02ef6cb78ae09a621'
             '2c8689b52029f6aa27d75b8b05b0b36e2fc322cab40fdfbb50cdbe331f61bc84e8db20f012cf9af3de8c4e7fdb10c2d5a4925ca1ba3b70eb5627772b94da84b3'
             '5afac4a96b599b0b8ed7be751e7160037c3beb191629928c6520bfd3f2adcd1c55c31029c92c2ff8543e6cd9e37e2cd515ba4e1789c6d66f9c93b4e7f209ee7a'
             '97a6a57c07502e02669dc1a91bffc447dba7d98d208b798d80e07de0d2fdf9d23264453978d2d3d1ba6652ca1f2e22cdadc4309c7b311e83fa71b00ad144f877'
             '706ba6e7fa8298475f2605a28daffef421c9fa8d269cbd5cbcf7f7cb795b40a24d52c20e8d0b73e29e6cd35cd7226b3e9738dc513703e87dde04c1d24087a69c')
-b2sums=('a24f492cb2a7721b165c70237b1a9290acc0063bdf493f061752ca41d23a1154b26e16ee00dd96a19e825eff7f711391892eeb08a314d9277514d4d32a4adafe'
-        'SKIP'
-        '8d49018484533f1e9d0a2bdc81d6550a1662b275ffb5bb6dbe3d3062aa7d25e7acd3234bcbd3eb3e00dd8cd3a480cab9753d72b6970c44dc6e814ca5b45b554c'
-        '5fa58287e123fac7ba2cde8c98e0dfd52cbff0d0d67306b359881ebc54997907fe64b59012880f8750a152d05c05063888a03e43c19eabc7a2de0590bae0b1df'
-        '0ae11bf0ded3e6d6be3d960f5b75fdc885d936f499d162944ef27f0c3997be4fd1fc4f08cba60be6f81eddefbbb576cc37aeaf13993d80bfc8d452e496d286f4'
+b2sums=('4829db7d27b60648e0697d183023d7813b9215b812644b4767872669ad4eafe5e91de40a1a1a4c6f5f2cc6c091b1867c31f5d011a34adb0e37e9fd632d6afab5'
+        'c828510e0be5062d020b904a45bfe73ed70b4f2821d0af0c0fb349465315b8b3f478b0d84c175e9bbe2f326e1741705f52b7549cd51e6983cab8689d66227877'
+        '190e4248cd13d7e4d2d51360e62d89f6498ac6208abf536f9bfcb98893d6d0f0dfc53037787e1a738ef16ace75484096cba997e5bd95083b38693797f78dfdb4'
+        '76859eff360cf1cfaf58296c4a42b38daa4709a130dfdeaffc3666d56351479fa9131e3ee6ecd491142bf1b093e47465477739c08368d496e2c1b7c9d66f0795'
         '5cfc936555aa2b2e15f8830ff83764dad6e11a80e2a102c5f2bd3b7c83db22a5457a3afdd182e3648c9d7d5bca90fa550f59576d0ac47a11a31dfb636cb18f2b'
         'a69191ab966f146c35e7e911e7e57c29fffd54436ea014aa8ffe0dd46aaf57c635d0a652b35916745c75d82b3fca7234366ea5f810b622e94730b45ec86f122c'
         '511c4ad9f3be530dc17dd68f2a3387d748dcdb84192d35f296b88f82442224477e2a74b1841ec3f107b39a5c41c2d961480e396a48d0578f8fd5f65dbe8d9f04'
@@ -82,7 +80,7 @@ validpgpkeys=(
 prepare() {
   local filename
 
-  cd "${pkgname/-selinux}-$pkgver"
+  cd "${pkgname/-selinux}"
   for filename in "${source[@]}"; do
     if [[ "$filename" =~ \.patch$ ]]; then
       printf "Applying patch %s\n" "${filename##*/}"
@@ -115,7 +113,7 @@ build() {
     --without-su  # su is provided by util-linux
   )
 
-  cd "${pkgname/-selinux}-$pkgver"
+  cd "${pkgname/-selinux}"
   # add extra check, preventing accidental deletion of other user's home dirs when using `userdel -r <user with home in />`
   export CFLAGS="$CFLAGS -DEXTRA_CHECK_HOME_DIR"
   ./configure "${configure_options[@]}"
@@ -134,7 +132,7 @@ package() {
     pam libpam.so libpam_misc.so
   )
 
-  cd "${pkgname/-selinux}-$pkgver"
+  cd "${pkgname/-selinux}"
 
   make DESTDIR="$pkgdir" install
   make DESTDIR="$pkgdir" -C man install
