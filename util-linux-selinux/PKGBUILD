@@ -10,7 +10,7 @@
 
 pkgbase=util-linux-selinux
 pkgname=(util-linux-selinux util-linux-libs-selinux)
-_tag='2.40.1'
+_tag='2.40.2'
 pkgver="${_tag/-/}"
 pkgrel=1
 pkgdesc='SELinux aware miscellaneous system utilities for Linux'
@@ -52,7 +52,7 @@ source=("git+https://github.com/util-linux/util-linux#tag=v${_tag}?signed"
         '60-rfkill.rules'
         'rfkill-unblock_.service'
         'rfkill-block_.service')
-sha256sums=('c08ac20cf4fb061a0aa0d318a245b269acdfd14f7abf1f272476358878e6862a'
+sha256sums=('ccae05afaddd61119bbf35173f7045d1c8e98cc42c1355f5e9072433ebc42ee1'
             '6ffedbc0f7878612d2b23589f1ff2ab15633e1df7963a5d9fc750ec5500c7e7a'
             'ee917d55042f78b8bb03f5467e5233e3e2ddc2fe01e302bc53b218003fe22275'
             '57e057758944f4557762c6def939410c04ca5803cbdd2bfa2153ce47ffe7a4af'
