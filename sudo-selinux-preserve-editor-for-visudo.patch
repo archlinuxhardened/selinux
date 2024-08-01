@@ -1,0 +1,94 @@
+From 1db1453556e1c9c415b676705fe51d49dcd9d8a3 Mon Sep 17 00:00:00 2001
+From: "Todd C. Miller" <Todd.Miller@sudo.ws>
+Date: Mon, 10 Jun 2024 08:17:17 -0600
+Subject: [PATCH] Preserve SUDO_EDITOR, EDITOR, and VISUAL for visudo.
+
+---
+ configure                  | 9 +++++++++
+ configure.ac               | 9 +++++++++
+ plugins/sudoers/sudoers.in | 4 ++++
+ 3 files changed, 22 insertions(+)
+
+diff --git a/configure b/configure
+index 0f474168fb..237d5cf580 100755
+--- a/configure
++++ b/configure
+@@ -827,6 +827,7 @@ PRELOAD_MODULE
+ INSTALL_NOEXEC
+ INSTALL_INTERCEPT
+ INSTALL_BACKUP
++visudo
+ sesh_file
+ noexec_file
+ NOEXECDIR
+@@ -3724,6 +3725,7 @@ netsvc_conf=/etc/netsvc.conf
+ intercept_file="$libexecdir/sudo/sudo_intercept.so"
+ noexec_file="$libexecdir/sudo/sudo_noexec.so"
+ sesh_file="$libexecdir/sudo/sesh"
++visudo="$sbindir/visudo"
+ nsswitch_conf=/etc/nsswitch.conf
+ secure_path="not set"
+ pam_session=on
+@@ -35839,6 +35841,13 @@ while test X"$noexec_file" != X"$_noexec_file"; do
+     eval "noexec_file=\"$_noexec_file\""
+ done
+ 
++# Update exec_prefix in visudo
++_visudo=
++while test X"$visudo" != X"$_visudo"; do
++    _visudo="$visudo"
++    eval "visudo=\"$_visudo\""
++done
++
+ # Update exec_prefix in sesh_file
+ _sesh_file=
+ while test X"$sesh_file" != X"$_sesh_file"; do
+diff --git a/configure.ac b/configure.ac
+index c50e7d5544..f4d96eccd0 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -75,6 +75,7 @@ AC_SUBST([NOEXECFILE])dnl
+ AC_SUBST([NOEXECDIR])dnl
+ AC_SUBST([noexec_file])dnl
+ AC_SUBST([sesh_file])dnl
++AC_SUBST([visudo])dnl
+ AC_SUBST([INSTALL_BACKUP])dnl
+ AC_SUBST([INSTALL_INTERCEPT])dnl
+ AC_SUBST([INSTALL_NOEXEC])dnl
+@@ -225,6 +226,7 @@ netsvc_conf=/etc/netsvc.conf
+ intercept_file="$libexecdir/sudo/sudo_intercept.so"
+ noexec_file="$libexecdir/sudo/sudo_noexec.so"
+ sesh_file="$libexecdir/sudo/sesh"
++visudo="$sbindir/visudo"
+ nsswitch_conf=/etc/nsswitch.conf
+ secure_path="not set"
+ pam_session=on
+@@ -4301,6 +4303,13 @@ while test X"$noexec_file" != X"$_noexec_file"; do
+     eval "noexec_file=\"$_noexec_file\""
+ done
+ 
++# Update exec_prefix in visudo
++_visudo=
++while test X"$visudo" != X"$_visudo"; do
++    _visudo="$visudo"
++    eval "visudo=\"$_visudo\""
++done
++
+ # Update exec_prefix in sesh_file
+ _sesh_file=
+ while test X"$sesh_file" != X"$_sesh_file"; do
+diff --git a/plugins/sudoers/sudoers.in b/plugins/sudoers/sudoers.in
+index e79edb400f..703c9d5f01 100644
+--- a/plugins/sudoers/sudoers.in
++++ b/plugins/sudoers/sudoers.in
+@@ -41,6 +41,10 @@
+ ##
+ ## Defaults specification
+ ##
++## Preserve editor environment variables for visudo.
++## To preserve these for all commands, remove the "!visudo" qualifier.
++Defaults!@visudo@ env_keep += "SUDO_EDITOR EDITOR VISUAL"
++##
+ ## You may wish to keep some of the following environment variables
+ ## when running commands via sudo.
+ ##
