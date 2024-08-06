@@ -1,0 +1,171 @@
+From e0e24456bc3fcdf5506660be69186e01583ff383 Mon Sep 17 00:00:00 2001
+From: "Todd C. Miller" <Todd.Miller@sudo.ws>
+Date: Mon, 10 Jun 2024 20:37:05 -0600
+Subject: [PATCH] Enable secure_path in default sudoers file.
+
+It is still disabled by default in the sudo binary.
+---
+ INSTALL.md                 |  3 ++-
+ configure                  | 22 ++++++++++++++--------
+ configure.ac               | 15 +++++++++------
+ docs/sudoers.mdoc.in       |  2 +-
+ plugins/sudoers/sudoers.in |  8 +++++---
+ 5 files changed, 31 insertions(+), 19 deletions(-)
+
+diff --git a/INSTALL.md b/INSTALL.md
+index 59c67b8366..2261504b6c 100644
+--- a/INSTALL.md
++++ b/INSTALL.md
+@@ -999,7 +999,8 @@ Defaults are listed in brackets after the description.
+         be separate from the "user path."  You will need to customize the
+         path for your site.  This is not applied to users in the group
+         specified by --with-exemptgroup.  If you do not specify a path,
+-        "/bin:/usr/ucb:/usr/bin:/usr/sbin:/sbin:/usr/etc:/etc" is used.  
++        "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
++        is used.  
+         Sudoers option: secure_path
+ 
+     --with-sendmail=PATH
+diff --git a/configure b/configure
+index 237d5cf580..e7f1b1d91e 100755
+--- a/configure
++++ b/configure
+@@ -733,6 +733,7 @@ plugindir
+ pam_login_service
+ pam_session
+ editor
++secure_path_set
+ secure_path
+ netsvc_conf
+ nsswitch_conf
+@@ -3680,6 +3681,7 @@ sudoers_path='$(sysconfdir)/sudoers'
+ 
+ 
+ 
++
+ 
+ 
+ #
+@@ -3727,7 +3729,8 @@ noexec_file="$libexecdir/sudo/sudo_noexec.so"
+ sesh_file="$libexecdir/sudo/sesh"
+ visudo="$sbindir/visudo"
+ nsswitch_conf=/etc/nsswitch.conf
+-secure_path="not set"
++secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
++secure_path_set="disabled"
+ pam_session=on
+ pam_login_service=sudo
+ plugindir="$libexecdir/sudo"
+@@ -6308,19 +6311,22 @@ EOF
+ if test ${with_secure_path+y}
+ then :
+   withval=$with_secure_path; case $with_secure_path in
+-    yes)	with_secure_path="/bin:/usr/ucb:/usr/bin:/usr/sbin:/sbin:/usr/etc:/etc"
+-		printf "%s\n" "#define SECURE_PATH \"$with_secure_path\"" >>confdefs.h
+-
+-		secure_path="set to $with_secure_path"
++    yes)	with_secure_path="$secure_path"
+ 		;;
+     no)		;;
+-    *)		printf "%s\n" "#define SECURE_PATH \"$with_secure_path\"" >>confdefs.h
+-
+-		secure_path="set to $with_secure_path"
++    *)		secure_path="$with_secure_path"
+ 		;;
+ esac
+ fi
+ 
++if test "${with_secure_path-no}" != "no"
++then :
++
++	printf "%s\n" "#define SECURE_PATH \"$secure_path\"" >>confdefs.h
++
++	secure_path_set="set to $secure_path"
++
++fi
+ 
+ 
+ # Check whether --with-interfaces was given.
+diff --git a/configure.ac b/configure.ac
+index f4d96eccd0..61b2115300 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -177,6 +177,7 @@ AC_SUBST([sssd_lib])
+ AC_SUBST([nsswitch_conf])
+ AC_SUBST([netsvc_conf])
+ AC_SUBST([secure_path])
++AC_SUBST([secure_path_set])
+ AC_SUBST([editor])
+ AC_SUBST([pam_session])
+ AC_SUBST([pam_login_service])
+@@ -228,7 +229,8 @@ noexec_file="$libexecdir/sudo/sudo_noexec.so"
+ sesh_file="$libexecdir/sudo/sesh"
+ visudo="$sbindir/visudo"
+ nsswitch_conf=/etc/nsswitch.conf
+-secure_path="not set"
++secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
++secure_path_set="disabled"
+ pam_session=on
+ pam_login_service=sudo
+ plugindir="$libexecdir/sudo"
+@@ -1068,15 +1070,16 @@ SUDO_DEFINE_UNQUOTED(_PATH_LDAP_SECRET, "$ldap_secret", [Path to the ldap.secret
+ 
+ AC_ARG_WITH(secure-path, [AS_HELP_STRING([--with-secure-path], [override the user's path with a built-in one])],
+ [case $with_secure_path in
+-    yes)	with_secure_path="/bin:/usr/ucb:/usr/bin:/usr/sbin:/sbin:/usr/etc:/etc"
+-		AC_DEFINE_UNQUOTED(SECURE_PATH, "$with_secure_path")
+-		secure_path="set to $with_secure_path"
++    yes)	with_secure_path="$secure_path"
+ 		;;
+     no)		;;
+-    *)		AC_DEFINE_UNQUOTED(SECURE_PATH, "$with_secure_path")
+-		secure_path="set to $with_secure_path"
++    *)		secure_path="$with_secure_path"
+ 		;;
+ esac])
++AS_IF([test "${with_secure_path-no}" != "no"], [
++	AC_DEFINE_UNQUOTED(SECURE_PATH, "$secure_path")
++	secure_path_set="set to $secure_path"
++])
+ 
+ AC_ARG_WITH(interfaces, [AS_HELP_STRING([--without-interfaces], [don't try to read the ip addr of network interfaces])],
+ [case $with_interfaces in
+diff --git a/docs/sudoers.mdoc.in b/docs/sudoers.mdoc.in
+index ef9657f139..f53f1e0e01 100644
+--- a/docs/sudoers.mdoc.in
++++ b/docs/sudoers.mdoc.in
+@@ -5305,7 +5305,7 @@ Users in the group specified by the
+ .Em exempt_group
+ option are not affected by
+ .Em secure_path .
+-This option is @secure_path@ by default.
++This option is @secure_path_set@ by default.
+ .It syslog
+ Syslog facility if syslog is being used for logging (negate to
+ disable syslog logging).
+diff --git a/plugins/sudoers/sudoers.in b/plugins/sudoers/sudoers.in
+index 703c9d5f01..b0d464160f 100644
+--- a/plugins/sudoers/sudoers.in
++++ b/plugins/sudoers/sudoers.in
+@@ -45,6 +45,11 @@
+ ## To preserve these for all commands, remove the "!visudo" qualifier.
+ Defaults!@visudo@ env_keep += "SUDO_EDITOR EDITOR VISUAL"
+ ##
++## Use a hard-coded PATH instead of the user's to find commands.
++## This also helps prevent poorly written scripts from running
++## artbitrary commands under sudo.
++Defaults secure_path="@secure_path@"
++##
+ ## You may wish to keep some of the following environment variables
+ ## when running commands via sudo.
+ ##
+@@ -69,9 +74,6 @@ Defaults!@visudo@ env_keep += "SUDO_EDITOR EDITOR VISUAL"
+ ## this may allow users to subvert the command being run via sudo.
+ # Defaults env_keep += "XMODIFIERS GTK_IM_MODULE QT_IM_MODULE QT_IM_SWITCHER"
+ ##
+-## Uncomment to use a hard-coded PATH instead of the user's to find commands
+-# Defaults secure_path="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+-##
+ ## Uncomment to disable "use_pty" when running commands as root.
+ ## Commands run as non-root users will run in a pseudo-terminal,
+ ## not the user's own terminal, to prevent command injection.
