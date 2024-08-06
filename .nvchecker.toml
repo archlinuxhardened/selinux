@@ -1,0 +1,4 @@
+[logrotate]
+source = 'github'
+github = 'logrotate/logrotate'
+use_max_tag = true
