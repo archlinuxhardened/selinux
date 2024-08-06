@@ -12,7 +12,7 @@ pkgname=('systemd-selinux'
          'systemd-resolvconf-selinux'
          'systemd-sysvcompat-selinux'
          'systemd-ukify-selinux')
-_tag='256.2'
+_tag='256.4'
 # Upstream versioning is incompatible with pacman's version comparisons, one
 # way or another. So we replace dashes and tildes with the empty string to
 # make sure pacman's version comparing does the right thing for rc versions:
@@ -23,7 +23,7 @@ license=('LGPL-2.1-or-later')
 url='https://www.github.com/systemd/systemd'
 groups=('selinux')
 makedepends=('acl' 'cryptsetup' 'docbook-xsl' 'gperf' 'lz4' 'xz' 'pam-selinux' 'libelf'
-             'intltool' 'iptables' 'kmod' 'libcap' 'libidn2' 'libgcrypt'
+             'intltool' 'iptables' 'kmod' 'libarchive' 'libcap' 'libidn2' 'libgcrypt'
              'libmicrohttpd' 'libxcrypt' 'libxslt' 'util-linux' 'linux-api-headers'
              'python-jinja' 'python-lxml' 'quota-tools' 'shadow-selinux' 'git'
              'meson' 'libseccomp' 'pcre2' 'audit' 'kexec-tools' 'libxkbcommon'
@@ -55,7 +55,7 @@ source=("git+https://github.com/systemd/systemd#tag=v${_tag}?signed"
         '30-systemd-tmpfiles.hook'
         '30-systemd-udev-reload.hook'
         '30-systemd-update.hook')
-sha512sums=('7440e619af100458ccd54ab1aafdaa339f473c226b6f7d9ceca35716ad30e9ed112ae8e2230116b2104e88171d92309ad78780f4f02d5f9f59c0e7fce15606c9'
+sha512sums=('8ac4d672e4be9f43a6f177cfa0ad91c1d5434e85c6aef633740b6a0e27f6ca15c859b29269a775fe32f14626944db5be87e1a8ebaa7620de7452dd14d902e09e'
             '3ccf783c28f7a1c857120abac4002ca91ae1f92205dcd5a84aff515d57e706a3f9240d75a0a67cff5085716885e06e62597baa86897f298662ec36a940cf410e'
             '61032d29241b74a0f28446f8cf1be0e8ec46d0847a61dadb2a4f096e8686d5f57fe5c72bcf386003f6520bc4b5856c32d63bf3efe7eb0bc0deefc9f68159e648'
             'c416e2121df83067376bcaacb58c05b01990f4614ad9de657d74b6da3efa441af251d13bf21e3f0f71ddcb4c9ea658b81da3d915667dc5c309c87ec32a1cb5a5'
@@ -84,8 +84,6 @@ if ((_systemd_UPSTREAM)); then
   _meson_vcs_tag='true'
   _meson_mode='developer'
   pkgname+=('systemd-tests')
-  makedepends+=('libarchive')
-  optdepends_upstream=('libarchive: convert DDIs to tarballs')
   if ((_systemd_QUIET)); then
     _meson_install=('--quiet')
   else
@@ -212,12 +210,12 @@ package_systemd-selinux() {
               'gnutls: systemd-journal-gatewayd and systemd-journal-remote'
               'qrencode: show QR codes'
               'iptables: firewall features'
+              'libarchive: convert DDIs to tarballs'
               'libbpf: support BPF programs'
               'libpwquality: check password quality'
               'libfido2: unlocking LUKS2 volumes with FIDO2 token'
               'libp11-kit: support PKCS#11'
               'tpm2-tss: unlocking LUKS2 volumes with TPM2')
-  optdepends+=("${_optdepends_upstream[@]}")
   backup=(etc/pam.d/systemd-user
           etc/systemd/coredump.conf
           etc/systemd/homed.conf
