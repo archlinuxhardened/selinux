@@ -7,14 +7,14 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=checkpolicy
-pkgver=3.6
+pkgver=3.7
 pkgrel=1
 pkgdesc="SELinux policy compiler"
 arch=('i686' 'x86_64' 'aarch64')
 url='https://github.com/SELinuxProject/selinux'
 license=('GPL2')
 groups=('selinux')
-makedepends=('libsepol>=3.6')
+makedepends=('libsepol>=3.7')
 conflicts=("selinux-usr-${pkgname}")
 provides=("selinux-usr-${pkgname}=${pkgver}-${pkgrel}")
 validpgpkeys=(
@@ -22,7 +22,7 @@ validpgpkeys=(
   'B8682847764DF60DF52D992CBC3905F235179CF1'  # Petr Lautrbach <plautrba@redhat.com>
 )
 source=("https://github.com/SELinuxProject/selinux/releases/download/${pkgver}/${pkgname}-${pkgver}.tar.gz"{,.asc})
-sha256sums=('1b346b3cdd4f8a78a157627bad64a3b3479c67b6a19d15e6d5c8694620eadbc1'
+sha256sums=('fd3e1925477d49946d1116938661af44c1f86f0d681466fd9f02eaa06002a07f'
             'SKIP')
 
 build() {
