@@ -4,7 +4,7 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=restorecond
-pkgver=3.6
+pkgver=3.7
 pkgrel=1
 pkgdesc="SELinux restorecon daemon"
 arch=('i686' 'x86_64' 'aarch64')
@@ -19,7 +19,7 @@ validpgpkeys=(
   'B8682847764DF60DF52D992CBC3905F235179CF1'  # Petr Lautrbach <plautrba@redhat.com>
 )
 source=("https://github.com/SELinuxProject/selinux/releases/download/${pkgver}/${pkgname}-${pkgver}.tar.gz"{,.asc})
-sha256sums=('8f8aa2c6c66bcc6d91c6edd63913e5d738de6428928f27d1019d89c31cf347b1'
+sha256sums=('4192595c08c775ff540f5ab850885ce11b132a4a4e29b65f20e751dd0a69d31f'
             'SKIP')
 
 build() {
