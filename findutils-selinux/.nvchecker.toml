@@ -1,0 +1,4 @@
+[findutils]
+source = "git"
+git = "https://git.savannah.gnu.org/git/findutils.git"
+prefix = "v"

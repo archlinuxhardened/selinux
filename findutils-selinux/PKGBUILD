@@ -1,4 +1,4 @@
-# Maintainer:
+# Maintainer: Tobias Powalowski <tpowa@archlinux.org>
 # SELinux Maintainer: Nicolas Iooss (nicolas <dot> iooss <at> m4x <dot> org)
 # SELinux Contributor: Timothée Ravier
 # SELinux Contributor: Nicky726 <Nicky726@gmail.com>
@@ -8,23 +8,28 @@
 
 pkgname=findutils-selinux
 pkgver=4.10.0
-pkgrel=1
+pkgrel=2
 pkgdesc="GNU utilities to locate files with SELinux support"
 arch=('x86_64' 'aarch64')
 license=('GPL-3.0-or-later')
 groups=('selinux')
 depends=('glibc' 'sh' 'libselinux')
+makedepends=('git' 'wget' 'python')
 conflicts=("${pkgname/-selinux}" "selinux-${pkgname/-selinux}")
 provides=("${pkgname/-selinux}=${pkgver}-${pkgrel}"
           "selinux-${pkgname/-selinux}=${pkgver}-${pkgrel}")
 url='https://www.gnu.org/software/findutils/'
-source=("https://ftp.gnu.org/pub/gnu/findutils/${pkgname/-selinux}-${pkgver}.tar.xz"{,.sig})
-sha256sums=('1387e0b67ff247d2abde998f90dfbf70c1491391a59ddfecb8ae698789f0a4f5'
-            'SKIP')
+source=("git+https://git.savannah.gnu.org/git/findutils.git?signed#tag=v${pkgver}")
+b2sums=('a6d99d922df4c6895d9956a6902518c5f911e6ad1fdcbfc99bb083ce0a725fa4e87bb83a1a2d16e6d900755da9e9094b20f56f971c8e6a6008572cd417fe3e95')
 validpgpkeys=('A5189DB69C1164D33002936646502EF796917195') # Bernhard Voelker <mail@bernhard-voelker.de>
 
+prepare() {
+  cd "${pkgname/-selinux}"
+  ./bootstrap
+}
+
 build() {
-  cd "${srcdir}/${pkgname/-selinux}-${pkgver}"
+  cd "${pkgname/-selinux}"
 
   # Don't build or install locate because we use mlocate,
   # which is a secure version of locate.
@@ -37,11 +42,11 @@ build() {
 }
 
 check() {
-  cd "${srcdir}/${pkgname/-selinux}-${pkgver}"
+  cd "${pkgname/-selinux}"
   make check
 }
 
 package() {
-  cd "${srcdir}/${pkgname/-selinux}-${pkgver}"
-  make DESTDIR="$pkgdir" install
+  cd "${pkgname/-selinux}"
+  make DESTDIR="${pkgdir}" install
 }
