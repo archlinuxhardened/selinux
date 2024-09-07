@@ -1,28 +1,31 @@
 pkgbase = coreutils-selinux
 	pkgdesc = The basic file, shell and text manipulation utilities of the GNU operating system with SELinux support
 	pkgver = 9.5
-	pkgrel = 1
+	pkgrel = 2
 	url = https://www.gnu.org/software/coreutils/
 	arch = x86_64
 	arch = aarch64
 	groups = selinux
 	license = GPL-3.0-or-later
 	license = GFDL-1.3-or-later
-	depends = glibc
+	makedepends = git
+	makedepends = gperf
+	makedepends = wget
 	depends = acl
 	depends = attr
+	depends = glibc
 	depends = gmp
 	depends = libcap
-	depends = openssl
 	depends = libselinux
-	provides = coreutils=9.5-1
-	provides = selinux-coreutils=9.5-1
+	depends = openssl
+	provides = coreutils=9.5-2
+	provides = selinux-coreutils=9.5-2
 	conflicts = coreutils
 	conflicts = selinux-coreutils
-	source = https://ftp.gnu.org/gnu/coreutils/coreutils-9.5.tar.xz
-	source = https://ftp.gnu.org/gnu/coreutils/coreutils-9.5.tar.xz.sig
+	source = git+https://git.savannah.gnu.org/git/coreutils.git?signed#tag=v9.5
+	source = gcc14-gnulib-lto.patch
 	validpgpkeys = 6C37DC12121A5006BC1DB804DF6FD971306037D9
-	sha256sums = cd328edeac92f6a665de9f323c93b712af1858bc2e0d88f3f7100469470a1b8a
-	sha256sums = SKIP
+	b2sums = 7b48eaa372037f1162335dacbc6460a1455e7b6c73badefd631b1a47cfab6072db938a25ce9bdba68c2b3ac13e9c64df06fef6f135d2979199cb09f41f83454a
+	b2sums = 1264b815101ebf98ce846ac96a649cc7964624ae0c140f23d41f2d2e8292f67b0c0cad3d66f6329a2d21c530b1cfbff65ef378abd8e49f3a1ac972a1cf88366d
 
 pkgname = coreutils-selinux

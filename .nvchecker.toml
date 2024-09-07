@@ -1,0 +1,4 @@
+[coreutils]
+source = "git"
+git = "https://git.savannah.gnu.org/git/coreutils.git"
+prefix = "v"
