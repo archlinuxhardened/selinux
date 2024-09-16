@@ -13,7 +13,7 @@
 
 pkgname=openssh-selinux
 pkgver=9.8p1
-pkgrel=1
+pkgrel=2
 pkgdesc="SSH protocol implementation for remote login, command execution and file transfer, with SELinux support"
 arch=(x86_64 aarch64)
 url='https://www.openssh.com/portable.html'
@@ -65,18 +65,18 @@ source=(
 sha256sums=('dd8bd002a379b5d499dfb050dd1fa9af8029e80461f4bb6c523c49973f5a39f3'
             'SKIP'
             '78b806c38bc1e246daaa941bfe7880e6eb6f53f093bea5d5868525ae6d223d30'
-            '975904668c3c98fff5dbf840717ae959593fa05e90e215e67bf7ee24369d6369'
-            'e5305767b2d317183ad1c5022a5f6705bd9014a8b22495a000fd482713738611'
+            'fadd31c107aee3fc6b501ca046aeb5e6fb1b0256cc5cdcade4e2c95205823a28'
+            'a76ffd6701768cfc2a2d3701dcc46d48ee1399ee51664746e61783c61c223ab1'
             '201af9f6e00700ebbfd3600c0025c022bff28f9bfd073e1a55756bfdf3bb2d5a'
-            'b3b1e4f7af169cd5fccdcdf9538ef37fc919c79a9905f797925153a94e723998'
+            'fc70b23ec083a5fc45f37049ba7fa12164a800d83c701e852a8315d48a0ff13e'
             '633e24cbfcb045ba777d3e06d5f85dfaa06d44f4727d38c7fb2187c57498221d')
 b2sums=('3bf983c4ef5358054ed0104cd51d3e0069fbc2b80d8522d0df644d5508ec1d26a67bf061b1b5698d1cdf0d2cbba16b4cdca12a4ce30da24429094576a075e192'
         'SKIP'
         '1ff8cd4ae22efed2b4260f1e518de919c4b290be4e0b5edbc8e2225ffe63788678d1961e6f863b85974c4697428ee827bcbabad371cfc91cc8b36eae9402eb97'
-        '43bf32158d6b14cf298e5e92a54d93577d6a45b32b3c0fad7a3722e55a53e446fd30df10002bc945c71528904bb397aaadc4f439dd81e5a87263a31b1daa7fc2'
-        '09fad3648f48f13ee80195b90913feeba21240d121b1178e0ce62f4a17b1f7e58e8edc22c04403e377ab300f5022a804c848f5be132765d5ca26a38aab262e50'
+        '57e77e55fcbd9d7b9951adbafe11ba62e4b8b7338c2a6fe3f163afe5b84458db042024cefbc55f9393cf17d97d067f1c2d9c61880516501bfa4e5c92371e494a'
+        'abae43979222b7c24452ee128df5c02e8a07a355e797824eedea6282eb4054a1a81686089d8a6a62416536435f8fa25bbb330d11b532877da526bbe8800692da'
         '6faea668a21c3f2c3e8cb973a55e53ccef6037a1d772d18e71d545b18bf63e7c9618f416c1b6e93672aadbdd9024408d41bfba69ddfe3d3ed9e42964130c968a'
-        '046ea6bd6aa00440991e5f7998db33864a7baa353ec6071f96a3ccb5cca5b548cb9e75f9dee56022ca39daa977d18452851d91e6ba36a66028b84b375ded9bc5'
+        '12a02423bfdbe79f528ea06d70746362ea6aaaf07f28bb4a7efe707ace06429e86e4f5fe7758c3e865c20976faa614102b924725ea0e833690d3732e386fee33'
         '1d24cc029eccf71cee54dda84371cf9aa8d805433e751575ab237df654055dd869024b50facd8b73390717e63100c76bca28b493e0c8be9791c76a2e0d60990a')
 validpgpkeys=('7168B983815A5EEF59A4ADFD2A3F414E736060BA')  # Damien Miller <djm@mindrot.org>
 
@@ -117,6 +117,7 @@ build() {
     --with-ssl-engine
     --with-pam
     --with-privsep-user=nobody
+    --with-privsep-path=/usr/share/empty.sshd
     --with-kerberos5=/usr
     --with-xauth=/usr/bin/xauth
     --with-pid-dir=/run
