@@ -12,7 +12,7 @@ pkgname=('systemd-selinux'
          'systemd-resolvconf-selinux'
          'systemd-sysvcompat-selinux'
          'systemd-ukify-selinux')
-_tag='256.6'
+_tag='256.7'
 # Upstream versioning is incompatible with pacman's version comparisons, one
 # way or another. So we replace dashes and tildes with the empty string to
 # make sure pacman's version comparing does the right thing for rc versions:
@@ -29,7 +29,7 @@ makedepends=('acl' 'cryptsetup' 'docbook-xsl' 'gperf' 'lz4' 'xz' 'pam-selinux' '
              'meson' 'libseccomp' 'pcre2' 'audit' 'kexec-tools' 'libxkbcommon'
              'bash-completion' 'p11-kit' 'systemd' 'libfido2' 'tpm2-tss' 'rsync'
              'bpf' 'libbpf' 'clang' 'llvm' 'curl' 'gnutls' 'python-pyelftools'
-             'libpwquality' 'qrencode' 'lib32-gcc-libs' 'python-pefile' 'libselinux')
+             'libpwquality' 'qrencode' 'lib32-gcc-libs' 'python-pefile' 'linux-headers' 'libselinux')
 conflicts=("mkinitcpio<38-1")
 validpgpkeys=('63CDA1E5D3FC22B998D20DD6327F26951A015CC4'  # Lennart Poettering <lennart@poettering.net>
               'A9EA9081724FFAE0484C35A1A81CEA22BC8C7E2E'  # Luca Boccassi <luca.boccassi@gmail.com>
@@ -55,13 +55,13 @@ source=("git+https://github.com/systemd/systemd#tag=v${_tag}?signed"
         '30-systemd-tmpfiles.hook'
         '30-systemd-udev-reload.hook'
         '30-systemd-update.hook')
-sha512sums=('e9fc19946f329aa89c1014a735d4d7828cebaa32ece8244b79e101c41d1c0cb0207b4109ce55d14204b0915f6cac57ace6286c6abaebd809031949693131de16'
+sha512sums=('468f772b3dfa83483da75516499c50159206dc5f8e26d7a62fc08437c93a4e536c0b27ee7fa5ac11fb1bc27a9c0e41315261751e5cc7428629a30849aeb23386'
             '3ccf783c28f7a1c857120abac4002ca91ae1f92205dcd5a84aff515d57e706a3f9240d75a0a67cff5085716885e06e62597baa86897f298662ec36a940cf410e'
             '61032d29241b74a0f28446f8cf1be0e8ec46d0847a61dadb2a4f096e8686d5f57fe5c72bcf386003f6520bc4b5856c32d63bf3efe7eb0bc0deefc9f68159e648'
             'c416e2121df83067376bcaacb58c05b01990f4614ad9de657d74b6da3efa441af251d13bf21e3f0f71ddcb4c9ea658b81da3d915667dc5c309c87ec32a1cb5a5'
             '5a1d78b5170da5abe3d18fdf9f2c3a4d78f15ba7d1ee9ec2708c4c9c2e28973469bc19386f70b3cf32ffafbe4fcc4303e5ebbd6d5187a1df3314ae0965b25e75'
             'b90c99d768dc2a4f020ba854edf45ccf1b86a09d2f66e475de21fe589ff7e32c33ef4aa0876d7f1864491488fd7edb2682fc0d68e83a6d4890a0778dc2d6fe19'
-            '3cb8f88c1bffc753d0c540be5d25a0fdb9224478cca64743b5663340f2f26b197775286e6e680228db54c614dcd11da1135e625674a622127681662bec4fa886'
+            '9835dbb46a3942e89774dd26f295af30ed9eb2cf7ba574e3016b0b4357536a102eb58d72b3add0ea7fd2a56d46b097f273dd02f68840b7a0211c9dbd2b0b7c29'
             '299dcc7094ce53474521356647bdd2fb069731c08d14a872a425412fcd72da840727a23664b12d95465bf313e8e8297da31259508d1c62cc2dcea596160e21c5'
             '0d6bc3d928cfafe4e4e0bc04dbb95c5d2b078573e4f9e0576e7f53a8fab08a7077202f575d74a3960248c4904b5f7f0661bf17dbe163c524ab51dd30e3cb80f7'
             '2b50b25e8680878f7974fa9d519df7e141ca11c4bfe84a92a5d01bb193f034b1726ea05b3c0030bad1fbda8dbb78bf1dc7b73859053581b55ba813c39b27d9dc'
@@ -148,13 +148,15 @@ build() {
     -Dman=enabled
     -Dnscd=false
     -Dselinux=enabled
+    -Dsshdprivsepdir=/usr/share/empty.sshd
+    -Dvmlinux-h=provided
+    -Dvmlinux-h-path=/usr/src/linux/vmlinux.h
 
     # We disable DNSSEC by default, it still causes trouble:
     # https://github.com/systemd/systemd/issues/10579
 
     -Ddbuspolicydir=/usr/share/dbus-1/system.d
     -Ddefault-dnssec=no
-    -Ddefault-hierarchy=unified
     -Ddefault-kill-user-processes=false
     -Ddefault-locale='C.UTF-8'
     -Dlocalegen-path=/usr/bin/locale-gen
@@ -235,7 +237,7 @@ package_systemd-selinux() {
           etc/udev/udev.conf)
   install=systemd.install
 
-  meson install -C build --destdir "$pkgdir" "${_meson_install[@]}"
+  meson install -C build --no-rebuild --destdir "$pkgdir" "${_meson_install[@]}"
 
   # we'll create this on installation
   rmdir "$pkgdir"/var/log/journal/remote
