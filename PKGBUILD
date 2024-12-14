@@ -38,11 +38,15 @@ build() {
   # Configure, overriding build.conf values with the ones given on the command line
   make conf NAME="${_policyname}" DISTRO=arch SYSTEMD=y UBAC=n
 
-  make NAME="${_policyname}" DISTRO=arch SYSTEMD=y UBAC=n
+  # This tries to install /etc/selinux/refpolicy-git/contexts/files/file_contexts.subs_dist
+  # due to a bug, so move the build to function package (2024-12-14)
+  #make all NAME="${_policyname}" DISTRO=arch SYSTEMD=y UBAC=n
 }
 
 package() {
   cd refpolicy
+  make all \
+    DESTDIR="${pkgdir}" NAME="${_policyname}" DISTRO=arch SYSTEMD=y UBAC=n
   make install \
     DESTDIR="${pkgdir}" NAME="${_policyname}" DISTRO=arch SYSTEMD=y UBAC=n
   make install-headers \
