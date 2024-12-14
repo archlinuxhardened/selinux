@@ -19,7 +19,7 @@
 
 pkgname=setools
 pkgver=4.5.1
-pkgrel=1
+pkgrel=2
 pkgdesc="Policy analysis tools for SELinux"
 groups=('selinux')
 arch=('i686' 'x86_64' 'aarch64')
@@ -30,11 +30,19 @@ optdepends=('python-graphviz: for seinfoflow, sedta, apol'
             'python-pyqt6: needed for graphical tools'
             'qt6-tools: display apol help with Qt Assistant')
 makedepends=('cython' 'python-tox')
-checkdepends=('checkpolicy' 'python-pytest')
+checkdepends=('checkpolicy' 'pyside6' 'python-pytest' 'python-pytest-qt')
 conflicts=("selinux-${pkgname}")
 provides=("selinux-${pkgname}=${pkgver}-${pkgrel}")
-source=("https://github.com/SELinuxProject/setools/releases/download/${pkgver}/${pkgname}-${pkgver}.tar.bz2")
-sha256sums=('25e47d00bbffd6046f55409c9ba3b08d9b1d5788cc159ea247d9e0ced8e482e7')
+source=("https://github.com/SELinuxProject/setools/releases/download/${pkgver}/${pkgname}-${pkgver}.tar.bz2"
+        0001-setup.py-Move-static-definitions-to-pyproject.toml.patch
+)
+sha256sums=('25e47d00bbffd6046f55409c9ba3b08d9b1d5788cc159ea247d9e0ced8e482e7'
+            '27fd3673709767038fcd5253f13a057dac48b5c6884e07507ff3f1461223cd21')
+
+prepare() {
+  cd "${pkgname}"
+  patch -Np1 -i "../0001-setup.py-Move-static-definitions-to-pyproject.toml.patch"
+}
 
 build() {
   cd "${pkgname}"
@@ -44,7 +52,9 @@ build() {
 
 check() {
   cd "${pkgname}"
-  python setup.py test
+  # Instructions from https://github.com/SELinuxProject/setools/blob/4.5.1/README.md#unit-tests
+  python setup.py build_ext -i
+  pytest tests
 }
 
 package() {
