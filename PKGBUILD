@@ -6,13 +6,21 @@
 # This PKGBUILD is maintained on https://github.com/archlinuxhardened/selinux.
 # If you want to help keep it up to date, please open a Pull Request there.
 
+# ➡️ Pushing pre-releases to [core-testing] can cause havoc, especially
+#   as all [core] packages are built there, and may be moved before.
+#   Anyway, pre-release packages may be available in my personal testing
+#   repository. Brave souls add it with:
+#     [eworm-testing]
+#     SigLevel = Required
+#     Server = https://pkgbuild.com/~eworm/$repo/$arch/
+
 pkgbase=systemd-selinux
 pkgname=('systemd-selinux'
          'systemd-libs-selinux'
          'systemd-resolvconf-selinux'
          'systemd-sysvcompat-selinux'
          'systemd-ukify-selinux')
-_tag='257'
+_tag='257.1'
 # Upstream versioning is incompatible with pacman's version comparisons, one
 # way or another. So we replace dashes and tildes with the empty string to
 # make sure pacman's version comparing does the right thing for rc versions:
@@ -56,7 +64,7 @@ source=("git+https://github.com/systemd/systemd#tag=v${_tag}?signed"
         '30-systemd-tmpfiles.hook'
         '30-systemd-udev-reload.hook'
         '30-systemd-update.hook')
-sha512sums=('ed1118ca6dcfc8234a0f14b34ace6d979c93a6fef8b60d57dc0b0a0e5b87c5c9c527e7b17ce3a0696f28d7cd4887c96505b6f20c1e67889d1d681cd026896585'
+sha512sums=('53b14cfadf301a44fdfcaa2fe4b9d2371c85581544093b88e5afcee4e45c5bd8668aaae9dd6663363c24f3b610f9b0d6eb61f00df71d588bce8f6264424203e4'
             '78065bde708118b7d6e4ed492e096c763e4679a1c54bd98750d5d609d8cc2f1373023f308880f14fc923ae7f9fea34824917ef884c0f996b1f43d08ef022c0fb'
             '61032d29241b74a0f28446f8cf1be0e8ec46d0847a61dadb2a4f096e8686d5f57fe5c72bcf386003f6520bc4b5856c32d63bf3efe7eb0bc0deefc9f68159e648'
             'c416e2121df83067376bcaacb58c05b01990f4614ad9de657d74b6da3efa441af251d13bf21e3f0f71ddcb4c9ea658b81da3d915667dc5c309c87ec32a1cb5a5'
@@ -80,6 +88,7 @@ _meson_vcs_tag='false'
 _meson_mode='release'
 _meson_compile=()
 _meson_install=()
+_systemd_src_dir="${pkgbase/-selinux}"
 
 if ((_systemd_UPSTREAM)); then
   _meson_version="${pkgver}"
@@ -93,6 +102,16 @@ if ((_systemd_UPSTREAM)); then
   fi
 fi
 
+# Some heuristics to detect that we are building on OBS, with no network access. Skip
+# git verification, and use the OBS-provided tarball instead. The sources will be
+# unpacked by OBS in $package-$version/
+# SELinux package maintenance note: ignore this, as skipping any form of validation is dangerous
+#if [ -f /.build/build.dist ] && [ -d /usr/src/packages/SOURCES ] &&  [ -d /usr/src/packages/BUILD ] &&  [ -d /usr/src/packages/OTHER ]; then
+#  source[0]="${pkgbase}-${pkgver}.tar.gz"
+#  sha512sums[0]='SKIP'
+#  _systemd_src_dir="${pkgbase}-${pkgver}"
+#fi
+
 _backports=(
 )
 
@@ -100,7 +119,7 @@ _reverts=(
 )
 
 prepare() {
-  cd "${pkgbase/-selinux}"
+  cd "${_systemd_src_dir}"
 
   local _c _l
   for _c in "${_backports[@]}"; do
@@ -178,7 +197,7 @@ build() {
     -Dsbat-distro-url="https://aur.archlinux.org/packages/${pkgname}/"
   )
 
-  arch-meson "${pkgbase/-selinux}" build "${_meson_options[@]}" $MESON_EXTRA_CONFIGURE_OPTIONS
+  arch-meson "${_systemd_src_dir}" build "${_meson_options[@]}" $MESON_EXTRA_CONFIGURE_OPTIONS
 
   meson compile -C build "${_meson_compile[@]}"
 }
