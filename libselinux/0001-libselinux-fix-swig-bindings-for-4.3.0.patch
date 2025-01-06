@@ -1,0 +1,83 @@
+From 8e0e718bae53fff30831b92cd784151d475a20da Mon Sep 17 00:00:00 2001
+From: Petr Lautrbach <lautrbach@redhat.com>
+Date: Wed, 16 Oct 2024 20:48:11 +0200
+Subject: [PATCH] libselinux: fix swig bindings for 4.3.0
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+https://github.com/swig/swig/blob/master/CHANGES.current
+
+"[Python] #2907 Fix returning null from functions with output
+parameters.  Ensures OUTPUT and INOUT typemaps are handled
+consistently wrt return type.
+
+New declaration of SWIG_Python_AppendOutput is now:
+
+  SWIG_Python_AppendOutput(PyObject* result, PyObject* obj, int is_void);
+
+The 3rd parameter is new and the new $isvoid special variable
+should be passed to it, indicating whether or not the wrapped
+function returns void.
+
+Also consider replacing with:
+
+  SWIG_AppendOutput(PyObject* result, PyObject* obj);
+
+which calls SWIG_Python_AppendOutput with same parameters but adding $isvoid
+for final parameter."
+
+Fixes: https://github.com/SELinuxProject/selinux/issues/447
+
+    selinuxswig_python_wrap.c: In function ‘_wrap_security_compute_user’:
+    selinuxswig_python_wrap.c:11499:17: error: too few arguments to function ‘SWIG_Python_AppendOutput’
+    11499 |     resultobj = SWIG_Python_AppendOutput(resultobj, plist);
+          |                 ^~~~~~~~~~~~~~~~~~~~~~~~
+    selinuxswig_python_wrap.c:1248:1: note: declared here
+     1248 | SWIG_Python_AppendOutput(PyObject* result, PyObject* obj, int is_void) {
+          | ^~~~~~~~~~~~~~~~~~~~~~~~
+    selinuxswig_python_wrap.c: In function ‘_wrap_security_compute_user_raw’:
+    selinuxswig_python_wrap.c:11570:17: error: too few arguments to function ‘SWIG_Python_AppendOutput’
+    11570 |     resultobj = SWIG_Python_AppendOutput(resultobj, plist);
+          |                 ^~~~~~~~~~~~~~~~~~~~~~~~
+    selinuxswig_python_wrap.c:1248:1: note: declared here
+     1248 | SWIG_Python_AppendOutput(PyObject* result, PyObject* obj, int is_void) {
+          | ^~~~~~~~~~~~~~~~~~~~~~~~
+    selinuxswig_python_wrap.c: In function ‘_wrap_security_get_boolean_names’:
+    selinuxswig_python_wrap.c:12470:17: error: too few arguments to function ‘SWIG_Python_AppendOutput’
+    12470 |     resultobj = SWIG_Python_AppendOutput(resultobj, list);
+          |                 ^~~~~~~~~~~~~~~~~~~~~~~~
+    selinuxswig_python_wrap.c:1248:1: note: declared here
+     1248 | SWIG_Python_AppendOutput(PyObject* result, PyObject* obj, int is_void) {
+          | ^~~~~~~~~~~~~~~~~~~~~~~~
+    error: command '/usr/bin/gcc' failed with exit code 1
+
+Suggested-by: Jitka Plesnikova <jplesnik@redhat.com>
+Signed-off-by: Petr Lautrbach <lautrbach@redhat.com>
+Acked-by: James Carter <jwcart2@gmail.com>
+
+diff --git a/libselinux/src/selinuxswig_python.i b/libselinux/src/selinuxswig_python.i
+index 17e03b9e36a5..03ed296d5b85 100644
+--- a/libselinux/src/selinuxswig_python.i
++++ b/libselinux/src/selinuxswig_python.i
+@@ -71,7 +71,7 @@ def install(src, dest):
+ 	for (i = 0; i < *$2; i++) {
+ 		PyList_SetItem(list, i, PyString_FromString((*$1)[i]));
+ 	}
+-	$result = SWIG_Python_AppendOutput($result, list);
++	$result = SWIG_AppendOutput($result, list);
+ }
+ 
+ /* return a sid along with the result */
+@@ -108,7 +108,7 @@ def install(src, dest):
+ 		plist = PyList_New(0);
+ 	}
+ 
+-	$result = SWIG_Python_AppendOutput($result, plist);
++	$result = SWIG_AppendOutput($result, plist);
+ }
+ 
+ /* Makes functions in get_context_list.h return a Python list of contexts */
+-- 
+2.46.0
+
