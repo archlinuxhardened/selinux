@@ -9,7 +9,7 @@
 
 pkgname=libselinux
 pkgver=3.7
-pkgrel=1
+pkgrel=2
 pkgdesc="SELinux library and simple utilities"
 arch=('i686' 'x86_64' 'armv6h' 'aarch64')
 url='https://github.com/SELinuxProject/selinux'
@@ -26,10 +26,20 @@ validpgpkeys=(
   'B8682847764DF60DF52D992CBC3905F235179CF1'  # Petr Lautrbach <plautrba@redhat.com>
 )
 source=("https://github.com/SELinuxProject/selinux/releases/download/${pkgver}/${pkgname}-${pkgver}.tar.gz"{,.asc}
+        "0001-libselinux-fix-swig-bindings-for-4.3.0.patch"
         "libselinux.tmpfiles.d")
 sha256sums=('ea03f42d13a4f95757997dba8cf0b26321fac5d2f164418b4cc856a92d2b17bd'
             'SKIP'
+            'd176a9ec5f48decd8443b48403d03d24546f426cd1858f25270b489e06d29942'
             'afe23890fb2e12e6756e5d81bad3c3da33f38a95d072731c0422fbeb0b1fa1fc')
+
+prepare() {
+  cd "${pkgname}-${pkgver}"
+
+  # Apply https://github.com/SELinuxProject/selinux/commit/8e0e718bae53fff30831b92cd784151d475a20da
+  # libselinux: fix swig bindings for 4.3.0
+  patch -Np2 -i "../0001-libselinux-fix-swig-bindings-for-4.3.0.patch"
+}
 
 build() {
   cd "${pkgname}-${pkgver}"
