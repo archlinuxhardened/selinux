@@ -8,11 +8,19 @@
 # This PKGBUILD is maintained on https://github.com/archlinuxhardened/selinux.
 # If you want to help keep it up to date, please open a Pull Request there.
 
+# ➡️ Pushing pre-releases to [core-testing] can cause havoc, especially
+#   as all [core] packages are built there, and may be moved before.
+#   Anyway, pre-release packages may be available in my personal testing
+#   repository. Brave souls add it with:
+#     [eworm-testing]
+#     SigLevel = Required
+#     Server = https://pkgbuild.com/~eworm/$repo/$arch/
+
 pkgbase=util-linux-selinux
 pkgname=(util-linux-selinux util-linux-libs-selinux)
 _tag='2.40.2'
 pkgver="${_tag/-/}"
-pkgrel=1
+pkgrel=3
 pkgdesc='SELinux aware miscellaneous system utilities for Linux'
 url='https://github.com/util-linux/util-linux'
 arch=('x86_64' 'aarch64')
@@ -59,7 +67,7 @@ sha256sums=('ccae05afaddd61119bbf35173f7045d1c8e98cc42c1355f5e9072433ebc42ee1'
             '8bfbee453618ba44d60ba7fb00eced6c62edebfc592f2e75dede08e769ed8931'
             '48d6fba767631e3dd3620cf02a71a74c5d65a525d4c4ce4b5a0b7d9f41ebfea1'
             '3f54249ac2db44945d6d12ec728dcd0d69af0735787a8b078eacd2c67e38155b'
-            '10b0505351263a099163c0d928132706e501dd0a008dac2835b052167b14abe3'
+            'b3d8994c0ab0c50500ed249c90fb709555a369b910e5f3eca758a28d4e73e2d3'
             '7423aaaa09fee7f47baa83df9ea6fef525ff9aec395c8cbd9fe848ceb2643f37'
             '8ccec10a22523f6b9d55e0d6cbf91905a39881446710aa083e935e8073323376'
             'a22e0a037e702170c7d88460cc9c9c2ab1d3e5c54a6985cd4a164ea7beff1b36')

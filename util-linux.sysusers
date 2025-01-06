@@ -1,2 +1,2 @@
-u uuidd 68
+u! uuidd 68 "uuid daemon" -
 g rfkill - - -

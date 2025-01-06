@@ -1,7 +1,7 @@
 pkgbase = util-linux-selinux
 	pkgdesc = SELinux aware miscellaneous system utilities for Linux
 	pkgver = 2.40.2
-	pkgrel = 1
+	pkgrel = 3
 	url = https://github.com/util-linux/util-linux
 	arch = x86_64
 	arch = aarch64
@@ -45,7 +45,7 @@ pkgbase = util-linux-selinux
 	sha256sums = 8bfbee453618ba44d60ba7fb00eced6c62edebfc592f2e75dede08e769ed8931
 	sha256sums = 48d6fba767631e3dd3620cf02a71a74c5d65a525d4c4ce4b5a0b7d9f41ebfea1
 	sha256sums = 3f54249ac2db44945d6d12ec728dcd0d69af0735787a8b078eacd2c67e38155b
-	sha256sums = 10b0505351263a099163c0d928132706e501dd0a008dac2835b052167b14abe3
+	sha256sums = b3d8994c0ab0c50500ed249c90fb709555a369b910e5f3eca758a28d4e73e2d3
 	sha256sums = 7423aaaa09fee7f47baa83df9ea6fef525ff9aec395c8cbd9fe848ceb2643f37
 	sha256sums = 8ccec10a22523f6b9d55e0d6cbf91905a39881446710aa083e935e8073323376
 	sha256sums = a22e0a037e702170c7d88460cc9c9c2ab1d3e5c54a6985cd4a164ea7beff1b36
@@ -73,8 +73,8 @@ pkgname = util-linux-selinux
 	optdepends = words: default dictionary for look
 	provides = rfkill
 	provides = hardlink
-	provides = util-linux=2.40.2-1
-	provides = selinux-util-linux=2.40.2-1
+	provides = util-linux=2.40.2-3
+	provides = selinux-util-linux=2.40.2-3
 	conflicts = rfkill
 	conflicts = hardlink
 	conflicts = util-linux
@@ -100,7 +100,7 @@ pkgname = util-linux-libs-selinux
 	provides = libmount.so
 	provides = libsmartcols.so
 	provides = libuuid.so
-	provides = util-linux-libs=2.40.2-1
+	provides = util-linux-libs=2.40.2-3
 	provides = libutil-linux-selinux
 	conflicts = util-linux-libs
 	conflicts = libutil-linux-selinux
