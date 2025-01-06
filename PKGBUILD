@@ -9,7 +9,7 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=sudo-selinux
-_sudover=1.9.16
+_sudover=1.9.16p2
 pkgrel=1
 pkgver=${_sudover/p/.p}
 pkgdesc="Give certain users the ability to run some commands as root - SELinux support"
@@ -29,7 +29,7 @@ install=${pkgname/-selinux}.install
 source=(https://www.sudo.ws/sudo/dist/${pkgname/-selinux}-$_sudover.tar.gz{,.sig}
         sudo_logsrvd.service
         sudo.pam)
-sha256sums=('c0d84d797f06b732fc573d0b798ae83128c2bc33052057f05b560ec6bcbfa03d'
+sha256sums=('976aa56d3e3b2a75593307864288addb748c9c136e25d95a9cc699aafa77239c'
             'SKIP'
             'bd4bc2f5d85cbe14d7e7acc5008cb4fe62c38de7d42dc6876c87bfaa273c0a6e'
             'd1738818070684a5d2c9b26224906aad69a4fea77aabd960fc2675aee2df1fa2')
