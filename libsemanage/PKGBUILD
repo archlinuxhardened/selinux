@@ -8,7 +8,7 @@
 
 pkgname=libsemanage
 pkgver=3.7
-pkgrel=1
+pkgrel=2
 pkgdesc="SELinux binary policy manipulation library"
 arch=('i686' 'x86_64' 'aarch64')
 url='https://github.com/SELinuxProject/selinux'
@@ -27,10 +27,20 @@ validpgpkeys=(
   'B8682847764DF60DF52D992CBC3905F235179CF1'  # Petr Lautrbach <plautrba@redhat.com>
 )
 source=("https://github.com/SELinuxProject/selinux/releases/download/${pkgver}/${pkgname}-${pkgver}.tar.gz"{,.asc}
+        "0001-libsemanage-fix-swig-bindings-for-4.3.0.patch"
         "semanage.conf")
 sha256sums=('e166cae29a417dab008db9ca0874023f353a3017b07693a036ed97487eda35b1'
             'SKIP'
+            '69314c1bdc34dd03bb5c54c488f5fc1a0f92c7eb4f3958217605e6706cdf90b2'
             '5b0e6929428e095b561701ccdfa9c8b0c3d70dad3fc46e667eb46a85b246a4a0')
+
+prepare() {
+  cd "${pkgname}-${pkgver}"
+
+  # Apply https://github.com/SELinuxProject/selinux/commit/e38815d7b44cac435195c82a54d2bf2517bc4b1a
+  # libsemanage: fix swig bindings for 4.3.0
+  patch -Np2 -i "../0001-libsemanage-fix-swig-bindings-for-4.3.0.patch"
+}
 
 build() {
   cd "${pkgname}-${pkgver}"
