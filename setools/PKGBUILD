@@ -19,7 +19,7 @@
 
 pkgname=setools
 pkgver=4.5.1
-pkgrel=2
+pkgrel=3
 pkgdesc="Policy analysis tools for SELinux"
 groups=('selinux')
 arch=('i686' 'x86_64' 'aarch64')
