@@ -12,36 +12,44 @@
 pkgbase=dbus-selinux
 pkgname=(
   dbus-selinux
+  #dbus-daemon-units # Ignore for SELinux package
   dbus-docs-selinux
 )
-pkgver=1.14.10
-pkgrel=2
+pkgver=1.16.0
+pkgrel=1
 pkgdesc="Freedesktop.org message bus system with SELinux support"
-url="https://wiki.freedesktop.org/www/Software/dbus/"
+url="https://www.freedesktop.org/wiki/Software/dbus/"
 arch=(x86_64 aarch64)
 license=("AFL-2.1 OR GPL-2.0-or-later")
 groups=(selinux)
 depends=(
   audit
-  libcap-ng
   expat
+  glibc
+  libcap-ng
   libselinux
   'systemd-libs-selinux>=242.84-2'
 )
 makedepends=(
   docbook-xsl
   doxygen
+  glib2
+  mallard-ducktype
+  meson
   python
+  qt5-tools
   systemd-selinux
   xmlto
   yelp-tools
 )
 source=(
   https://dbus.freedesktop.org/releases/dbus/dbus-$pkgver.tar.xz{,.asc}
+  0001-Arch-Linux-tweaks.patch
   dbus-reload.hook
 )
-b2sums=('f605b0810dcde6a0753384927131e7f4675be737ad7506a51261717c2622e74b99ac33cc2c199b98e5aa6b9d7c68ef692b8ee9f684f6fdab8d06c6fa861a6f6b'
+b2sums=('a5a3ebe777c1c0296ba7240f9ed29ad329a6578a05baf10a469ce8c7d243791d35aca42a70d04cdd88feea238d081c3c8b0db444df24abcf7ce5ffe9187a0440'
         'SKIP'
+        '3896c994aa7afde605aebb88b7123f33c578ad1ede2dc3e76982dbc021d6994874c5c735d31a66c7b3e9d3cba77ebbba7db05013716bbac14948618b1464e4a8'
         '05ab81bf72e7cf45ad943f5b84eaecef4f06bed94979c579a3e23134cbabd7ea6f65fa9ac252f8b43ceb4a3295e0d2325f06560a044fe7ddf125fc30dfc2b7e2')
 validpgpkeys=(
   DA98F25C0871C49A59EAFF2C4DE8FF2A63C7CC90  # Simon McVittie <simon.mcvittie@collabora.co.uk>
@@ -49,39 +57,26 @@ validpgpkeys=(
 
 prepare() {
   cd dbus-$pkgver
+  patch -Np1 -i ../0001-Arch-Linux-tweaks.patch
 }
 
 build() {
-  local configure_options=(
-    --prefix=/usr
-    --sysconfdir=/etc
-    --localstatedir=/var
-    --libexecdir=/usr/lib/dbus-1.0
-    --runstatedir=/run
-    --with-console-auth-dir=/run/console/
-    --with-dbus-user=dbus
-    --with-system-pid-file=/run/dbus/pid
-    --with-system-socket=/run/dbus/system_bus_socket
-    --with-systemdsystemunitdir=/usr/lib/systemd/system
-    --enable-inotify
-    --enable-libaudit
-    --enable-systemd
-    --enable-user-session
-    --enable-xml-docs
-    --enable-doxygen-docs
-    --enable-ducktype-docs
-    --disable-static
-    --without-x
-    --enable-selinux
+  local meson_options=(
+    -D apparmor=disabled
+    -D dbus_user=dbus
+    -D kqueue=disabled
+    -D launchd=disabled
+    -D relocation=disabled
+    -D selinux=enabled
+    -D x11_autolaunch=disabled
   )
 
-  cd dbus-$pkgver
-  ./configure "${configure_options[@]}"
-  make
+  arch-meson dbus-$pkgver build "${meson_options[@]}"
+  meson compile -C build
 }
 
 check() {
-  make -C dbus-$pkgver -j1 check
+  meson test -C build --print-errorlogs
 }
 
 _pick() {
@@ -111,21 +106,15 @@ package_dbus-selinux() {
   conflicts=(libdbus libdbus-selinux "${pkgname/-selinux}" "selinux-${pkgname/-selinux}")
   replaces=(libdbus libdbus-selinux)
 
-  cd dbus-$pkgver
-  DESTDIR="$pkgdir" make install
-
-  rm -r "$pkgdir"/{etc,var}
+  meson install -C build --destdir "$pkgdir"
 
   _pick unit "$pkgdir"/usr/lib/systemd/{system,user}/dbus.service
   _pick docs "$pkgdir"/usr/share/doc
 
-  # We have a pre-assigned uid (81)
-  echo 'u dbus 81 "System Message Bus"' |
-    install -Dm644 /dev/stdin "$pkgdir/usr/lib/sysusers.d/dbus.conf"
+  install -Dt "$pkgdir/usr/share/libalpm/hooks" -m644 *.hook
 
-  install -Dt "$pkgdir/usr/share/libalpm/hooks" -m644 ../*.hook
-
-  install -Dt "$pkgdir/usr/share/licenses/$pkgname" -m644 COPYING
+  install -Dt "$pkgdir/usr/share/licenses/$pkgname" -m644 \
+    dbus-$pkgver/COPYING dbus-$pkgver/LICENSES/AFL-2.1.txt
 }
 
 package_dbus-docs-selinux() {
@@ -134,6 +123,9 @@ package_dbus-docs-selinux() {
   conflicts=("${pkgname/-selinux}")
 
   mv docs/* "$pkgdir"
+
+  install -Dt "$pkgdir/usr/share/licenses/$pkgname" -m644 \
+    dbus-$pkgver/COPYING dbus-$pkgver/LICENSES/AFL-2.1.txt
 }
 
 # vim:set sw=2 sts=-1 et:

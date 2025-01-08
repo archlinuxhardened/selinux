@@ -1,0 +1,43 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: "Jan Alexander Steffens (heftig)" <heftig@archlinux.org>
+Date: Tue, 17 Dec 2024 09:09:09 +0100
+Subject: [PATCH] Arch Linux tweaks
+
+- Remove legacy config
+- Don't package runstatedir
+- Use our preassigned message bus UID (81)
+---
+ bus/meson.build             | 2 --
+ bus/sysusers.d/dbus.conf.in | 2 +-
+ 2 files changed, 1 insertion(+), 3 deletions(-)
+
+diff --git a/bus/meson.build b/bus/meson.build
+index 176894d62c2e..0fffe8c18dbf 100644
+--- a/bus/meson.build
++++ b/bus/meson.build
+@@ -84,7 +84,6 @@ if use_systemd
+     endif
+ endif
+ 
+-subdir('legacy-config')
+ 
+ 
+ libdbus_daemon_internal_sources = [
+@@ -190,7 +189,6 @@ install_emptydirs += [
+ 
+ if platform_unix
+     install_emptydirs += [
+-        runstatedir / 'dbus',
+         get_option('datadir') / 'dbus-1' / 'system.d',
+         get_option('datadir') / 'dbus-1' / 'system-services',
+     ]
+diff --git a/bus/sysusers.d/dbus.conf.in b/bus/sysusers.d/dbus.conf.in
+index fb35702ddfb7..f01000b83158 100644
+--- a/bus/sysusers.d/dbus.conf.in
++++ b/bus/sysusers.d/dbus.conf.in
+@@ -2,4 +2,4 @@
+ # at boot on systemd-based systems that ship with an unpopulated
+ # /etc. See sysusers.d(5) for details.
+ 
+-u @DBUS_USER@ - "System Message Bus"
++u @DBUS_USER@ 81 "System Message Bus"
