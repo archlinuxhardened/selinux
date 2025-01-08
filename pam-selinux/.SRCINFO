@@ -1,35 +1,36 @@
 pkgbase = pam-selinux
 	pkgdesc = SELinux aware PAM (Pluggable Authentication Modules) library
-	pkgver = 1.6.1
-	pkgrel = 3
+	pkgver = 1.7.0
+	pkgrel = 1
 	url = http://linux-pam.org
 	arch = x86_64
 	arch = aarch64
 	groups = selinux
 	license = GPL-2.0-only
-	makedepends = git
-	makedepends = flex
-	makedepends = w3m
-	makedepends = libxslt
 	makedepends = docbook-xml
-	makedepends = docbook5-xml
 	makedepends = docbook-xsl
+	makedepends = docbook5-xml
+	makedepends = flex
 	makedepends = fop
-	depends = glibc
-	depends = libtirpc
+	makedepends = git
+	makedepends = libxslt
+	makedepends = meson
+	makedepends = w3m
 	depends = audit
-	depends = libselinux
-	depends = pambase-selinux
+	depends = glibc
 	depends = libaudit.so
-	depends = libxcrypt
 	depends = libcrypt.so
 	depends = libnsl
+	depends = libselinux
+	depends = libtirpc
+	depends = libxcrypt
+	depends = pambase-selinux
 	depends = systemd-libs
 	provides = libpam.so
 	provides = libpamc.so
 	provides = libpam_misc.so
-	provides = pam=1.6.1-3
-	provides = selinux-pam=1.6.1-3
+	provides = pam=1.7.0-1
+	provides = selinux-pam=1.7.0-1
 	conflicts = pam
 	conflicts = selinux-pam
 	options = !emptydirs
@@ -43,11 +44,11 @@ pkgbase = pam-selinux
 	backup = etc/security/pam_env.conf
 	backup = etc/security/time.conf
 	backup = etc/environment
-	source = pam::git+https://github.com/linux-pam/linux-pam?signed#tag=v1.6.1
+	source = pam::git+https://github.com/linux-pam/linux-pam?signed#tag=v1.7.0
 	source = pam.tmpfiles
 	validpgpkeys = 8C6BFD92EE0F42EDF91A6A736D1A7F052E5924BB
 	validpgpkeys = 296D6F29A020808E8717A8842DB5BD89A340AEB7
-	b2sums = 12891f9064ce7f00d22452d8ff39c14af87c24f9fbf3eab65e475a7d2a592d2b1c1d585f3718b2fa72f277a8ad1faa17149fe0a911bfabdaa4a2957c32e29fe3
+	b2sums = 88ecba59692fe86f6f6516007b87fb897018cc5f818c106a037f15df4dda7c31e50fbfcb137493d49cb754e41f2f69a60f24ffea3374ff5e38ce6263bfa7abac
 	b2sums = 36582c80020008c3810b311a2e126d2fb4ffc94e565ea4c0c0ab567fdb92943e269781ffa548550742feb685847c26c340906c7454dcc31df4e1e47d511d8d6f
 
 pkgname = pam-selinux
