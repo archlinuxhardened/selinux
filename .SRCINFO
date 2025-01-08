@@ -1,35 +1,43 @@
 pkgbase = dbus-selinux
 	pkgdesc = Freedesktop.org message bus system with SELinux support
-	pkgver = 1.14.10
-	pkgrel = 2
-	url = https://wiki.freedesktop.org/www/Software/dbus/
+	pkgver = 1.16.0
+	pkgrel = 1
+	url = https://www.freedesktop.org/wiki/Software/dbus/
 	arch = x86_64
 	arch = aarch64
 	groups = selinux
 	license = AFL-2.1 OR GPL-2.0-or-later
 	makedepends = docbook-xsl
 	makedepends = doxygen
+	makedepends = glib2
+	makedepends = mallard-ducktype
+	makedepends = meson
 	makedepends = python
+	makedepends = qt5-tools
 	makedepends = systemd-selinux
 	makedepends = xmlto
 	makedepends = yelp-tools
 	depends = audit
-	depends = libcap-ng
 	depends = expat
+	depends = glibc
+	depends = libcap-ng
 	depends = libselinux
 	depends = systemd-libs-selinux>=242.84-2
-	source = https://dbus.freedesktop.org/releases/dbus/dbus-1.14.10.tar.xz
-	source = https://dbus.freedesktop.org/releases/dbus/dbus-1.14.10.tar.xz.asc
+	source = https://dbus.freedesktop.org/releases/dbus/dbus-1.16.0.tar.xz
+	source = https://dbus.freedesktop.org/releases/dbus/dbus-1.16.0.tar.xz.asc
+	source = 0001-Arch-Linux-tweaks.patch
 	source = dbus-reload.hook
 	validpgpkeys = DA98F25C0871C49A59EAFF2C4DE8FF2A63C7CC90
-	b2sums = f605b0810dcde6a0753384927131e7f4675be737ad7506a51261717c2622e74b99ac33cc2c199b98e5aa6b9d7c68ef692b8ee9f684f6fdab8d06c6fa861a6f6b
+	b2sums = a5a3ebe777c1c0296ba7240f9ed29ad329a6578a05baf10a469ce8c7d243791d35aca42a70d04cdd88feea238d081c3c8b0db444df24abcf7ce5ffe9187a0440
 	b2sums = SKIP
+	b2sums = 3896c994aa7afde605aebb88b7123f33c578ad1ede2dc3e76982dbc021d6994874c5c735d31a66c7b3e9d3cba77ebbba7db05013716bbac14948618b1464e4a8
 	b2sums = 05ab81bf72e7cf45ad943f5b84eaecef4f06bed94979c579a3e23134cbabd7ea6f65fa9ac252f8b43ceb4a3295e0d2325f06560a044fe7ddf125fc30dfc2b7e2
 
 pkgname = dbus-selinux
 	depends = audit
-	depends = libcap-ng
 	depends = expat
+	depends = glibc
+	depends = libcap-ng
 	depends = libselinux
 	depends = systemd-libs-selinux>=242.84-2
 	depends = libaudit.so
@@ -39,8 +47,8 @@ pkgname = dbus-selinux
 	provides = libdbus
 	provides = libdbus-1.so
 	provides = libdbus-selinux
-	provides = dbus=1.14.10-2
-	provides = selinux-dbus=1.14.10-2
+	provides = dbus=1.16.0-1
+	provides = selinux-dbus=1.16.0-1
 	conflicts = libdbus
 	conflicts = libdbus-selinux
 	conflicts = dbus
