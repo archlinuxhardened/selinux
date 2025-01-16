@@ -87,6 +87,12 @@ def get_pkgbuild_pkgver(pkgbuild_filepath: Path) -> Optional[Tuple[str, int]]:
                 pkgver = matches.group(1)
                 continue
 
+            # systemd and util-linux use quotes
+            matches = re.match(r"^pkgver='([0-9a-zA-Z.-]+)'\s*$", line)
+            if matches is not None:
+                pkgver = matches.group(1)
+                continue
+
             # linux package defines _srcver
             matches = re.match(r"^_srcver=([0-9a-zA-Z.-]+)\s*$", line)
             if matches is not None:
@@ -103,13 +109,13 @@ def get_pkgbuild_pkgver(pkgbuild_filepath: Path) -> Optional[Tuple[str, int]]:
                 pkgver = matches.group(1)
                 continue
 
-            # systemd package defines _tag_name
+            # Old systemd package defines _tag_name
             matches = re.match(r"^_tag_name=([0-9.rc-]+)\s$", line)
             if matches is not None:
                 pkgver = matches.group(1)
                 continue
 
-            # util-linux package defines _tag
+            # Old util-linux package defines _tag
             matches = re.match(r"^_tag='([0-9.rc-]+)'\s*$", line)
             if matches is not None:
                 pkgver = matches.group(1).replace("-rc", "rc")
