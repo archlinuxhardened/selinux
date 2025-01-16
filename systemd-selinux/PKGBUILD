@@ -19,13 +19,14 @@ pkgname=('systemd-selinux'
          'systemd-libs-selinux'
          'systemd-resolvconf-selinux'
          'systemd-sysvcompat-selinux'
+         'systemd-tests-selinux'
          'systemd-ukify-selinux')
 _tag='257.1'
 # Upstream versioning is incompatible with pacman's version comparisons, one
-# way or another. So we replace dashes and tildes with the empty string to
-# make sure pacman's version comparing does the right thing for rc versions:
-pkgver="${_tag/[-~]/}"
-pkgrel=1
+# way or another. We use proper version for pacman here (no dash for rc
+# release!), and change in source array below.
+pkgver='257.2'
+pkgrel=2
 arch=('x86_64' 'aarch64')
 license=('LGPL-2.1-or-later')
 url='https://www.github.com/systemd/systemd'
@@ -43,7 +44,9 @@ validpgpkeys=('63CDA1E5D3FC22B998D20DD6327F26951A015CC4'  # Lennart Poettering <
               'A9EA9081724FFAE0484C35A1A81CEA22BC8C7E2E'  # Luca Boccassi <luca.boccassi@gmail.com>
               '9A774DB5DB996C154EBBFBFDA0099A18E29326E1'  # Yu Watanabe <watanabe.yu+github@gmail.com>
               '5C251B5FC54EB2F80F407AAAC54CA336CFEB557E') # Zbigniew Jędrzejewski-Szmek <zbyszek@in.waw.pl>
-source=("git+https://github.com/systemd/systemd#tag=v${_tag}?signed"
+# For pacman's version comparisons $pkgver is missing the dash that would be
+# in an upstream rc version so add it back when fetching the tag from github.
+source=("git+https://github.com/systemd/systemd#tag=v${pkgver/rc/-rc}?signed"
         '0001-Use-Arch-Linux-device-access-groups.patch'
         # bootloader files
         'arch.conf'
@@ -64,7 +67,7 @@ source=("git+https://github.com/systemd/systemd#tag=v${_tag}?signed"
         '30-systemd-tmpfiles.hook'
         '30-systemd-udev-reload.hook'
         '30-systemd-update.hook')
-sha512sums=('53b14cfadf301a44fdfcaa2fe4b9d2371c85581544093b88e5afcee4e45c5bd8668aaae9dd6663363c24f3b610f9b0d6eb61f00df71d588bce8f6264424203e4'
+sha512sums=('60e09576738abf1d328d06daae8981780a9a4facc5b09e2a3ae24b8461e23d3be2a192a2261ec0e85f004a89eb77e76c4483b268f3d4d918146baf5b201fa49d'
             '78065bde708118b7d6e4ed492e096c763e4679a1c54bd98750d5d609d8cc2f1373023f308880f14fc923ae7f9fea34824917ef884c0f996b1f43d08ef022c0fb'
             '61032d29241b74a0f28446f8cf1be0e8ec46d0847a61dadb2a4f096e8686d5f57fe5c72bcf386003f6520bc4b5856c32d63bf3efe7eb0bc0deefc9f68159e648'
             'c416e2121df83067376bcaacb58c05b01990f4614ad9de657d74b6da3efa441af251d13bf21e3f0f71ddcb4c9ea658b81da3d915667dc5c309c87ec32a1cb5a5'
@@ -84,22 +87,10 @@ sha512sums=('53b14cfadf301a44fdfcaa2fe4b9d2371c85581544093b88e5afcee4e45c5bd8668
             '825b9dd0167c072ba62cabe0677e7cd20f2b4b850328022540f122689d8b25315005fa98ce867cf6e7460b2b26df16b88bb3b5c9ebf721746dce4e2271af7b97')
 
 _meson_version="${pkgver}-${pkgrel}"
-_meson_vcs_tag='false'
-_meson_mode='release'
-_meson_compile=()
-_meson_install=()
 _systemd_src_dir="${pkgbase/-selinux}"
 
 if ((_systemd_UPSTREAM)); then
   _meson_version="${pkgver}"
-  _meson_vcs_tag='true'
-  _meson_mode='developer'
-  pkgname+=('systemd-tests')
-  if ((_systemd_QUIET)); then
-    _meson_install=('--quiet')
-  else
-    _meson_compile=('--verbose')
-  fi
 fi
 
 # Some heuristics to detect that we are building on OBS, with no network access. Skip
@@ -107,7 +98,7 @@ fi
 # unpacked by OBS in $package-$version/
 # SELinux package maintenance note: ignore this, as skipping any form of validation is dangerous
 #if [ -f /.build/build.dist ] && [ -d /usr/src/packages/SOURCES ] &&  [ -d /usr/src/packages/BUILD ] &&  [ -d /usr/src/packages/OTHER ]; then
-#  source[0]="${pkgbase}-${pkgver}.tar.gz"
+#  source[0]="$(find . -name "${pkgbase}-${pkgver}.tar.*" -print -quit)"
 #  sha512sums[0]='SKIP'
 #  _systemd_src_dir="${pkgbase}-${pkgver}"
 #fi
@@ -154,9 +145,9 @@ build() {
 
   local _meson_options=(
     -Dversion-tag="${_meson_version}-arch"
-    -Dvcs-tag="${_meson_vcs_tag}"
+    -Dvcs-tag=false
     -Dshared-lib-tag="${_meson_version}"
-    -Dmode="${_meson_mode}"
+    -Dmode=release
 
     -Dapparmor=disabled
     -Dbootloader=enabled
@@ -199,7 +190,7 @@ build() {
 
   arch-meson "${_systemd_src_dir}" build "${_meson_options[@]}" $MESON_EXTRA_CONFIGURE_OPTIONS
 
-  meson compile -C build "${_meson_compile[@]}"
+  meson compile -C build
 }
 
 check() {
@@ -258,7 +249,7 @@ package_systemd-selinux() {
           etc/udev/udev.conf)
   install=systemd.install
 
-  meson install -C build --no-rebuild --destdir "$pkgdir" "${_meson_install[@]}"
+  meson install -C build --no-rebuild --destdir "$pkgdir" --quiet
 
   # we'll create this on installation
   rmdir "$pkgdir"/var/log/journal/remote
