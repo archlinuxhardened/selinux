@@ -11,7 +11,7 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=coreutils-selinux
-pkgver=9.5
+pkgver=9.6
 pkgrel=2
 pkgdesc='The basic file, shell and text manipulation utilities of the GNU operating system with SELinux support'
 arch=('x86_64' 'aarch64')
@@ -41,13 +41,14 @@ provides=("${pkgname/-selinux}=${pkgver}-${pkgrel}"
           "selinux-${pkgname/-selinux}=${pkgver}-${pkgrel}")
 source=(
   git+https://git.savannah.gnu.org/git/coreutils.git?signed#tag=v${pkgver}
-  gcc14-gnulib-lto.patch
+  # 915004f403cb25fadb207ddfdbe6a2f43bd44fac.patch::https://git.savannah.gnu.org/gitweb/"?p=coreutils.git;a=patch;h=915004f403cb25fadb207ddfdbe6a2f43bd44fac"
+  915004f403cb25fadb207ddfdbe6a2f43bd44fac.patch
 )
 validpgpkeys=(
  6C37DC12121A5006BC1DB804DF6FD971306037D9 # Pádraig Brady
 )
-b2sums=('7b48eaa372037f1162335dacbc6460a1455e7b6c73badefd631b1a47cfab6072db938a25ce9bdba68c2b3ac13e9c64df06fef6f135d2979199cb09f41f83454a'
-        '1264b815101ebf98ce846ac96a649cc7964624ae0c140f23d41f2d2e8292f67b0c0cad3d66f6329a2d21c530b1cfbff65ef378abd8e49f3a1ac972a1cf88366d')
+b2sums=('8d8ee559af5401564314c87e6b2affb670d6de59546b23dab3fa5235d6d3c71f841f91dcb6daf9bf38db25ebc3c21db4f9a536568744fabe3d02bcf9430c90ca'
+        'd365086f33ffd770c8f457348561ed4120919c84f1bd4126495cd339f85a1fbf99845e1b17032a4ea579a93986f45ad71add1cd997e6a43235852087eac1279d')
 
 prepare() {
   cd "${pkgname/-selinux}"
