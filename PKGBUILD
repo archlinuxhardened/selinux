@@ -7,15 +7,15 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=libsemanage
-pkgver=3.7
-pkgrel=2
+pkgver=3.8
+pkgrel=1
 pkgdesc="SELinux binary policy manipulation library"
 arch=('i686' 'x86_64' 'aarch64')
 url='https://github.com/SELinuxProject/selinux'
 license=('LGPL2.1')
 groups=('selinux')
 makedepends=('flex' 'pkgconf' 'python' 'ruby' 'swig')
-depends=('libselinux>=3.7' 'audit')
+depends=('libselinux>=3.8' 'audit')
 optdepends=('python: python bindings'
             'ruby: ruby bindings')
 options=(!emptydirs) # For /var/lib/selinux
@@ -24,23 +24,13 @@ conflicts=("selinux-usr-${pkgname}")
 provides=("selinux-usr-${pkgname}=${pkgver}-${pkgrel}")
 validpgpkeys=(
   '63191CE94183098689CAB8DB7EF137EC935B0EAF'  # Jason Zaman <perfinion@gentoo.org>
-  'B8682847764DF60DF52D992CBC3905F235179CF1'  # Petr Lautrbach <plautrba@redhat.com>
+  '68D21823342A13683AEB3E4EFB4C685B5DC1C13E'  # Petr Lautrbach <lautrbach@redhat.com>
 )
 source=("https://github.com/SELinuxProject/selinux/releases/download/${pkgver}/${pkgname}-${pkgver}.tar.gz"{,.asc}
-        "0001-libsemanage-fix-swig-bindings-for-4.3.0.patch"
         "semanage.conf")
-sha256sums=('e166cae29a417dab008db9ca0874023f353a3017b07693a036ed97487eda35b1'
+sha256sums=('aac95988a572cc897a1ac1be77d360be1171fc0b2d7c66195a745601baf25bef'
             'SKIP'
-            '69314c1bdc34dd03bb5c54c488f5fc1a0f92c7eb4f3958217605e6706cdf90b2'
             '5b0e6929428e095b561701ccdfa9c8b0c3d70dad3fc46e667eb46a85b246a4a0')
-
-prepare() {
-  cd "${pkgname}-${pkgver}"
-
-  # Apply https://github.com/SELinuxProject/selinux/commit/e38815d7b44cac435195c82a54d2bf2517bc4b1a
-  # libsemanage: fix swig bindings for 4.3.0
-  patch -Np2 -i "../0001-libsemanage-fix-swig-bindings-for-4.3.0.patch"
-}
 
 build() {
   cd "${pkgname}-${pkgver}"
