@@ -8,38 +8,28 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=libselinux
-pkgver=3.7
-pkgrel=2
+pkgver=3.8
+pkgrel=1
 pkgdesc="SELinux library and simple utilities"
 arch=('i686' 'x86_64' 'armv6h' 'aarch64')
 url='https://github.com/SELinuxProject/selinux'
 license=('custom')
 groups=('selinux')
 makedepends=('pkgconf' 'python' 'python-pip' 'python-setuptools' 'ruby' 'xz' 'swig')
-depends=('libsepol>=3.7' 'pcre2')
+depends=('libsepol>=3.8' 'pcre2')
 optdepends=('python: python bindings'
             'ruby: ruby bindings')
 conflicts=("selinux-usr-${pkgname}")
 provides=("selinux-usr-${pkgname}=${pkgver}-${pkgrel}")
 validpgpkeys=(
   '63191CE94183098689CAB8DB7EF137EC935B0EAF'  # Jason Zaman <perfinion@gentoo.org>
-  'B8682847764DF60DF52D992CBC3905F235179CF1'  # Petr Lautrbach <plautrba@redhat.com>
+  '68D21823342A13683AEB3E4EFB4C685B5DC1C13E'  # Petr Lautrbach <lautrbach@redhat.com>
 )
 source=("https://github.com/SELinuxProject/selinux/releases/download/${pkgver}/${pkgname}-${pkgver}.tar.gz"{,.asc}
-        "0001-libselinux-fix-swig-bindings-for-4.3.0.patch"
         "libselinux.tmpfiles.d")
-sha256sums=('ea03f42d13a4f95757997dba8cf0b26321fac5d2f164418b4cc856a92d2b17bd'
+sha256sums=('0c3756bca047c9270281d7c4dcdecd000b72e38a183c930661eba9690839b541'
             'SKIP'
-            'd176a9ec5f48decd8443b48403d03d24546f426cd1858f25270b489e06d29942'
             'afe23890fb2e12e6756e5d81bad3c3da33f38a95d072731c0422fbeb0b1fa1fc')
-
-prepare() {
-  cd "${pkgname}-${pkgver}"
-
-  # Apply https://github.com/SELinuxProject/selinux/commit/8e0e718bae53fff30831b92cd784151d475a20da
-  # libselinux: fix swig bindings for 4.3.0
-  patch -Np2 -i "../0001-libselinux-fix-swig-bindings-for-4.3.0.patch"
-}
 
 build() {
   cd "${pkgname}-${pkgver}"
