@@ -7,7 +7,7 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=libsepol
-pkgver=3.7
+pkgver=3.8
 pkgrel=1
 pkgdesc="SELinux binary policy manipulation library"
 arch=('i686' 'x86_64' 'armv6h' 'aarch64')
@@ -22,10 +22,10 @@ conflicts=("selinux-usr-${pkgname}")
 provides=("selinux-usr-${pkgname}=${pkgver}-${pkgrel}")
 validpgpkeys=(
   '63191CE94183098689CAB8DB7EF137EC935B0EAF'  # Jason Zaman <perfinion@gentoo.org>
-  'B8682847764DF60DF52D992CBC3905F235179CF1'  # Petr Lautrbach <plautrba@redhat.com>
+  '68D21823342A13683AEB3E4EFB4C685B5DC1C13E'  # Petr Lautrbach <lautrbach@redhat.com>
 )
 source=("https://github.com/SELinuxProject/selinux/releases/download/${pkgver}/${pkgname}-${pkgver}.tar.gz"{,.asc})
-sha256sums=('cd741e25244e7ef6cd934d633614131a266c3eaeab33d8bfa45e8a93b45cc901'
+sha256sums=('844fbdbf02334b9ce03833ad8a671053f67b4076d72db4f03e0ee2665ec2eb55'
             'SKIP')
 
 build() {
