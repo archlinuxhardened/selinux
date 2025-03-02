@@ -4,7 +4,7 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=secilc
-pkgver=3.7
+pkgver=3.8
 pkgrel=1
 pkgdesc="SELinux Common Intermediate Language Compiler"
 groups=('selinux')
@@ -13,13 +13,13 @@ url='https://github.com/SELinuxProject/cil/wiki'
 license=('custom')
 makedepends=('xmlto' 'docbook-xml' 'docbook-xsl')
 checkdepends=('checkpolicy')
-depends=('libsepol>=3.7')
+depends=('libsepol>=3.8')
 validpgpkeys=(
   '63191CE94183098689CAB8DB7EF137EC935B0EAF'  # Jason Zaman <perfinion@gentoo.org>
-  'B8682847764DF60DF52D992CBC3905F235179CF1'  # Petr Lautrbach <plautrba@redhat.com>
+  '68D21823342A13683AEB3E4EFB4C685B5DC1C13E'  # Petr Lautrbach <lautrbach@redhat.com>
 )
 source=("https://github.com/SELinuxProject/selinux/releases/download/${pkgver}/${pkgname}-${pkgver}.tar.gz"{,.asc})
-sha256sums=('0802e920b779e9e915bb7e68ee22e995f99776554cfcdf9a2af6cb7c3b9873dc'
+sha256sums=('1db6835f1ebed659a3f6703df58571a8ef05a26f81472e25af07e185f1dbcd5a'
             'SKIP')
 
 build() {
