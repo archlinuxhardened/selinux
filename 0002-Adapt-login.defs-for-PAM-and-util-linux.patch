@@ -1,4 +1,4 @@
-From 81b4093db458e214a686aca5bdcc887581b6095d Mon Sep 17 00:00:00 2001
+From 22a98c8c9f6a6b77a5fdf69085ac881527d62541 Mon Sep 17 00:00:00 2001
 From: David Runge <dvzrv@archlinux.org>
 Date: Mon, 31 Oct 2022 09:45:13 +0100
 Subject: [PATCH 2/3] Adapt login.defs for PAM and util-linux
@@ -405,7 +405,7 @@ index 33622c29..797ca6b3 100644
  # Select the HMAC cryptography algorithm.
  # Used in pam_timestamp module to calculate the keyed-hash message
 diff --git a/man/login.defs.5.xml b/man/login.defs.5.xml
-index 05ef5125..1ddf537e 100644
+index 7263395c..e873b215 100644
 --- a/man/login.defs.5.xml
 +++ b/man/login.defs.5.xml
 @@ -7,70 +7,38 @@
@@ -581,7 +581,7 @@ index 05ef5125..1ddf537e 100644
  	    <phrase condition="sha_crypt">SHA_CRYPT_MAX_ROUNDS
  	    SHA_CRYPT_MIN_ROUNDS</phrase>
  	    <phrase condition="yescrypt">YESCRYPT_COST_FACTOR</phrase>
-@@ -352,35 +288,6 @@
+@@ -351,35 +287,6 @@
  	  <para>LASTLOG_UID_MAX</para>
  	</listitem>
        </varlistentry>
@@ -617,7 +617,7 @@ index 05ef5125..1ddf537e 100644
        <varlistentry>
  	<term>newgrp / sg</term>
  	<listitem>
-@@ -397,7 +304,7 @@
+@@ -396,7 +303,7 @@
  	    BCRYPT_MIN_ROUNDS</phrase>
  	    ENCRYPT_METHOD
  	    GID_MAX GID_MIN
@@ -626,7 +626,7 @@ index 05ef5125..1ddf537e 100644
  	    HOME_MODE
  	    PASS_MAX_DAYS PASS_MIN_DAYS PASS_WARN_AGE
  	    <phrase condition="sha_crypt">SHA_CRYPT_MAX_ROUNDS
-@@ -417,8 +324,7 @@
+@@ -416,8 +323,7 @@
  	  <para>
  	    <phrase condition="bcrypt">BCRYPT_MAX_ROUNDS
  	    BCRYPT_MIN_ROUNDS</phrase>
@@ -636,7 +636,7 @@ index 05ef5125..1ddf537e 100644
  	    <phrase condition="sha_crypt">SHA_CRYPT_MAX_ROUNDS
  	    SHA_CRYPT_MIN_ROUNDS</phrase>
  	    <phrase condition="yescrypt">YESCRYPT_COST_FACTOR</phrase>
-@@ -451,32 +357,6 @@
+@@ -450,32 +356,6 @@
  	  </para>
  	</listitem>
        </varlistentry>
@@ -669,7 +669,7 @@ index 05ef5125..1ddf537e 100644
        <varlistentry>
  	<term>useradd</term>
  	<listitem>
-@@ -505,24 +385,6 @@
+@@ -504,24 +384,6 @@
  	  </para>
  	</listitem>
        </varlistentry>
@@ -695,5 +695,5 @@ index 05ef5125..1ddf537e 100644
    </refsect1>
  
 -- 
-2.45.2
+2.48.1
 
