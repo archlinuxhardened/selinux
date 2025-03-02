@@ -4,7 +4,7 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=selinux-sandbox
-pkgver=3.7
+pkgver=3.8
 pkgrel=1
 pkgdesc="sandboxing tool for SELinux"
 arch=('i686' 'x86_64' 'aarch64')
@@ -15,10 +15,10 @@ depends=('libcap-ng' 'selinux-python')
 conflicts=('policycoreutils<2.7')
 validpgpkeys=(
   '63191CE94183098689CAB8DB7EF137EC935B0EAF'  # Jason Zaman <perfinion@gentoo.org>
-  'B8682847764DF60DF52D992CBC3905F235179CF1'  # Petr Lautrbach <plautrba@redhat.com>
+  '68D21823342A13683AEB3E4EFB4C685B5DC1C13E'  # Petr Lautrbach <lautrbach@redhat.com>
 )
 source=("https://github.com/SELinuxProject/selinux/releases/download/${pkgver}/${pkgname}-${pkgver}.tar.gz"{,.asc})
-sha256sums=('ee1541b6e600e9b4c4927056e69bd73062b5aa7667cf7e6ab358b750753c03dc'
+sha256sums=('2ac76d3cf91781ead91311cb1a0d30f97da3807d3aeb6019827b03328ec1ebe7'
             'SKIP')
 
 build() {
