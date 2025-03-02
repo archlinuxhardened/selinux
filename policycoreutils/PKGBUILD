@@ -8,14 +8,14 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=policycoreutils
-pkgver=3.7
+pkgver=3.8
 pkgrel=1
 pkgdesc="SELinux policy core utilities"
 arch=('i686' 'x86_64' 'aarch64')
 url='https://github.com/SELinuxProject/selinux'
 license=('GPL2')
 groups=('selinux')
-depends=('libsemanage>=3.7' 'pam')
+depends=('libsemanage>=3.8' 'pam')
 optdepends=('mcstrans: SELinux MCS translation daemon'
             'restorecond: SELinux daemon that fixes SELinux file contexts'
             'selinux-dbus-config: D-Bus configuration for SELinux'
@@ -27,10 +27,10 @@ conflicts=("selinux-usr-${pkgname}")
 provides=("selinux-usr-${pkgname}=${pkgver}-${pkgrel}")
 validpgpkeys=(
   '63191CE94183098689CAB8DB7EF137EC935B0EAF'  # Jason Zaman <perfinion@gentoo.org>
-  'B8682847764DF60DF52D992CBC3905F235179CF1'  # Petr Lautrbach <plautrba@redhat.com>
+  '68D21823342A13683AEB3E4EFB4C685B5DC1C13E'  # Petr Lautrbach <lautrbach@redhat.com>
 )
 source=("https://github.com/SELinuxProject/selinux/releases/download/${pkgver}/${pkgname}-${pkgver}.tar.gz"{,.asc})
-sha256sums=('58fe4e481edfb4456c114925442e11389df17394925acdba3de211145ce5ea98'
+sha256sums=('2c430b8662aafb3a757251e9d8d62ecaabc1c24be2b2a6ac6e87d3fa08b04e22'
             'SKIP')
 
 build() {
