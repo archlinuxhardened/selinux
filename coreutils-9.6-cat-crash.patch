@@ -1,0 +1,76 @@
+From 7386c291be8e2de115f2e161886e872429edadd7 Mon Sep 17 00:00:00 2001
+From: Paul Eggert <eggert@cs.ucla.edu>
+Date: Fri, 14 Feb 2025 13:10:02 -0800
+Subject: [PATCH] =?utf8?q?cat:=20fix=20plain=20=E2=80=98cat=E2=80=99=20bug?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf8
+Content-Transfer-Encoding: 8bit
+
+* src/cat.c (main): Do not fail with plain âcatâ where input and
+output are both /dev/tty, if the output happens to have O_APPEND set.
+Problem reported by lilydjwg <https://bugs.gnu.org/76255>.
+Also, donât report an error if the seek position is at or after EOF,
+even if O_APPEND is set.
+---
+ NEWS      |  6 +++++-
+ src/cat.c | 26 +++++++++++++-------------
+ 2 files changed, 18 insertions(+), 14 deletions(-)
+
+diff --git a/NEWS b/NEWS
+index c9ba5f196..c6edf16d4 100644
+--- a/NEWS
++++ b/NEWS
+@@ -4,7 +4,11 @@ GNU coreutils NEWS                                    -*- outline -*-
+ 
+ ** Bug fixes
+ 
+-  `ls -Z dir` would crash.
++  'cat' would fail with "input file is output file" if input and
++  output are the same terminal device and the output is append-only.
++  [bug introduced in coreutils-9.6]
++
++  'ls -Z dir' would crash.
+   [bug introduced in coreutils-9.6]
+ 
+ 
+diff --git a/src/cat.c b/src/cat.c
+index 274f844a1..c02210301 100644
+--- a/src/cat.c
++++ b/src/cat.c
+@@ -717,20 +717,20 @@ main (int argc, char **argv)
+           && have_out_dev
+           && stat_buf.st_dev == out_dev && stat_buf.st_ino == out_ino)
+         {
+-          if (out_flags < -1)
+-            out_flags = fcntl (STDOUT_FILENO, F_GETFL);
+-          bool exhausting = 0 <= out_flags && out_flags & O_APPEND;
+-          if (!exhausting)
++          off_t in_pos = lseek (input_desc, 0, SEEK_CUR);
++          if (0 <= in_pos)
+             {
+-              off_t in_pos = lseek (input_desc, 0, SEEK_CUR);
+-              if (0 <= in_pos)
+-                exhausting = in_pos < lseek (STDOUT_FILENO, 0, SEEK_CUR);
+-            }
+-          if (exhausting)
+-            {
+-              error (0, 0, _("%s: input file is output file"), quotef (infile));
+-              ok = false;
+-              goto contin;
++              if (out_flags < -1)
++                out_flags = fcntl (STDOUT_FILENO, F_GETFL);
++              int whence = (0 <= out_flags && out_flags & O_APPEND
++                            ? SEEK_END : SEEK_CUR);
++              if (in_pos < lseek (STDOUT_FILENO, 0, whence))
++                {
++                  error (0, 0, _("%s: input file is output file"),
++                         quotef (infile));
++                  ok = false;
++                  goto contin;
++                }
+             }
+         }
+ 
+-- 
+2.17.1
+
