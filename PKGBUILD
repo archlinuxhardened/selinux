@@ -18,8 +18,8 @@
 
 pkgbase=util-linux-selinux
 pkgname=(util-linux-selinux util-linux-libs-selinux)
-pkgver='2.40.4'
-pkgrel=1
+pkgver='2.41'
+pkgrel=4
 pkgdesc='SELinux aware miscellaneous system utilities for Linux'
 url='https://github.com/util-linux/util-linux'
 arch=('x86_64' 'aarch64')
@@ -36,6 +36,7 @@ makedepends=('asciidoctor'
              'libselinux'
              'libxcrypt'
              'meson'
+             'po4a'
              'python'
              'sqlite'
              'systemd')
@@ -59,19 +60,24 @@ source=("git+https://github.com/util-linux/util-linux#tag=v${pkgver/rc/-rc}?sign
         '60-rfkill.rules'
         'rfkill-unblock_.service'
         'rfkill-block_.service')
-sha256sums=('32b88bea337aa283e4a84a20eb70fe8df5db6c09cfd99bc133e2503e2e6b53d6'
+sha256sums=('bf69afb12389883698078d47ea5ef299d34346ab1c38a885573833ae4b43e5ec'
             '6ffedbc0f7878612d2b23589f1ff2ab15633e1df7963a5d9fc750ec5500c7e7a'
             'ee917d55042f78b8bb03f5467e5233e3e2ddc2fe01e302bc53b218003fe22275'
             '57e057758944f4557762c6def939410c04ca5803cbdd2bfa2153ce47ffe7a4af'
             '8bfbee453618ba44d60ba7fb00eced6c62edebfc592f2e75dede08e769ed8931'
             '48d6fba767631e3dd3620cf02a71a74c5d65a525d4c4ce4b5a0b7d9f41ebfea1'
             '3f54249ac2db44945d6d12ec728dcd0d69af0735787a8b078eacd2c67e38155b'
-            'b3d8994c0ab0c50500ed249c90fb709555a369b910e5f3eca758a28d4e73e2d3'
+            '4a0b3dd8aa6d34dd29e1d153f396cacf908b0d64f7218276cbcab684587c0a0a'
             '7423aaaa09fee7f47baa83df9ea6fef525ff9aec395c8cbd9fe848ceb2643f37'
             '8ccec10a22523f6b9d55e0d6cbf91905a39881446710aa083e935e8073323376'
             'a22e0a037e702170c7d88460cc9c9c2ab1d3e5c54a6985cd4a164ea7beff1b36')
 
 _backports=(
+  # meson: fix po-man installation
+  '56b97db03a56d90f0480885a35b0383afabc2e18'
+
+  # libmount: fix --no-canonicalize regression
+  '77723beaaaca654f72ac9538772e69fbafa8835d'
 )
 
 _reverts=(
@@ -91,6 +97,9 @@ prepare() {
     git log --oneline "${_l}" "${_c}"
     git revert --mainline 1 --no-commit "${_c}"
   done
+
+  # create fully locked system accout
+  sed -i '/^u /s|u|u!|' misc-utils/uuidd-sysusers.conf.in
 
   # do not mark dirty
   sed -i '/dirty=/c dirty=' tools/git-version-gen
