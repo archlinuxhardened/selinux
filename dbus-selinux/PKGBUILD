@@ -15,7 +15,7 @@ pkgname=(
   #dbus-daemon-units # Ignore for SELinux package
   dbus-docs-selinux
 )
-pkgver=1.16.0
+pkgver=1.16.2
 pkgrel=1
 pkgdesc="Freedesktop.org message bus system with SELinux support"
 url="https://www.freedesktop.org/wiki/Software/dbus/"
@@ -33,6 +33,7 @@ depends=(
 makedepends=(
   docbook-xsl
   doxygen
+  git
   glib2
   mallard-ducktype
   meson
@@ -43,12 +44,11 @@ makedepends=(
   yelp-tools
 )
 source=(
-  https://dbus.freedesktop.org/releases/dbus/dbus-$pkgver.tar.xz{,.asc}
+  "git+https://gitlab.freedesktop.org/dbus/dbus.git?signed#tag=dbus-$pkgver"
   0001-Arch-Linux-tweaks.patch
   dbus-reload.hook
 )
-b2sums=('a5a3ebe777c1c0296ba7240f9ed29ad329a6578a05baf10a469ce8c7d243791d35aca42a70d04cdd88feea238d081c3c8b0db444df24abcf7ce5ffe9187a0440'
-        'SKIP'
+b2sums=('669cd4203fbac908db3a20c5b51355d9e84b68c9cc94f8de52e35544a636c6d5d1df8ee2bbdfd6dead53a6bd9865db547aa4af0e913bac697b138c698840d3ce'
         '3896c994aa7afde605aebb88b7123f33c578ad1ede2dc3e76982dbc021d6994874c5c735d31a66c7b3e9d3cba77ebbba7db05013716bbac14948618b1464e4a8'
         '05ab81bf72e7cf45ad943f5b84eaecef4f06bed94979c579a3e23134cbabd7ea6f65fa9ac252f8b43ceb4a3295e0d2325f06560a044fe7ddf125fc30dfc2b7e2')
 validpgpkeys=(
@@ -56,7 +56,7 @@ validpgpkeys=(
 )
 
 prepare() {
-  cd dbus-$pkgver
+  cd dbus
   patch -Np1 -i ../0001-Arch-Linux-tweaks.patch
 }
 
@@ -71,7 +71,7 @@ build() {
     -D x11_autolaunch=disabled
   )
 
-  arch-meson dbus-$pkgver build "${meson_options[@]}"
+  arch-meson dbus build "${meson_options[@]}"
   meson compile -C build
 }
 
@@ -114,7 +114,7 @@ package_dbus-selinux() {
   install -Dt "$pkgdir/usr/share/libalpm/hooks" -m644 *.hook
 
   install -Dt "$pkgdir/usr/share/licenses/$pkgname" -m644 \
-    dbus-$pkgver/COPYING dbus-$pkgver/LICENSES/AFL-2.1.txt
+    dbus/COPYING dbus/LICENSES/AFL-2.1.txt
 }
 
 package_dbus-docs-selinux() {
@@ -125,7 +125,7 @@ package_dbus-docs-selinux() {
   mv docs/* "$pkgdir"
 
   install -Dt "$pkgdir/usr/share/licenses/$pkgname" -m644 \
-    dbus-$pkgver/COPYING dbus-$pkgver/LICENSES/AFL-2.1.txt
+    dbus/COPYING dbus/LICENSES/AFL-2.1.txt
 }
 
 # vim:set sw=2 sts=-1 et:
