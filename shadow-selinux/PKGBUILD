@@ -10,7 +10,7 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=shadow-selinux
-pkgver=4.17.3
+pkgver=4.17.4
 pkgrel=1
 pkgdesc="Password and account management tool suite with support for shadow files and PAM - SELinux support"
 arch=(x86_64 aarch64)
@@ -45,7 +45,7 @@ conflicts=("${pkgname/-selinux}" "selinux-${pkgname/-selinux}")
 provides=("${pkgname/-selinux}=${pkgver}-${pkgrel}"
           "selinux-${pkgname/-selinux}=${pkgver}-${pkgrel}")
 options=(!emptydirs)
-# NOTE: distribution patches are taken from https://gitlab.archlinux.org/archlinux/packaging/upstream/shadow/-/commits/4.17.3.arch2
+# NOTE: distribution patches are taken from https://gitlab.archlinux.org/archlinux/packaging/upstream/shadow/-/commits/4.17.4.arch1
 source=(
   git+$url.git?signed#tag=$pkgver
   0001-Disable-replaced-tools-their-man-pages-and-PAM-integ.patch
@@ -55,7 +55,7 @@ source=(
   shadow.{sysusers,tmpfiles}
   useradd.defaults
 )
-sha512sums=('5912ece0231be61633e6db9c4156424c5fcc3f8da071ae949dd810ca5e3f6d97c905f675659f2c4f1d63c12ab748529a6ff966d8f450dab6be28d33c079d83a7'
+sha512sums=('68ae015b13d9c908a8b1ccbec0c2a9a9024045b7e6ab7c9a04da3deac07ae4ce9e598087140faa96c4314c8d12f5fadbbab4658fb17990647212993bf8b18839'
             '03e3f45dd222dd3b37d84024af53dbbed9c59758d87f1d891111b7d87b32efa9ae38d9b59d45ba1f6393e971a8f89049b8b9ee17ed6d97725cf18e28589ee17b'
             '1299a1c5f1a81782085ed7593f10b08f314e8d2ff14c457772a929d5db6bf84160b3568cb13d9c7251035cdfade58a51b6e2f63da51bcaff586493c83052bb2d'
             '8a51426d756b0e188992d724b73a495b6da05b3a469f182d7a26a55b1d4c6c368018530e190146e0e9e7f8e59ffb2b0bb50ac9478492db049d1a4c8b6a8f30f6'
@@ -64,7 +64,7 @@ sha512sums=('5912ece0231be61633e6db9c4156424c5fcc3f8da071ae949dd810ca5e3f6d97c90
             '5afac4a96b599b0b8ed7be751e7160037c3beb191629928c6520bfd3f2adcd1c55c31029c92c2ff8543e6cd9e37e2cd515ba4e1789c6d66f9c93b4e7f209ee7a'
             '97a6a57c07502e02669dc1a91bffc447dba7d98d208b798d80e07de0d2fdf9d23264453978d2d3d1ba6652ca1f2e22cdadc4309c7b311e83fa71b00ad144f877'
             '706ba6e7fa8298475f2605a28daffef421c9fa8d269cbd5cbcf7f7cb795b40a24d52c20e8d0b73e29e6cd35cd7226b3e9738dc513703e87dde04c1d24087a69c')
-b2sums=('e895e02d43734449d0e17788df51ba55eb92b29ea58b19b1b1b0d3cd0011afab6d7a7ac7a35d65cd2db4138305ea7c9e63f809add7f852431e6640a477fcbf78'
+b2sums=('536294c53f126a4a09ccdc84f21263370b97dd09157fa4e153bc0c7d4a73f5f731948567827c2a15311b266434675a426ff71d870eb09f9ef987ccc07f41ff8c'
         'db105b2db1e53ec8b441028a03102181dc9df4b2d329c2688d15ec070e5b63d5077ab0a8e339e73402f4f2dd0b9af0dc9116589be95d4b82b820a8a632e9639e'
         '48f0fad2ceb08bf47d35419ef292d76cb92a0f823e4f5cf2eb99a371ba95cfa2f85e4539f4f05437ba2b5400f4ab0fecbefc9c6de2568bda8e531876e886e15c'
         '98c7ef4c9e0f2383615972c2b4fc74414b6427510dfd0b5d4da50a0efcbed94081ddb7805aedb707db39eaea8415c28a8b8b0b0eb874d8d906ed4e8cbf6f12c5'
