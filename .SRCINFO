@@ -1,6 +1,6 @@
 pkgbase = systemd-selinux
 	pkgver = 257.5
-	pkgrel = 1
+	pkgrel = 2
 	url = https://www.github.com/systemd/systemd
 	arch = x86_64
 	arch = aarch64
@@ -155,7 +155,7 @@ pkgname = systemd-selinux
 	provides = nss-myhostname
 	provides = systemd-tools=257.5
 	provides = udev=257.5
-	provides = systemd=257.5-1
+	provides = systemd=257.5-2
 	conflicts = nss-myhostname
 	conflicts = systemd-tools
 	conflicts = udev
@@ -196,7 +196,7 @@ pkgname = systemd-libs-selinux
 	provides = libsystemd.so
 	provides = libudev.so
 	provides = libsystemd-selinux
-	provides = systemd-libs=257.5-1
+	provides = systemd-libs=257.5-2
 	conflicts = libsystemd
 	conflicts = libsystemd-selinux
 	conflicts = systemd-libs
@@ -207,15 +207,15 @@ pkgname = systemd-resolvconf-selinux
 	depends = systemd-selinux=257.5
 	provides = openresolv
 	provides = resolvconf
-	provides = systemd-resolvconf=257.5-1
+	provides = systemd-resolvconf=257.5-2
 	conflicts = resolvconf
-	conflicts = systemd-resolvconf=257.5-1
+	conflicts = systemd-resolvconf=257.5-2
 
 pkgname = systemd-sysvcompat-selinux
 	pkgdesc = sysvinit compat for systemd with SELinux support
 	depends = systemd-selinux=257.5
-	provides = systemd-sysvcompat=257.5-1
-	provides = selinux-systemd-sysvcompat=257.5-1
+	provides = systemd-sysvcompat=257.5-2
+	provides = selinux-systemd-sysvcompat=257.5-2
 	conflicts = sysvinit
 	conflicts = systemd-sysvcompat
 	conflicts = selinux-systemd-sysvcompat
@@ -223,7 +223,7 @@ pkgname = systemd-sysvcompat-selinux
 pkgname = systemd-tests-selinux
 	pkgdesc = systemd tests with SELinux support
 	depends = systemd-selinux=257.5
-	provides = systemd-tests=257.5-1
+	provides = systemd-tests=257.5-2
 
 pkgname = systemd-ukify-selinux
 	pkgdesc = Combine kernel and initrd into a signed Unified Kernel Image with SELinux support
@@ -234,4 +234,4 @@ pkgname = systemd-ukify-selinux
 	optdepends = python-pillow: Show the size of splash image
 	optdepends = sbsigntools: Sign the embedded kernel
 	provides = ukify
-	provides = systemd-ukify=257.5-1
+	provides = systemd-ukify=257.5-2
