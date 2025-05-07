@@ -9,7 +9,7 @@
 
 pkgname='cronie-selinux'
 pkgver=1.7.2
-pkgrel=1
+pkgrel=2
 pkgdesc='Daemon that runs specified programs at scheduled times and related tools with SELinux support'
 url='https://github.com/cronie-crond/cronie/'
 license=('custom:BSD')
@@ -25,12 +25,14 @@ source=("https://github.com/cronie-crond/cronie/releases/download/${pkgname/-sel
         '80-cronie.hook'
         'cron-deny'
         'crontab'
-        'default-anacron')
+        'default-anacron'
+        'cronie-1.7.2-fix-for-gcc15.patch')
 sha256sums=('f1da374a15ba7605cf378347f96bc8b678d3d7c0765269c8242cfe5b0789c571'
             'f85e9a68bf3bf446f8a6167f068371c06afffe11ca71935d8ee5487b38b2c9db'
             'ae6e533ecdfc1bd2dd80a9e25acb0260cbe9f00c4e4abee93d552b3660f263fc'
             '64d517a8d011b5cfa6b2433d528498e80fa8d0748c91f1b73e6ded70e776dc35'
-            'c5772fd0df22d807ed6b62edf4052db529aafb626b1bfe8961229fb864039a5c')
+            'c5772fd0df22d807ed6b62edf4052db529aafb626b1bfe8961229fb864039a5c'
+            '0c96be00c25b0c8fbb46df0d6ba1a7b60f2c85b33cb9bcafaf220064fe8d4662')
 backup=('etc/anacrontab'
         'etc/cron.d/0hourly'
         'etc/cron.deny'
@@ -38,6 +40,15 @@ backup=('etc/anacrontab'
         'etc/default/anacron'
         'etc/pam.d/crond'
         'etc/sysconfig/crond')
+
+prepare() {
+	cd "${srcdir}/${pkgname/-selinux}-${pkgver}"
+
+	# Fix compilation issue with GCC 15
+	# https://github.com/cronie-crond/cronie/issues/193
+	# https://github.com/cronie-crond/cronie/commit/09c630c654b2aeff06a90a412cce0a60ab4955a4
+	patch -Np1 -i ../cronie-1.7.2-fix-for-gcc15.patch
+}
 
 build() {
 	cd "${srcdir}/${pkgname/-selinux}-${pkgver}"
