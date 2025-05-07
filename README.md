@@ -31,7 +31,7 @@ Build order
 Remember to build as a non-root user, and to keep a root logged-in console to
 install packages (especially for sudo/shadow/pam packages).
 
-First, we build all packages from the SELinux userspace projet. They do not
+First, we build all packages from the SELinux userspace project. They do not
 replace any official Arch Linux packages:
 
 * libsepol
