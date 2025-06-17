@@ -11,21 +11,19 @@ arch=('any')
 license=('GPL')
 url='https://github.com/archlinuxhardened/selinux'
 groups=('selinux')
-depends=(
-  # Basics
-  'filesystem' 'gcc-libs' 'glibc' 'bash'
+depends=( 'base'
 
   # POSIX tools
-  'coreutils-selinux' 'file' 'findutils-selinux' 'gawk' 'grep' 'procps-ng' 'sed' 'tar'
+  'coreutils-selinux' 'findutils-selinux'
 
   # Standard linux toolset
-  'gettext' 'pciutils' 'psmisc-selinux' 'shadow-selinux' 'util-linux-selinux' 'bzip2' 'gzip' 'xz'
+  'psmisc-selinux' 'shadow-selinux' 'util-linux-selinux'
 
   # Arch Linux specific
-  'licenses' 'pacman' 'systemd-selinux' 'systemd-sysvcompat-selinux' 'selinux-alpm-hook'
+  'systemd-selinux' 'systemd-sysvcompat-selinux' 'selinux-alpm-hook'
 
   # Networking
-  'iputils' 'iproute2-selinux'
+  'iproute2-selinux'
 
   # SELinux packages
   'selinux-refpolicy-arch' 'secilc' 'dbus-selinux' 'selinux-dbus-config' 'mcstrans' 'restorecond'
