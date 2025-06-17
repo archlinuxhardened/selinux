@@ -12,22 +12,7 @@ arch=('any')
 license=('GPL')
 url='https://github.com/archlinuxhardened/selinux'
 groups=('selinux')
-depends=(
+depends=( 'base-devel'
   'base-selinux'
-  'autoconf'
-  'automake'
-  'binutils'
-  'bison'
-  'fakeroot'
-  'flex'
-  'gcc'
-  'groff'
-  'libtool'
-  'm4'
-  'make'
-  'patch'
-  'pkgconf'
   'sudo-selinux'
-  'texinfo'
-  'which'
 )
