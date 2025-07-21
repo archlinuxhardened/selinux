@@ -8,17 +8,19 @@ pkgbase=dbus-broker-selinux
 pkgname=(
   dbus-broker-selinux
 )
-pkgver=36
+pkgver=37
 pkgrel=2
 pkgdesc="Linux D-Bus Message Broker with SELinux support"
 url="https://github.com/bus1/dbus-broker/wiki"
 arch=(x86_64)
-license=("Apache-2.0")
+license=(Apache-2.0)
 groups=(selinux)
 depends=(
   audit
-  libcap-ng
   expat
+  gcc-libs
+  glibc
+  libcap-ng
   systemd-libs
   libselinux
 )
@@ -31,7 +33,7 @@ source=(
   https://github.com/bus1/dbus-broker/releases/download/v$pkgver/${pkgbase/-selinux}-$pkgver.tar.xz{,.asc}
   0001-units-Enable-statically.patch
 )
-b2sums=('84a805982f038f0d9fe62b7f34de8ecbbdbd9b889edba05ab182f00116612545d2bf44d6ea0c6b5e121591a5ab3d2f0f6d5fa3dd413e8c36fe3494e35ac050f3'
+b2sums=('151b176882b28190ff23dfdb5c57af18d365a21f7c7fc345df738f4a55388d929331fe4db917bb0dee51f2ebfc872c05f5310dc709cbf5d230944a94d382dd36'
         'SKIP'
         '02e30f49224835af2d327d6c3eecad5509913ad69b75c6b04d00cb4a8a0c9b8e0c043055d43172a215a4e3729527a2f807115117a9b1d1dc27c5f43259a12e36')
 validpgpkeys=(
@@ -39,7 +41,7 @@ validpgpkeys=(
 )
 
 # https://github.com/bus1/dbus-broker/releases
-sha256sums=('d333d99bd2688135b6d6961e7ad1360099d186078781c87102230910ea4e162b'
+sha256sums=('f819a8db8795fa08c767612e3823fd594694a0990f2543ecf35d6a1a6bf2ab5b'
             'SKIP'
             '20dcaf03d837d0715f71ccce3d393cba06a4b96f89f4fec3b6e35c1de0592d7d')
 
@@ -82,6 +84,7 @@ package_dbus-broker-selinux() {
     libexpat.so
     libsystemd.so
   )
+  install=dbus-broker-selinux.install
   provides=("${pkgname/-selinux}")
   conflicts=("${pkgname/-selinux}")
 

@@ -1,0 +1,4 @@
+[dbus-broker]
+source = "git"
+git = "https://github.com/bus1/dbus-broker.git"
+prefix = "v"

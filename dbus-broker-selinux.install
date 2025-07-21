@@ -1,0 +1,9 @@
+pre_upgrade() {
+  if (( $(vercmp $2 37) < 0 )) && [[ -d run/systemd/system ]]; then
+    # Avoid using Type=notify-reload while an older dbus-broker is running
+    # https://github.com/bus1/dbus-broker/commit/571042229e146ba4bd3bf0182f137626ab81d1f4
+    cp usr/lib/systemd/system/dbus-broker.service -t run/systemd/system
+  fi
+}
+
+# vim:set ft=bash sw=2 sts=-1 et:
