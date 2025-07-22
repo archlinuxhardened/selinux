@@ -28,6 +28,7 @@ for PKG_COMMAND in \
     automake:automake \
     binutils:strip \
     bison:bison \
+    debugedit:debugedit \
     fakeroot:fakeroot \
     file:file \
     findutils:xargs \
