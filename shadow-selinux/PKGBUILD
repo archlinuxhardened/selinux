@@ -10,7 +10,7 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=shadow-selinux
-pkgver=4.17.4
+pkgver=4.18.0
 pkgrel=1
 pkgdesc="Password and account management tool suite with support for shadow files and PAM - SELinux support"
 arch=(x86_64 aarch64)
@@ -45,7 +45,7 @@ conflicts=("${pkgname/-selinux}" "selinux-${pkgname/-selinux}")
 provides=("${pkgname/-selinux}=${pkgver}-${pkgrel}"
           "selinux-${pkgname/-selinux}=${pkgver}-${pkgrel}")
 options=(!emptydirs)
-# NOTE: distribution patches are taken from https://gitlab.archlinux.org/archlinux/packaging/upstream/shadow/-/commits/4.17.4.arch1
+# NOTE: distribution patches are taken from https://gitlab.archlinux.org/archlinux/packaging/upstream/shadow/-/commits/4.18.0.arch1
 source=(
   git+$url.git?signed#tag=$pkgver
   0001-Disable-replaced-tools-their-man-pages-and-PAM-integ.patch
@@ -55,19 +55,19 @@ source=(
   shadow.{sysusers,tmpfiles}
   useradd.defaults
 )
-sha512sums=('68ae015b13d9c908a8b1ccbec0c2a9a9024045b7e6ab7c9a04da3deac07ae4ce9e598087140faa96c4314c8d12f5fadbbab4658fb17990647212993bf8b18839'
-            '03e3f45dd222dd3b37d84024af53dbbed9c59758d87f1d891111b7d87b32efa9ae38d9b59d45ba1f6393e971a8f89049b8b9ee17ed6d97725cf18e28589ee17b'
-            '1299a1c5f1a81782085ed7593f10b08f314e8d2ff14c457772a929d5db6bf84160b3568cb13d9c7251035cdfade58a51b6e2f63da51bcaff586493c83052bb2d'
-            '8a51426d756b0e188992d724b73a495b6da05b3a469f182d7a26a55b1d4c6c368018530e190146e0e9e7f8e59ffb2b0bb50ac9478492db049d1a4c8b6a8f30f6'
+sha512sums=('14275673ac2a7eecf13079cb8896eb49293d5bc5504f7900f359e0f21a107848d207aaf5c43d39cf96c0ee9e289929d1e53d2ecfbb39cfcc8175a86d85337eb8'
+            '127948d66a3be0874d7118e674afc7a15eb9047ea943f7feca81922376ca9bdf52000ad48dca7cb4c32b8f9bd4558eeff4f0701e4944aedc1b1779c35ef26c47'
+            '5e47fef33ccd0cf5ce92a049f8cedc7c8d720740f0407e3f281b294d9538edf17714769c990698320a8c27efc63dce56682d2857b8d7f2108909d66fd314974a'
+            '90f46612970f324f60ab5d997ec202b53a829f1c802ea10c16b8ebd075529f5193eee3aca842a03504a9a492d23e763208ad82904c05e274a02be1b5edd2bd12'
             'e4edf705dd04e088c6b561713eaa1afeb92f42ac13722bff037aede6ac5ad7d4d00828cfb677f7b1ff048db8b6788238c1ab6a71dfcfd3e02ef6cb78ae09a621'
             '2c8689b52029f6aa27d75b8b05b0b36e2fc322cab40fdfbb50cdbe331f61bc84e8db20f012cf9af3de8c4e7fdb10c2d5a4925ca1ba3b70eb5627772b94da84b3'
             '5afac4a96b599b0b8ed7be751e7160037c3beb191629928c6520bfd3f2adcd1c55c31029c92c2ff8543e6cd9e37e2cd515ba4e1789c6d66f9c93b4e7f209ee7a'
             '97a6a57c07502e02669dc1a91bffc447dba7d98d208b798d80e07de0d2fdf9d23264453978d2d3d1ba6652ca1f2e22cdadc4309c7b311e83fa71b00ad144f877'
             '706ba6e7fa8298475f2605a28daffef421c9fa8d269cbd5cbcf7f7cb795b40a24d52c20e8d0b73e29e6cd35cd7226b3e9738dc513703e87dde04c1d24087a69c')
-b2sums=('536294c53f126a4a09ccdc84f21263370b97dd09157fa4e153bc0c7d4a73f5f731948567827c2a15311b266434675a426ff71d870eb09f9ef987ccc07f41ff8c'
-        'db105b2db1e53ec8b441028a03102181dc9df4b2d329c2688d15ec070e5b63d5077ab0a8e339e73402f4f2dd0b9af0dc9116589be95d4b82b820a8a632e9639e'
-        '48f0fad2ceb08bf47d35419ef292d76cb92a0f823e4f5cf2eb99a371ba95cfa2f85e4539f4f05437ba2b5400f4ab0fecbefc9c6de2568bda8e531876e886e15c'
-        '98c7ef4c9e0f2383615972c2b4fc74414b6427510dfd0b5d4da50a0efcbed94081ddb7805aedb707db39eaea8415c28a8b8b0b0eb874d8d906ed4e8cbf6f12c5'
+b2sums=('cd75b95771cf630a8fc8492e871ce7f63ae13ffe756506fb2854eed641bb56c5d18c09bc1e69bc86c324f3940894a7ddc2f9c5ea2baeeae5d9df24ab4221ef69'
+        'c7c1c6d318e2338285bcaed1fb39edf1231e4753e0e2efd72658018fc8e672a8ac49d7d67fa9d760d3a6e1f4227fa248122d7ba535709eb4614ed7f16c1d7803'
+        '589426679cfd58cb6b318641b56bb6902bf0aceffb735dd606da4058af8a9bac24feece4710406cc648aa8cd69ccea22c1ac7ac662b7ee3286e27af2f99461b9'
+        '8b978c97640a87f8baa12a2b0b33370bb79edcc394a28801c8d7ebd304de8485370768b7fc5f7b4c64359b1018988d182dc4b33deecec93add48e636223dd6b7'
         '5cfc936555aa2b2e15f8830ff83764dad6e11a80e2a102c5f2bd3b7c83db22a5457a3afdd182e3648c9d7d5bca90fa550f59576d0ac47a11a31dfb636cb18f2b'
         'a69191ab966f146c35e7e911e7e57c29fffd54436ea014aa8ffe0dd46aaf57c635d0a652b35916745c75d82b3fca7234366ea5f810b622e94730b45ec86f122c'
         '511c4ad9f3be530dc17dd68f2a3387d748dcdb84192d35f296b88f82442224477e2a74b1841ec3f107b39a5c41c2d961480e396a48d0578f8fd5f65dbe8d9f04'
