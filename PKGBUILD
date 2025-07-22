@@ -4,7 +4,7 @@
 # Maintainer: Tuomo Kuure <tqre@far.fi>
 
 pkgname=base-selinux
-pkgver=1
+pkgver=2
 pkgrel=1
 pkgdesc='Minimal packages for Arch Linux installation with SELinux support'
 arch=('any')
