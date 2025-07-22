@@ -9,7 +9,7 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=pam-selinux
-pkgver=1.7.0
+pkgver=1.7.1
 pkgrel=1
 pkgdesc="SELinux aware PAM (Pluggable Authentication Modules) library"
 arch=('x86_64' 'aarch64')
@@ -57,7 +57,7 @@ validpgpkeys=(
         '8C6BFD92EE0F42EDF91A6A736D1A7F052E5924BB' # Thorsten Kukuk
         '296D6F29A020808E8717A8842DB5BD89A340AEB7' # Dimitry V. Levin <ldv@altlinux.org>
 )
-b2sums=('88ecba59692fe86f6f6516007b87fb897018cc5f818c106a037f15df4dda7c31e50fbfcb137493d49cb754e41f2f69a60f24ffea3374ff5e38ce6263bfa7abac'
+b2sums=('ae06eea144c64ba5efa3b71df9094190eb094bcc8d2e6f9dcc93816bbf5070ff4c8e82a3cf1e2a6a43411a51e9c394c271fc7d734ca745374f19700526d51063'
         '36582c80020008c3810b311a2e126d2fb4ffc94e565ea4c0c0ab567fdb92943e269781ffa548550742feb685847c26c340906c7454dcc31df4e1e47d511d8d6f')
 options=('!emptydirs')
 
@@ -79,6 +79,7 @@ build() {
     -Dlogind=enabled \
     -Deconf=disabled \
     -Dselinux=enabled \
+    -Delogind=disabled \
     -Dpam_userdb=disabled \
     build
   meson compile -C build
@@ -91,6 +92,9 @@ check() {
 package() {
   meson install -C build --destdir "${pkgdir}"
   install -Dm 644 ${pkgname/-selinux}.tmpfiles "${pkgdir}"/usr/lib/tmpfiles.d/${pkgname/-selinux}.conf
+
+  # remove unreproducible pdf files
+  rm "${pkgdir}"/usr/share/doc/Linux-PAM/*.pdf
 
   # set unix_chkpwd uid
   chmod +s "${pkgdir}"/usr/bin/unix_chkpwd
