@@ -5,7 +5,7 @@
 # Maintainer: Tuomo Kuure <tqre@far.fi>
 
 pkgname=base-devel-selinux
-pkgver=1
+pkgver=2
 pkgrel=1
 pkgdesc='Meta package that substitutes base-devel group with SELinux support'
 arch=('any')
