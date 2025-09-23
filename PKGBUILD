@@ -1,4 +1,5 @@
-# Maintainer: Nicolas Iooss (nicolas <dot> iooss <at> m4x <dot> org)
+# Maintainer MatricalDefunkt <dev <at> matricaldefunkt <dot> me>
+# Contributor: Nicolas Iooss (nicolas <dot> iooss <at> m4x <dot> org)
 # Contributor: Timothée Ravier <tim@siosm.fr>
 # Contributor: Nicky726 (Nicky726 <at> gmail <dot> com)
 # Contributor: Sergej Pupykin (pupykin <dot> s+arch <at> gmail <dot> com)
@@ -8,7 +9,7 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=libselinux
-pkgver=3.8
+pkgver=3.9
 pkgrel=1
 pkgdesc="SELinux library and simple utilities"
 arch=('i686' 'x86_64' 'armv6h' 'aarch64')
@@ -16,7 +17,7 @@ url='https://github.com/SELinuxProject/selinux'
 license=('custom')
 groups=('selinux')
 makedepends=('pkgconf' 'python' 'python-pip' 'python-setuptools' 'ruby' 'xz' 'swig')
-depends=('libsepol>=3.8' 'pcre2')
+depends=('libsepol>=3.9' 'pcre2')
 optdepends=('python: python bindings'
             'ruby: ruby bindings')
 conflicts=("selinux-usr-${pkgname}")
@@ -24,10 +25,11 @@ provides=("selinux-usr-${pkgname}=${pkgver}-${pkgrel}")
 validpgpkeys=(
   '63191CE94183098689CAB8DB7EF137EC935B0EAF'  # Jason Zaman <perfinion@gentoo.org>
   '68D21823342A13683AEB3E4EFB4C685B5DC1C13E'  # Petr Lautrbach <lautrbach@redhat.com>
+  'E853C1848B0185CF42864DF363A8AD4B982C4373'  # Petr Lautrbach <plautrba@redhat.com>
 )
 source=("https://github.com/SELinuxProject/selinux/releases/download/${pkgver}/${pkgname}-${pkgver}.tar.gz"{,.asc}
         "libselinux.tmpfiles.d")
-sha256sums=('0c3756bca047c9270281d7c4dcdecd000b72e38a183c930661eba9690839b541'
+sha256sums=('e7ee2c01dba64a0c35c9d7c9c0e06209d8186b325b0638a0d83f915cc3c101e8'
             'SKIP'
             'afe23890fb2e12e6756e5d81bad3c3da33f38a95d072731c0422fbeb0b1fa1fc')
 
