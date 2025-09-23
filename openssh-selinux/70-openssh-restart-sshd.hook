@@ -6,4 +6,4 @@ Target = openssh
 [Action]
 Description = Restart a running sshd.service
 When = PostTransaction
-Exec = /usr/bin/systemctl try-restart sshd.service
+Exec = /usr/share/libalpm/scripts/systemd-hook restart sshd.service
