@@ -3,12 +3,12 @@
 ConditionEnvironment=!SSH_AGENT_PID
 Description=OpenSSH key agent
 Documentation=man:ssh-agent(1) man:ssh-add(1) man:ssh(1)
+Requires=ssh-agent.socket
 
 [Service]
-Environment=SSH_AUTH_SOCK=%t/ssh-agent.socket
-ExecStart=/usr/bin/ssh-agent -D -a ${SSH_AUTH_SOCK}
+ExecStart=/usr/bin/ssh-agent -D
 SuccessExitStatus=2
 Type=simple
 
 [Install]
-WantedBy=default.target
+Also=ssh-agent.socket
