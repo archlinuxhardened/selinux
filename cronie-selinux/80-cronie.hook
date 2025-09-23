@@ -6,4 +6,4 @@ Target = glibc
 [Action]
 Description = Restarting cronie for libc upgrade...
 When = PostTransaction
-Exec = /usr/bin/systemctl try-restart cronie.service
+Exec = /usr/share/libalpm/scripts/systemd-hook restart cronie.service
