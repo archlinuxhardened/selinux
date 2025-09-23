@@ -18,7 +18,7 @@
 
 pkgbase=util-linux-selinux
 pkgname=(util-linux-selinux util-linux-libs-selinux)
-pkgver=2.41.1
+pkgver=2.41.2
 pkgrel=1
 pkgdesc='SELinux aware miscellaneous system utilities for Linux'
 url='https://github.com/util-linux/util-linux'
@@ -55,12 +55,12 @@ options=('strip')
 validpgpkeys=('B0C64D14301CC6EFAEDF60E4E4B71D5EEC39C284')  # Karel Zak
 source=("git+https://github.com/util-linux/util-linux#tag=v${pkgver/rc/-rc}?signed"
         ${pkgbase/-selinux}-BSD-2-Clause.txt::https://raw.githubusercontent.com/Cyan4973/xxHash/f035303b8a86c1db9be70cbb638678ef6ef4cb2d/LICENSE
-        pam-{login,common,remote,runuser,su}
+        {login,common,remote,runuser,su}.pam
         'util-linux.sysusers'
         '60-rfkill.rules'
         'rfkill-unblock_.service'
         'rfkill-block_.service')
-sha256sums=('1995919a5c3e8a2cff213bd3ab8a421ee209aff99cbe5da4536cccd57de9267b'
+sha256sums=('d7fec66283cce093f54aaf0f30dcb6adfea7c7c170abf8cdf24df3c409397f87'
             '6ffedbc0f7878612d2b23589f1ff2ab15633e1df7963a5d9fc750ec5500c7e7a'
             'ee917d55042f78b8bb03f5467e5233e3e2ddc2fe01e302bc53b218003fe22275'
             '57e057758944f4557762c6def939410c04ca5803cbdd2bfa2153ce47ffe7a4af'
@@ -73,11 +73,6 @@ sha256sums=('1995919a5c3e8a2cff213bd3ab8a421ee209aff99cbe5da4536cccd57de9267b'
             'a22e0a037e702170c7d88460cc9c9c2ab1d3e5c54a6985cd4a164ea7beff1b36')
 
 _backports=(
-  # meson: fix po-man installation
-  '56b97db03a56d90f0480885a35b0383afabc2e18'
-
-  # libmount: fix --no-canonicalize regression
-  '77723beaaaca654f72ac9538772e69fbafa8835d'
 )
 
 _reverts=(
@@ -169,14 +164,14 @@ package_util-linux-selinux() {
   chmod 4755 "${pkgdir}"/usr/bin/{newgrp,ch{sh,fn}}
 
   # install PAM files for login-utils
-  install -Dm0644 pam-common "${pkgdir}/etc/pam.d/chfn"
-  install -m0644 pam-common "${pkgdir}/etc/pam.d/chsh"
-  install -m0644 pam-login "${pkgdir}/etc/pam.d/login"
-  install -m0644 pam-remote "${pkgdir}/etc/pam.d/remote"
-  install -m0644 pam-runuser "${pkgdir}/etc/pam.d/runuser"
-  install -m0644 pam-runuser "${pkgdir}/etc/pam.d/runuser-l"
-  install -m0644 pam-su "${pkgdir}/etc/pam.d/su"
-  install -m0644 pam-su "${pkgdir}/etc/pam.d/su-l"
+  install -Dm0644 common.pam "${pkgdir}/etc/pam.d/chfn"
+  install -Dm0644 common.pam "${pkgdir}/etc/pam.d/chsh"
+  install -Dm0644 login.pam "${pkgdir}/etc/pam.d/login"
+  install -Dm0644 remote.pam "${pkgdir}/etc/pam.d/remote"
+  install -Dm0644 runuser.pam "${pkgdir}/etc/pam.d/runuser"
+  install -Dm0644 runuser.pam "${pkgdir}/etc/pam.d/runuser-l"
+  install -Dm0644 su.pam "${pkgdir}/etc/pam.d/su"
+  install -Dm0644 su.pam "${pkgdir}/etc/pam.d/su-l"
 
   # TODO(dreisner): offer this upstream?
   sed -i '/ListenStream/ aRuntimeDirectory=uuidd' "${pkgdir}/usr/lib/systemd/system/uuidd.socket"
