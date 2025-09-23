@@ -262,8 +262,8 @@ package_systemd-selinux() {
 
   mv "$pkgdir"/usr/lib/lib{nss,systemd,udev}*.so* systemd-libs/lib/
   mv "$pkgdir"/usr/lib/pkgconfig/* systemd-libs/lib/pkgconfig/
-  cp -r "$pkgdir"/usr/include systemd-libs/include
-  cp -r "$pkgdir"/usr/share/man/man3 systemd-libs/man3
+  cp -r "$pkgdir"/usr/include/* systemd-libs/include/
+  cp -r "$pkgdir"/usr/share/man/man3/* systemd-libs/man3/
   rm -rf "$pkgdir/usr/include"
   rm -rf "$pkgdir/usr/share/man/man3"
 
