@@ -15,6 +15,7 @@ session    required   pam_selinux.so close
 session    optional   pam_loginuid.so
 session    optional   pam_keyinit.so       force revoke
 session    include    system-auth
+session    optional   pam_lastlog2.so      silent
 # pam_selinux.so open should only be followed by sessions to be executed in the user context
 session    required   pam_selinux.so open
 session    optional   pam_motd.so
