@@ -1,0 +1,5 @@
+[cronie]
+source = "git"
+git = "https://github.com/cronie-crond/cronie.git"
+prefix = "cronie-"
+include_regex = "^cronie-.*"

@@ -15,24 +15,23 @@ url='https://github.com/cronie-crond/cronie/'
 license=('custom:BSD')
 arch=('i686' 'x86_64' 'aarch64')
 depends=('pam-selinux' 'bash' 'run-parts' 'libselinux')
+makedepends=('git')
 optdepends=('smtp-server: send job output via email'
             'smtp-forwarder: forward job output to email server')
 conflicts=('cron' "${pkgname/-selinux}" "selinux-${pkgname/-selinux}")
 provides=('cron' "${pkgname/-selinux}=${pkgver}-${pkgrel}"
           "selinux-${pkgname/-selinux}=${pkgver}-${pkgrel}")
 groups=('selinux')
-source=("https://github.com/cronie-crond/cronie/releases/download/${pkgname/-selinux}-${pkgver}/${pkgname/-selinux}-${pkgver}.tar.gz"
+source=("git+https://github.com/cronie-crond/cronie.git#tag=cronie-${pkgver}"
         '80-cronie.hook'
         'cron-deny'
         'crontab'
-        'default-anacron'
-        'cronie-1.7.2-fix-for-gcc15.patch')
-sha256sums=('f1da374a15ba7605cf378347f96bc8b678d3d7c0765269c8242cfe5b0789c571'
-            'f85e9a68bf3bf446f8a6167f068371c06afffe11ca71935d8ee5487b38b2c9db'
+        'default-anacron')
+sha256sums=('c649a60150409a6bd4e74a27697256a6dba8f77c7ffba355e02b726fd8175fe7'
+            'e56a4be9f3a2c3a042d0a7ddb6c8c6243ba0fd30b96519f33ecf0208d09f179e'
             'ae6e533ecdfc1bd2dd80a9e25acb0260cbe9f00c4e4abee93d552b3660f263fc'
             '64d517a8d011b5cfa6b2433d528498e80fa8d0748c91f1b73e6ded70e776dc35'
-            'c5772fd0df22d807ed6b62edf4052db529aafb626b1bfe8961229fb864039a5c'
-            '0c96be00c25b0c8fbb46df0d6ba1a7b60f2c85b33cb9bcafaf220064fe8d4662')
+            'c5772fd0df22d807ed6b62edf4052db529aafb626b1bfe8961229fb864039a5c')
 backup=('etc/anacrontab'
         'etc/cron.d/0hourly'
         'etc/cron.deny'
@@ -42,52 +41,52 @@ backup=('etc/anacrontab'
         'etc/sysconfig/crond')
 
 prepare() {
-	cd "${srcdir}/${pkgname/-selinux}-${pkgver}"
+  cd "${srcdir}/${pkgname/-selinux}"
 
-	# Fix compilation issue with GCC 15
-	# https://github.com/cronie-crond/cronie/issues/193
-	# https://github.com/cronie-crond/cronie/commit/09c630c654b2aeff06a90a412cce0a60ab4955a4
-	patch -Np1 -i ../cronie-1.7.2-fix-for-gcc15.patch
+  # load_entry(): Make error_func prototype complete
+  git cherry-pick -n \
+    '09c630c654b2aeff06a90a412cce0a60ab4955a4'
+
+  autoreconf -fi
 }
 
 build() {
-	cd "${srcdir}/${pkgname/-selinux}-${pkgver}"
+  cd "${srcdir}/${pkgname/-selinux}"
 
-	./configure \
-		--prefix=/usr \
-		--sysconfdir=/etc \
-		--localstatedir=/var \
-		--sbindir=/usr/bin \
-		--enable-anacron \
-		--with-inotify \
-		--with-pam \
-		--with-selinux
-
-	make
+  ./configure \
+    --enable-anacron \
+    --localstatedir=/var \
+    --prefix=/usr \
+    --sbindir=/usr/bin \
+    --sysconfdir=/etc \
+    --with-inotify \
+    --with-pam \
+    --with-selinux
+  make
 }
 
 package() {
-	cd "${srcdir}/${pkgname/-selinux}-${pkgver}"
+  cd "${srcdir}/${pkgname/-selinux}"
 
-	make DESTDIR="${pkgdir}" install
+  make DESTDIR="${pkgdir}" install
 
-	chmod u+s "${pkgdir}"/usr/bin/crontab
-	install -d "${pkgdir}"/var/spool/{ana,}cron
-	install -d "${pkgdir}"/etc/cron.{d,hourly,daily,weekly,monthly}
+  chmod u+s "${pkgdir}"/usr/bin/crontab
+  install -d "${pkgdir}"/var/spool/{ana,}cron
+  install -d "${pkgdir}"/etc/cron.{d,hourly,daily,weekly,monthly}
 
-	install -Dm0644 ../80-cronie.hook "${pkgdir}"/usr/share/libalpm/hooks/80-cronie.hook
-	install -Dm0644 ../cron-deny "${pkgdir}"/etc/cron.deny
-	install -Dm0644 ../crontab "${pkgdir}"/etc/crontab
-	install -Dm0644 ../default-anacron "${pkgdir}"/etc/default/anacron
+  install -Dm0644 ../80-cronie.hook "${pkgdir}"/usr/share/libalpm/hooks/80-cronie.hook
+  install -Dm0644 ../cron-deny "${pkgdir}"/etc/cron.deny
+  install -Dm0644 ../crontab "${pkgdir}"/etc/crontab
+  install -Dm0644 ../default-anacron "${pkgdir}"/etc/default/anacron
 
-	install -Dm0644 contrib/anacrontab "${pkgdir}"/etc/anacrontab
-	install -Dm0644 contrib/0hourly "${pkgdir}"/etc/cron.d/0hourly
-	install -Dm0755 contrib/0anacron "${pkgdir}"/etc/cron.hourly/0anacron
+  install -Dm0644 contrib/anacrontab "${pkgdir}"/etc/anacrontab
+  install -Dm0644 contrib/0hourly "${pkgdir}"/etc/cron.d/0hourly
+  install -Dm0755 contrib/0anacron "${pkgdir}"/etc/cron.hourly/0anacron
 
-	install -Dm0644 contrib/cronie.systemd "${pkgdir}"/usr/lib/systemd/system/cronie.service
-	install -Dm0644 crond.sysconfig "${pkgdir}"/etc/sysconfig/crond
+  install -Dm0644 contrib/cronie.systemd "${pkgdir}"/usr/lib/systemd/system/cronie.service
+  install -Dm0644 crond.sysconfig "${pkgdir}"/etc/sysconfig/crond
 
-	install -Dm0644 pam/crond "${pkgdir}"/etc/pam.d/crond
+  install -Dm0644 pam/crond "${pkgdir}"/etc/pam.d/crond
 
-	install -Dm0644 COPYING "${pkgdir}"/usr/share/licenses/${pkgname}/COPYING
+  install -Dm0644 COPYING "${pkgdir}"/usr/share/licenses/${pkgname}/COPYING
 }
