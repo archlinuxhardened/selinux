@@ -7,7 +7,7 @@
 # If you want to help keep it up to date, please open a Pull Request there.
 
 pkgname=checkpolicy
-pkgver=3.8
+pkgver=3.9
 pkgrel=1
 pkgdesc="SELinux policy compiler"
 arch=('i686' 'x86_64' 'aarch64')
@@ -22,7 +22,7 @@ validpgpkeys=(
   '68D21823342A13683AEB3E4EFB4C685B5DC1C13E'  # Petr Lautrbach <lautrbach@redhat.com>
 )
 source=("https://github.com/SELinuxProject/selinux/releases/download/${pkgver}/${pkgname}-${pkgver}.tar.gz"{,.asc})
-sha256sums=('65fa2ba8a251d6d42f030646714e5e2de807ae16e0231de2b03b940aadbadfa5'
+sha256sums=('dd85b0173ca6e96b22ebf472bcbccf04eb10e1aa07add8f1b7e0e9e8e995e027'
             'SKIP')
 
 build() {
