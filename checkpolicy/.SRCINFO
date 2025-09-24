@@ -1,6 +1,6 @@
 pkgbase = checkpolicy
 	pkgdesc = SELinux policy compiler
-	pkgver = 3.8
+	pkgver = 3.9
 	pkgrel = 1
 	url = https://github.com/SELinuxProject/selinux
 	arch = i686
@@ -9,13 +9,13 @@ pkgbase = checkpolicy
 	groups = selinux
 	license = GPL2
 	makedepends = libsepol>=3.8
-	provides = selinux-usr-checkpolicy=3.8-1
+	provides = selinux-usr-checkpolicy=3.9-1
 	conflicts = selinux-usr-checkpolicy
-	source = https://github.com/SELinuxProject/selinux/releases/download/3.8/checkpolicy-3.8.tar.gz
-	source = https://github.com/SELinuxProject/selinux/releases/download/3.8/checkpolicy-3.8.tar.gz.asc
+	source = https://github.com/SELinuxProject/selinux/releases/download/3.9/checkpolicy-3.9.tar.gz
+	source = https://github.com/SELinuxProject/selinux/releases/download/3.9/checkpolicy-3.9.tar.gz.asc
 	validpgpkeys = 63191CE94183098689CAB8DB7EF137EC935B0EAF
 	validpgpkeys = 68D21823342A13683AEB3E4EFB4C685B5DC1C13E
-	sha256sums = 65fa2ba8a251d6d42f030646714e5e2de807ae16e0231de2b03b940aadbadfa5
+	sha256sums = dd85b0173ca6e96b22ebf472bcbccf04eb10e1aa07add8f1b7e0e9e8e995e027
 	sha256sums = SKIP
 
 pkgname = checkpolicy
