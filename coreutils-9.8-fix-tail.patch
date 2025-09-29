@@ -1,0 +1,94 @@
+From 914972e80dbf82aac9ffe3ff1f67f1028e1a788b Mon Sep 17 00:00:00 2001
+From: Hannes Braun <hannes@hannesbraun.net>
+Date: Wed, 24 Sep 2025 21:20:49 +0200
+Subject: [PATCH] tail: fix tailing larger number of lines in regular files
+
+* src/tail.c (file_lines): Seek to the previous block instead of the
+beginning (or a little before) of the block that was just scanned.
+Otherwise, the same block is read and scanned (at least partially)
+again. This bug was introduced by commit v9.7-219-g976f8abc1.
+* tests/tail/basic-seek.sh: Add a new test.
+* tests/local.mk: Reference the new test.
+* NEWS: mention the bug fix.
+---
+ NEWS                     |  4 ++++
+ src/tail.c               |  2 +-
+ tests/local.mk           |  1 +
+ tests/tail/basic-seek.sh | 28 ++++++++++++++++++++++++++++
+ 4 files changed, 34 insertions(+), 1 deletion(-)
+ create mode 100755 tests/tail/basic-seek.sh
+
+diff --git a/NEWS b/NEWS
+index 7a1a73113e..dc1d268793 100644
+--- a/NEWS
++++ b/NEWS
+@@ -7,6 +7,10 @@ GNU coreutils NEWS                                    -*- outline -*-
+   `basenc --base58` would not operate correctly with input > 15561475 bytes.
+   [bug introduced with --base58 in coreutils-9.8]
+ 
++  'tail' outputs the correct number of lines again for non-small -n values.
++  Previously it may have output too few lines.
++  [bug introduced in coreutils-9.8]
++
+ 
+ * Noteworthy changes in release 9.8 (2025-09-22) [stable]
+ 
+diff --git a/src/tail.c b/src/tail.c
+index b8bef1d91c..c7779c77df 100644
+--- a/src/tail.c
++++ b/src/tail.c
+@@ -596,7 +596,7 @@ file_lines (char const *prettyname, int fd, struct stat const *sb,
+           goto free_buffer;
+         }
+ 
+-      pos = xlseek (fd, -bufsize, SEEK_CUR, prettyname);
++      pos = xlseek (fd, -(bufsize + bytes_read), SEEK_CUR, prettyname);
+       bytes_read = read (fd, buffer, bufsize);
+       if (bytes_read < 0)
+         {
+diff --git a/tests/local.mk b/tests/local.mk
+index ff5727f745..9663ee2da1 100644
+--- a/tests/local.mk
++++ b/tests/local.mk
+@@ -179,6 +179,7 @@ all_tests =					\
+   tests/tty/tty-eof.pl				\
+   tests/misc/read-errors.sh			\
+   tests/misc/write-errors.sh			\
++  tests/tail/basic-seek.sh			\
+   tests/tail/inotify-hash-abuse.sh		\
+   tests/tail/inotify-hash-abuse2.sh		\
+   tests/tail/F-vs-missing.sh			\
+diff --git a/tests/tail/basic-seek.sh b/tests/tail/basic-seek.sh
+new file mode 100755
+index 0000000000..307ed667ea
+--- /dev/null
++++ b/tests/tail/basic-seek.sh
+@@ -0,0 +1,28 @@
++#!/bin/sh
++# Verify that tail works when seeking within a file
++
++# Copyright (C) 2025 Free Software Foundation, Inc.
++
++# This program is free software: you can redistribute it and/or modify
++# it under the terms of the GNU General Public License as published by
++# the Free Software Foundation, either version 3 of the License, or
++# (at your option) any later version.
++
++# This program is distributed in the hope that it will be useful,
++# but WITHOUT ANY WARRANTY; without even the implied warranty of
++# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++# GNU General Public License for more details.
++
++# You should have received a copy of the GNU General Public License
++# along with this program.  If not, see <https://www.gnu.org/licenses/>.
++
++. "${srcdir=.}/tests/init.sh"; path_prepend_ ./src
++print_ver_ tail
++
++yes '=================================' |
++  head -n1K > file.in || framework_failure_
++
++# This returned 139 in coreutils v9.8
++test $(tail -n200 file.in | wc -l) = 200 || fail=1
++
++Exit $fail
