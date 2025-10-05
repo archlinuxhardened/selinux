@@ -1,7 +1,7 @@
 pkgbase = openssh-selinux
 	pkgdesc = SSH protocol implementation for remote login, command execution and file transfer, with SELinux support
 	pkgver = 10.0p1
-	pkgrel = 5
+	pkgrel = 6
 	url = https://www.openssh.com/portable.html
 	arch = x86_64
 	arch = aarch64
@@ -26,8 +26,8 @@ pkgbase = openssh-selinux
 	optdepends = sh: for ssh-copy-id and findssl.sh
 	optdepends = x11-ssh-askpass: input passphrase in X
 	optdepends = xorg-xauth: X11 forwarding
-	provides = openssh=10.0p1-5
-	provides = selinux-openssh=10.0p1-5
+	provides = openssh=10.0p1-6
+	provides = selinux-openssh=10.0p1-6
 	conflicts = openssh
 	conflicts = selinux-openssh
 	backup = etc/pam.d/sshd
