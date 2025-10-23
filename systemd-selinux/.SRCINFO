@@ -1,5 +1,5 @@
 pkgbase = systemd-selinux
-	pkgver = 257.7
+	pkgver = 258.1
 	pkgrel = 1
 	url = https://www.github.com/systemd/systemd
 	arch = x86_64
@@ -7,6 +7,7 @@ pkgbase = systemd-selinux
 	groups = selinux
 	license = LGPL-2.1-or-later
 	makedepends = acl
+	makedepends = apparmor
 	makedepends = cryptsetup
 	makedepends = docbook-xsl
 	makedepends = gperf
@@ -57,7 +58,7 @@ pkgbase = systemd-selinux
 	makedepends = linux-headers
 	makedepends = libselinux
 	conflicts = mkinitcpio<38-1
-	source = git+https://github.com/systemd/systemd#tag=v257.7?signed
+	source = git+https://github.com/systemd/systemd#tag=v258.1?signed
 	source = 0001-Use-Arch-Linux-device-access-groups.patch
 	source = arch.conf
 	source = loader.conf
@@ -79,13 +80,13 @@ pkgbase = systemd-selinux
 	validpgpkeys = A9EA9081724FFAE0484C35A1A81CEA22BC8C7E2E
 	validpgpkeys = 9A774DB5DB996C154EBBFBFDA0099A18E29326E1
 	validpgpkeys = 5C251B5FC54EB2F80F407AAAC54CA336CFEB557E
-	sha512sums = 94c4f1fa540395653594d25a9633a47d2ce3053f0511b041b0ec73ddbb0db7877a50563be6c3ac3c9c5d1f5964b88a7de17f5fbd843e1391123ee6f0227fbd02
-	sha512sums = 78065bde708118b7d6e4ed492e096c763e4679a1c54bd98750d5d609d8cc2f1373023f308880f14fc923ae7f9fea34824917ef884c0f996b1f43d08ef022c0fb
+	sha512sums = fa8330f7f5e3a97309399703c784a12a975c139d01882d1cd089c9b102467f7edd01845ddef765b3f06812b270bb77b6b6564f9a2af81081079d27d2ee9d1b43
+	sha512sums = beb15210d8afe69e1e47c99a81da5967428ccc64ece85b8a843333cb741eda061ae7a91a79cec8a1136a624e93e63140013986499589bf10edcc52d865729377
 	sha512sums = 61032d29241b74a0f28446f8cf1be0e8ec46d0847a61dadb2a4f096e8686d5f57fe5c72bcf386003f6520bc4b5856c32d63bf3efe7eb0bc0deefc9f68159e648
-	sha512sums = c416e2121df83067376bcaacb58c05b01990f4614ad9de657d74b6da3efa441af251d13bf21e3f0f71ddcb4c9ea658b81da3d915667dc5c309c87ec32a1cb5a5
+	sha512sums = 3194d1f8bff31b88a79657df83632b9224b66ca2cf8fd806a3ef35cf7a43f46c09c57f3dfd02256a99b6514a8f789b7d3bcfd7e17e00e34aa55ff0c6cedb5f01
 	sha512sums = 5a1d78b5170da5abe3d18fdf9f2c3a4d78f15ba7d1ee9ec2708c4c9c2e28973469bc19386f70b3cf32ffafbe4fcc4303e5ebbd6d5187a1df3314ae0965b25e75
-	sha512sums = b90c99d768dc2a4f020ba854edf45ccf1b86a09d2f66e475de21fe589ff7e32c33ef4aa0876d7f1864491488fd7edb2682fc0d68e83a6d4890a0778dc2d6fe19
-	sha512sums = 81baa1ae439b0f4d1f09371a82c02db06a97a4fc35545fc2654f7905b4422fc8cf085f70304919a4323f39e662df1e05aa8d977d1dde73507527abe3072c386b
+	sha512sums = 30a408b5491ea59ec6ff6e773ea587fe12900c9b8169a0e16451d1cc6a452f2424e6ce1ee595448ff009b88fcbadf4cc4ae70a553235bae4a31aa1ec12a0c777
+	sha512sums = 05a3b19a2132c8c3048a66f2d06a9f8790e9c84c9ebdacc358456e38c5ebc8c02c542838f6aca3301f19ae83bc9fda66e701c682624dd5cf9fb119e452338a56
 	sha512sums = 299dcc7094ce53474521356647bdd2fb069731c08d14a872a425412fcd72da840727a23664b12d95465bf313e8e8297da31259508d1c62cc2dcea596160e21c5
 	sha512sums = 0d6bc3d928cfafe4e4e0bc04dbb95c5d2b078573e4f9e0576e7f53a8fab08a7077202f575d74a3960248c4904b5f7f0661bf17dbe163c524ab51dd30e3cb80f7
 	sha512sums = 2b50b25e8680878f7974fa9d519df7e141ca11c4bfe84a92a5d01bb193f034b1726ea05b3c0030bad1fbda8dbb78bf1dc7b73859053581b55ba813c39b27d9dc
@@ -105,7 +106,7 @@ pkgname = systemd-selinux
 	license = CC0-1.0
 	license = GPL-2.0-or-later
 	license = MIT-0
-	depends = systemd-libs-selinux=257.7
+	depends = systemd-libs-selinux=258.1
 	depends = acl
 	depends = libacl.so
 	depends = bash
@@ -138,8 +139,10 @@ pkgname = systemd-selinux
 	depends = libcrypto.so
 	depends = libssl.so
 	optdepends = libmicrohttpd: systemd-journal-gatewayd and systemd-journal-remote
+	optdepends = apparmor: additional security features
 	optdepends = quota-tools: kernel-level quota management
 	optdepends = systemd-sysvcompat-selinux: symlink package to provide sysvinit binaries
+	optdepends = systemd-ukify-selinux: combine kernel and initrd into a signed Unified Kernel Image
 	optdepends = polkit: allow administration as unprivileged user
 	optdepends = curl: systemd-journal-upload, machinectl pull-tar and pull-raw
 	optdepends = gnutls: systemd-journal-gatewayd and systemd-journal-remote
@@ -152,15 +155,14 @@ pkgname = systemd-selinux
 	optdepends = libp11-kit: support PKCS#11
 	optdepends = tpm2-tss: unlocking LUKS2 volumes with TPM2
 	provides = nss-myhostname
-	provides = systemd-tools=257.7
-	provides = udev=257.7
-	provides = systemd=257.7-1
+	provides = systemd-tools=258.1
+	provides = udev=258.1
+	provides = systemd=258.1-1
 	conflicts = nss-myhostname
 	conflicts = systemd-tools
 	conflicts = udev
 	conflicts = systemd
 	conflicts = selinux-systemd
-	backup = etc/pam.d/systemd-user
 	backup = etc/systemd/coredump.conf
 	backup = etc/systemd/homed.conf
 	backup = etc/systemd/journald.conf
@@ -195,7 +197,7 @@ pkgname = systemd-libs-selinux
 	provides = libsystemd.so
 	provides = libudev.so
 	provides = libsystemd-selinux
-	provides = systemd-libs=257.7-1
+	provides = systemd-libs=258.1-1
 	conflicts = libsystemd
 	conflicts = libsystemd-selinux
 	conflicts = systemd-libs
@@ -203,34 +205,34 @@ pkgname = systemd-libs-selinux
 
 pkgname = systemd-resolvconf-selinux
 	pkgdesc = systemd resolvconf replacement with SELinux support (for use with systemd-resolved)
-	depends = systemd-selinux=257.7
+	depends = systemd-selinux=258.1
 	provides = openresolv
 	provides = resolvconf
-	provides = systemd-resolvconf=257.7-1
+	provides = systemd-resolvconf=258.1-1
 	conflicts = resolvconf
-	conflicts = systemd-resolvconf=257.7-1
+	conflicts = systemd-resolvconf=258.1-1
 
 pkgname = systemd-sysvcompat-selinux
 	pkgdesc = sysvinit compat for systemd with SELinux support
-	depends = systemd-selinux=257.7
-	provides = systemd-sysvcompat=257.7-1
-	provides = selinux-systemd-sysvcompat=257.7-1
+	depends = systemd-selinux=258.1
+	provides = systemd-sysvcompat=258.1-1
+	provides = selinux-systemd-sysvcompat=258.1-1
 	conflicts = sysvinit
 	conflicts = systemd-sysvcompat
 	conflicts = selinux-systemd-sysvcompat
 
 pkgname = systemd-tests-selinux
 	pkgdesc = systemd tests with SELinux support
-	depends = systemd-selinux=257.7
-	provides = systemd-tests=257.7-1
+	depends = systemd-selinux=258.1
+	provides = systemd-tests=258.1-1
 
 pkgname = systemd-ukify-selinux
 	pkgdesc = Combine kernel and initrd into a signed Unified Kernel Image with SELinux support
-	depends = systemd-selinux=257.7
+	depends = systemd-selinux=258.1
 	depends = binutils
 	depends = python-cryptography
 	depends = python-pefile
 	optdepends = python-pillow: Show the size of splash image
 	optdepends = sbsigntools: Sign the embedded kernel
 	provides = ukify
-	provides = systemd-ukify=257.7-1
+	provides = systemd-ukify=258.1-1
