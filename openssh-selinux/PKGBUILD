@@ -13,7 +13,7 @@
 
 pkgname=openssh-selinux
 pkgver=10.2p1
-pkgrel=1
+pkgrel=2
 pkgdesc="SSH protocol implementation for remote login, command execution and file transfer, with SELinux support"
 arch=(x86_64 aarch64)
 url='https://www.openssh.com/portable.html'
@@ -66,6 +66,8 @@ source=(
   ssh-agent.socket
   sshd.pam
   LICENSE
+  ${pkgname/-selinux}-10.2p1-error-to-debug-pkcs11_fetch_certs.patch::https://github.com/openssh/openssh-portable/commit/607f337637f2077b34a9f6f96fc24237255fe175.patch
+  ${pkgname/-selinux}-10.2p1-pinentry-pkcs11provider.patch::https://github.com/openssh/openssh-portable/commit/434ba7684054c0637ce8f2486aaacafe65d9b8aa.patch
 )
 sha256sums=('ccc42c0419937959263fa1dbd16dafc18c56b984c03562d2937ce56a60f798b2'
             'SKIP'
@@ -78,7 +80,9 @@ sha256sums=('ccc42c0419937959263fa1dbd16dafc18c56b984c03562d2937ce56a60f798b2'
             '824bf888ad0cb20ff3c2e13292389eb355ab91c3d9cc2fe0c8c5c60365d4a9c7'
             'a16492e1eb9219d47a9053f0c83cdc323bff3c6f5b573bc6509ec40e40e4d04b'
             '633e24cbfcb045ba777d3e06d5f85dfaa06d44f4727d38c7fb2187c57498221d'
-            '7056c04df17a4e0f0bac9f787f347c9cd892cee6323d1c89528090afd0b934a3')
+            '7056c04df17a4e0f0bac9f787f347c9cd892cee6323d1c89528090afd0b934a3'
+            '8a059f4895a9da4a2425425a1f1be1a2ee790b52626b412db8987fa6772a9a22'
+            '35b019c4af919d068ec444774273db7af0009ffb8615f66db90e337710382a80')
 b2sums=('8c031b10b1642e21b46f7d1db84ba42692e378a54af3d8e5b5c8706c3a0a06d442a02ed8803063121e7ff325ea275cad4432b9eaa6a7f47a4d7cfad504953ab6'
         'SKIP'
         '1ff8cd4ae22efed2b4260f1e518de919c4b290be4e0b5edbc8e2225ffe63788678d1961e6f863b85974c4697428ee827bcbabad371cfc91cc8b36eae9402eb97'
@@ -90,10 +94,16 @@ b2sums=('8c031b10b1642e21b46f7d1db84ba42692e378a54af3d8e5b5c8706c3a0a06d442a02ed
         '6a80552260bc016757725602638478345565e1466335da8a70e0b4e49fe2e9d3b863df83764696cd91637c17dd137ed7c26188a1d795af3d024d89c9c229829b'
         'f161cdb54609bd4521d9517c5c9d97a87f7de5c7504bf46d870ee814624817050ca9f68d42a1e661ecc7c3ede1a440b5b159df18f3b16b3c2e90ecfbd0dfd258'
         '1d24cc029eccf71cee54dda84371cf9aa8d805433e751575ab237df654055dd869024b50facd8b73390717e63100c76bca28b493e0c8be9791c76a2e0d60990a'
-        'a29664104e1ee73ca0aee1d633e9095d92a57c92787f8d8740bdb7211ba3205782ed8677f539bdb8cae3dd75a3694be3132e185fa3fc4b3f401e1f88eb776101')
+        'a29664104e1ee73ca0aee1d633e9095d92a57c92787f8d8740bdb7211ba3205782ed8677f539bdb8cae3dd75a3694be3132e185fa3fc4b3f401e1f88eb776101'
+        '72c4115bee487869bed7a543817c9ab3e3e17c2c884446314f9f4828cf6ce46c759bbf7dfae9194612931e2ead1ae9e4e52bdbe750bfcb22dfe5583b8168a379'
+        '88a62f93d6a7a58c0f170333cd279d339342a898d51cdd5aeb1488bee53cc5d7cf6f0468a2f9b098b8f7977cd4cf81ad706a12942b6dac33b3fa5406592f6963')
 validpgpkeys=('7168B983815A5EEF59A4ADFD2A3F414E736060BA')  # Damien Miller <djm@mindrot.org>
 
 prepare() {
+  # Fix an issue with PKCS#11 provided keys: https://gitlab.archlinux.org/archlinux/packaging/packages/openssh/-/issues/23
+  patch -Np1 -d ${pkgname/-selinux}-$pkgver -i ../${pkgname/-selinux}-10.2p1-error-to-debug-pkcs11_fetch_certs.patch
+  patch -Np1 -d ${pkgname/-selinux}-$pkgver -i ../${pkgname/-selinux}-10.2p1-pinentry-pkcs11provider.patch
+
   cd ${pkgname/-selinux}-$pkgver
   # remove variable (but useless) first line in config (related to upstream VCS)
   sed '/^#.*\$.*\$$/d' -i ssh{,d}_config
