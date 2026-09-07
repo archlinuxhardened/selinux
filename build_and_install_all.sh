@@ -57,6 +57,21 @@ needs_install() {
 # Arguments:
 # - package name
 # - makepkg environment tweaks
+makepkg_with_retry() {
+    local ATTEMPT
+
+    for ATTEMPT in 1 2 3 4 5
+    do
+        if makepkg "$@"
+        then
+            return 0
+        fi
+        echo >&2 "makepkg $* failed (attempt $ATTEMPT/5), retrying in 5s..."
+        sleep 5
+    done
+    return 1
+}
+
 build() {
     rm -rf "./$1/src" "./$1/pkg"
     rm -f "./$1/"*.pkg.tar.xz "./$1/"*.pkg.tar.xz.sig
@@ -66,7 +81,7 @@ build() {
     then
         set -- "$@" --nocheck
     fi
-    (cd "./$1" && shift && makepkg -s -C --noconfirm "$@") || exit $?
+    (cd "./$1" && shift && makepkg_with_retry -s -C --noconfirm "$@") || exit $?
 }
 
 # Run an install command for a package which may conflict with a base package
@@ -107,6 +122,29 @@ build_and_install() {
     run_conflictual_install pacman -U "./$1/"*"$PKGEXT"
 }
 
+# Clone a git repository, retrying a few times on transient network/TLS
+# failures (aur.archlinux.org has occasionally dropped connections mid-clone
+# in CI, one repo at a time, unpredictably)
+# Arguments:
+# - target directory (passed to `git -C`)
+# - repository URL
+aur_clone() {
+    local DIR="$1" URL="$2" ATTEMPT REPO_NAME
+    REPO_NAME="${URL##*/}"
+    REPO_NAME="${REPO_NAME%.git}"
+    for ATTEMPT in 1 2 3 4 5
+    do
+        if git -C "$DIR" clone "$URL"
+        then
+            return 0
+        fi
+        echo >&2 "Cloning $URL failed (attempt $ATTEMPT/5), retrying in 5s..."
+        sleep 5
+        rm -rf "${DIR:?}/${REPO_NAME:?}"
+    done
+    return 1
+}
+
 # Install libreport package from the AUR, if it is not already installed
 install_libreport() {
     local MAKEPKGDIR
@@ -115,14 +153,14 @@ install_libreport() {
         return 0
     fi
     MAKEPKGDIR="$(mktemp -d -p "${TMPDIR:-/tmp}" makepkg-libreport-XXXXXX)"
-    git -C "$MAKEPKGDIR" clone https://aur.archlinux.org/satyr.git || exit $?
-    (cd "$MAKEPKGDIR/satyr" && makepkg -si --noconfirm --asdeps) || exit $?
-    git -C "$MAKEPKGDIR" clone https://aur.archlinux.org/libxmlrpc.git || exit $?
-    (cd "$MAKEPKGDIR/libxmlrpc" && makepkg -si --noconfirm --asdeps) || exit $?
-    git -C "$MAKEPKGDIR" clone https://aur.archlinux.org/libreport.git || exit $?
+    aur_clone "$MAKEPKGDIR" https://aur.archlinux.org/satyr.git || exit $?
+    (cd "$MAKEPKGDIR/satyr" && makepkg_with_retry -si --noconfirm --asdeps) || exit $?
+    aur_clone "$MAKEPKGDIR" https://aur.archlinux.org/libxmlrpc.git || exit $?
+    (cd "$MAKEPKGDIR/libxmlrpc" && makepkg_with_retry -si --noconfirm --asdeps) || exit $?
+    aur_clone "$MAKEPKGDIR" https://aur.archlinux.org/libreport.git || exit $?
     # Remove python2 dependency
     sed "s/^\(makedepends=.*\) 'python2'/\1/" -i "$MAKEPKGDIR/libreport/PKGBUILD"
-    (cd "$MAKEPKGDIR/libreport" && makepkg -si --noconfirm --asdeps) || exit $?
+    (cd "$MAKEPKGDIR/libreport" && makepkg_with_retry -si --noconfirm --asdeps) || exit $?
     rm -rf "$MAKEPKGDIR"
 }
 
@@ -156,8 +194,8 @@ install_python_fastmcp_slim() {
     do
         if ! pacman -Qi "$PKG" > /dev/null 2>&1
         then
-            git -C "$MAKEPKGDIR" clone "https://aur.archlinux.org/${PKG}.git" || exit $?
-            (cd "$MAKEPKGDIR/$PKG" && makepkg -si --noconfirm --asdeps --nocheck < /dev/null) || exit $?
+            aur_clone "$MAKEPKGDIR" "https://aur.archlinux.org/${PKG}.git" || exit $?
+            (cd "$MAKEPKGDIR/$PKG" && makepkg_with_retry -si --noconfirm --asdeps --nocheck < /dev/null) || exit $?
         fi
     done
     rm -rf "$MAKEPKGDIR"
@@ -285,7 +323,7 @@ build_and_install selinux-refpolicy-git
 build_nodeps() {
     rm -rf "./$1/src" "./$1/pkg"
     rm -f "./$1/"*.pkg.tar.zst "./$1/"*.pkg.tar.zst.sig
-    (cd "./$1" && shift && makepkg -d -C --noconfirm "$@") || exit $?
+    (cd "./$1" && shift && makepkg_with_retry -d -C --noconfirm "$@") || exit $?
 }
 
 build_nodeps base-selinux
