@@ -1,0 +1,397 @@
+name: Build and Sign SELinux Repository
+
+on:
+  workflow_call:
+  push:
+    branches: [master]
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 * * 0'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: main-signed
+  cancel-in-progress: false
+
+env:
+  GPG_FINGERPRINT: A66EAD29600BEF3A2F09B945EB8AEC2BA4B6DC1F
+  REPO_NAME: main-signed
+
+jobs:
+
+  # ═══════════════════════════════════════════════════
+  # Job 1: Build (Container, kein GPG)
+  # ═══════════════════════════════════════════════════
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux/archlinux:latest
+      options: --security-opt=seccomp=unconfined
+
+    steps:
+      - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+
+      - name: Setup build environment
+        run: |
+          mkdir -vp /startdir
+          cp -Rv . /startdir
+          pacman -q --noconfirm -Syu base base-devel expect git
+          pacman --noconfirm -Sc
+          rm -rf /var/cache/pacman/pkg/*
+          ln -sf /usr/share/zoneinfo/UTC /etc/localtime
+          useradd -g users -m builduser
+          echo 'builduser ALL=(ALL) NOPASSWD: /usr/bin/pacman' >> /etc/sudoers
+          echo 'builduser ALL=(ALL) NOPASSWD: /usr/bin/sh -c { pacman --noconfirm --ask=4 -U sudo-selinux/sudo-selinux-*.pkg.tar.zst && if test -e /etc/sudoers.pacsave ; then mv /etc/sudoers.pacsave /etc/sudoers ; fi }' >> /etc/sudoers
+          echo 'MAKEFLAGS="-j$(nproc)"' >> /etc/makepkg.conf
+          echo 'BUILDDIR=/build' >> /etc/makepkg.conf
+          echo 'LOGDEST=/logdest' >> /etc/makepkg.conf
+          echo 'SRCDEST=/sources' >> /etc/makepkg.conf
+          mkdir -vp /packages /build /logdest /sources
+          chown -R builduser /startdir /packages /build /logdest /sources
+
+      - name: Cache VCS sources (bare git mirrors in SRCDEST)
+        id: cache-sources
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          path: /sources
+          key: vcs-sources-${{ github.sha }}
+          restore-keys: vcs-sources-
+
+      - name: Build all packages (unsigned)
+        run: |
+          cd /startdir
+          sudo -u builduser /startdir/clean.sh
+          sudo -u builduser /startdir/recv_gpg_keys.sh
+          sudo -u builduser git config --global http.postBuffer 536870912
+          sudo -u builduser /startdir/build_and_install_all.sh
+          rm -rf /startdir/*/src/ /startdir/*/pkg/
+          pacman --noconfirm -Sc
+          rm -rf /var/cache/pacman/pkg/*
+
+      - name: Collect packages
+        run: |
+          cp /startdir/*/*.pkg.tar.zst /packages/
+          ls -la /packages/
+
+      - name: Upload unsigned packages
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: selinux-packages-unsigned
+          path: /packages/
+          retention-days: 1
+
+  # ═══════════════════════════════════════════════════
+  # Job 2: Sign (Runner, GPG aktiv)
+  # ═══════════════════════════════════════════════════
+  sign:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+
+      - name: Import GPG key
+        id: gpg
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Download unsigned packages
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: selinux-packages-unsigned
+          path: /tmp/packages
+
+      - name: Sign packages with GPG
+        env:
+          GPGKEY: ${{ steps.gpg.outputs.fingerprint }}
+          PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          cd /tmp/packages
+          for pkg in *.pkg.tar.zst; do
+            echo "Signing: $pkg"
+            gpg --batch --detach-sign -u "$GPGKEY" \
+              --pinentry-mode loopback --passphrase-fd 0 \
+              --output "${pkg}.sig" --sign "${pkg}" <<< "$PASSPHRASE"
+          done
+          ls -la
+
+      - name: Upload signed packages
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: selinux-packages-signed
+          path: /tmp/packages/
+          retention-days: 1
+
+  # ═══════════════════════════════════════════════════
+  # Job 3: Create Repo (Container, kein GPG)
+  # ═══════════════════════════════════════════════════
+  create-repo:
+    runs-on: ubuntu-latest
+    needs: sign
+    container:
+      image: archlinux:base-devel
+      options: --privileged
+
+    steps:
+      - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+
+      - name: Install repo tools
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm pacman-contrib
+
+      - name: Download signed packages
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: selinux-packages-signed
+          path: /packages
+
+      - name: Create repo structure
+        run: |
+          mkdir -p repo/${{ env.REPO_NAME }}/x86_64
+          cp /packages/*.pkg.tar.zst* repo/${{ env.REPO_NAME }}/x86_64/
+          cp public.asc repo/${{ env.REPO_NAME }}/x86_64/
+           cd repo/${{ env.REPO_NAME }}/x86_64
+           repo-add --include-sigs ${{ env.REPO_NAME }}.db.tar.zst *.pkg.tar.zst
+           ln -sf ${{ env.REPO_NAME }}.db.tar.zst ${{ env.REPO_NAME }}.db
+           ln -sf ${{ env.REPO_NAME }}.files.tar.zst ${{ env.REPO_NAME }}.files
+           ls -la
+
+      - name: Upload repo directory (unsigned DB)
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: selinux-repo-unsigned-db
+          path: repo/
+          retention-days: 1
+
+  # ═══════════════════════════════════════════════════
+  # Job 4: Sign DB (Runner, GPG aktiv)
+  # ═══════════════════════════════════════════════════
+  sign-db:
+    runs-on: ubuntu-latest
+    needs: create-repo
+    permissions:
+      contents: write
+
+    steps:
+      - name: Import GPG key
+        id: gpg
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Download repo directory
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: selinux-repo-unsigned-db
+          path: repo
+
+      - name: Sign database files
+        env:
+          GPGKEY: ${{ steps.gpg.outputs.fingerprint }}
+          PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          cd repo/${{ env.REPO_NAME }}/x86_64
+          for db in *.db.tar.zst *.files.tar.zst; do
+            echo "Signing database: $db"
+            gpg --batch --detach-sign -u "$GPGKEY" \
+              --pinentry-mode loopback --passphrase-fd 0 \
+              --output "${db}.sig" --sign "${db}" <<< "$PASSPHRASE"
+          done
+          ls -la
+
+      - name: Verify all signatures
+        env:
+          GPGKEY: ${{ steps.gpg.outputs.fingerprint }}
+        run: |
+          cd repo/${{ env.REPO_NAME }}/x86_64
+          for pkg in *.pkg.tar.zst; do
+            gpg --verify "${pkg}.sig" "${pkg}" || exit 1
+          done
+          for db in *.db.tar.zst *.files.tar.zst; do
+            gpg --verify "${db}.sig" "${db}" || exit 1
+          done
+           echo "All signatures verified"
+
+      - name: Create real db.sig copies (Pages doesn't follow symlinks)
+        run: |
+          cd repo/${{ env.REPO_NAME }}/x86_64
+          cp ${{ env.REPO_NAME }}.db.tar.zst.sig ${{ env.REPO_NAME }}.db.sig
+          cp ${{ env.REPO_NAME }}.files.tar.zst.sig ${{ env.REPO_NAME }}.files.sig
+
+      - name: Upload fully signed repo
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: selinux-repo-fully-signed
+          path: repo/
+          retention-days: 3
+
+      - name: Publish nightly release
+        run: |
+          tar -acf selinux-repo-signed.tar.zst -C repo main-signed/
+          gh release delete nightly --cleanup-tag --yes \
+            --repo ${{ github.repository }} 2>/dev/null || true
+          gh release create nightly \
+            --repo ${{ github.repository }} \
+            --title "Nightly SELinux Build — $(date +'%Y-%m-%d')" \
+            --prerelease \
+            --notes "Commit: ${{ github.sha }}" \
+            selinux-repo-signed.tar.zst
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ═══════════════════════════════════════════════════
+  # Job 5: Prepare VM Testing (Runner)
+  # ═══════════════════════════════════════════════════
+  prepare-testing:
+    runs-on: ubuntu-latest
+    needs: sign-db
+
+    steps:
+      - name: Install QEMU and tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install qemu-utils
+
+      - name: Make directories
+        run: |
+          mkdir -v repo /tmp/{boots,arch}
+
+      - name: Download ArchISO bootstrap
+        run: |
+          echo "Downloading archlinux-bootstrap-x86_64.tar.zst"
+          curl -LO "https://geo.mirror.pkgbuild.com/iso/latest/archlinux-bootstrap-x86_64.tar.zst"
+
+      - name: Create raw disk image
+        run: |
+          qemu-img create -f raw archselinux.raw 8G
+          LOOP_DEVICE="$(sudo losetup --show -f -P archselinux.raw)"
+          echo "LOOP_DEVICE=${LOOP_DEVICE}" >> "$GITHUB_ENV"
+          echo "Using loop device ${LOOP_DEVICE}"
+          sudo parted "${LOOP_DEVICE}" mklabel msdos
+          sudo parted -a optimal "${LOOP_DEVICE}" mkpart primary 0% 100%
+          sudo parted "${LOOP_DEVICE}" set 1 boot on
+          sudo mkfs.ext4 "${LOOP_DEVICE}p1"
+          sudo tune2fs -L ROOT "${LOOP_DEVICE}p1"
+          sudo mount "${LOOP_DEVICE}p1" /tmp/arch
+
+      - name: Download fully signed repo
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: selinux-repo-fully-signed
+          path: repo
+
+      - name: Prepare bootstrap with signed packages
+        run: |
+          sudo tar xf archlinux-bootstrap-x86_64.tar.zst -C /tmp/boots --strip-components 1
+          # Copy full repo tree to /srv/main-signed/ (same layout as GH Pages deploy)
+          sudo mkdir -p /tmp/boots/srv
+          sudo cp -vr repo/${{ env.REPO_NAME }} /tmp/boots/srv/
+
+          # Detect key ID from public key
+          KEY_ID=$(gpg --show-keys --with-colons repo/${{ env.REPO_NAME }}/x86_64/public.asc | awk -F: '/^pub/{print $5}')
+
+          sudo /tmp/boots/usr/bin/arch-chroot /tmp/boots /bin/bash -ex -c "
+            pacman-key --init
+            pacman-key --populate archlinux
+            mount '${LOOP_DEVICE}p1' /mnt
+            echo 'Server = https://geo.mirror.pkgbuild.com/\$repo/os/\$arch' >> /etc/pacman.d/mirrorlist
+            sed -i -e 's/^CheckSpace/#CheckSpace/' /etc/pacman.conf
+
+            # Import and trust our signing key (from repo tree, not /var/cache/pacman/pkg)
+            pacman-key --add /srv/main-signed/x86_64/public.asc
+            pacman-key --lsign-key ${KEY_ID}
+
+            # Use fully-signed repo from /srv/main-signed/ -- DB + sigs already bundled
+            echo -e '[main-signed]\nSigLevel = Required DatabaseOptional\nServer = file:///srv/main-signed/\$arch' >> /etc/pacman.conf
+
+            # Install SELinux system
+            pacman --noconfirm -Sy archlinux-keyring
+            rm /var/cache/pacman/pkg/archlinux-keyring*
+            pacstrap /mnt base-selinux base-devel-selinux openssh-selinux linux grub
+            genfstab -L /mnt >> /mnt/etc/fstab
+          " || exit 1
+
+      - name: Configure the VM image
+        run: |
+          sudo /tmp/boots/usr/bin/arch-chroot /tmp/arch /bin/bash -ex -c '
+            ln -sfv /usr/share/zoneinfo/UTC /etc/localtime
+            hwclock --systohc
+            sed -i "s/#en_US.UTF-8/en_US.UTF-8/" /etc/locale.gen
+            locale-gen
+            echo LANG=en_US.UTF-8 > /etc/locale.conf
+            echo qemu-arch-selinux > /etc/hostname
+            echo -e "127.0.0.1 localhost\n::1 localhost" > /etc/hosts
+            echo -e "[Match]\nName=en*\n[Network]\nDHCP=ipv4" > /etc/systemd/network/dhcp.network
+            systemctl enable systemd-networkd.service
+            sed -i "s/#PermitRootLogin prohibit-password/PermitRootLogin yes/" /etc/ssh/sshd_config
+            sed -i "s/#PermitEmptyPasswords no/PermitEmptyPasswords yes/" /etc/ssh/sshd_config
+            systemctl enable sshd
+            sed -i "s/root:x:/root::/" /etc/passwd
+            touch /etc/vconsole.conf
+            sed -i "s/^MODULES=()/MODULES=(ata_piix)/" -i /etc/mkinitcpio.conf
+            mkinitcpio -p linux
+            grub-install --target=i386-pc '${LOOP_DEVICE}'
+            sed -i "s/GRUB_TIMEOUT=5/GRUB_TIMEOUT=0/" /etc/default/grub
+            sed -i "/LINUX_DEF/c\GRUB_CMDLINE_LINUX_DEFAULT=\"lsm=lockdown,yama,selinux,bpf selinux=1 console=ttyS0\"" /etc/default/grub
+            grub-mkconfig -o /boot/grub/grub.cfg
+            restorecon -RF /
+          '
+
+      - name: Convert image to qcow2
+        run: |
+          sudo umount /tmp/boots/mnt
+          sudo umount /tmp/arch
+          sudo losetup -d "${LOOP_DEVICE}"
+          qemu-img convert -f raw -O qcow2 archselinux.raw archselinux.qcow2
+
+      - name: Upload VM image
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: arch-selinux-vm
+          path: archselinux.qcow2
+
+  # ═══════════════════════════════════════════════════
+  # Job 6: Test SELinux Functionality (Runner)
+  # ═══════════════════════════════════════════════════
+  test:
+    runs-on: ubuntu-latest
+    needs: prepare-testing
+
+    steps:
+      - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+
+      - name: Install QEMU
+        run: |
+          sudo apt-get update
+          sudo apt-get install qemu-system-x86 qemu-utils
+
+      - name: Download VM image
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: arch-selinux-vm
+
+      - name: Create backing file for test
+        run: |
+          qemu-img create -f qcow2 -F qcow2 -b archselinux.qcow2 archselinux_test.qcow2
+
+      - name: Boot VM and run tests
+        run: |
+          qemu-system-x86_64 archselinux_test.qcow2 \
+            -net nic -net user,hostfwd=tcp::10022-:22 \
+            -nographic -m 2048 &
+          sleep 25
+          for TRY_COUNT in $(seq 5); do
+            if timeout 60 ssh -o "StrictHostKeyChecking=no" root@localhost -p 10022 true; then
+              break
+            fi
+            echo "Failed to connect after $TRY_COUNT attempts, retrying..."
+            sleep 10
+          done
+          ssh -o "StrictHostKeyChecking=no" root@localhost -p 10022 \
+            'restorecon -Rv /; ls -laZ /; sestatus'

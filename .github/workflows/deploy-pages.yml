@@ -1,0 +1,191 @@
+name: Deploy Pages (Merged)
+
+on:
+  workflow_run:
+    workflows: [Build and Sign SELinux Repository]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  merge-and-deploy:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download main-signed from nightly release
+        run: |
+          mkdir -p repo
+          gh release download nightly \
+            --repo ${{ github.repository }} \
+            -p 'selinux-repo-signed.tar.zst' \
+            -D repo/
+          cd repo && tar -xf selinux-repo-signed.tar.zst && rm -f *.tar.zst
+
+          # Generate package listing
+          cd main-signed
+          cat > packages.inc << 'PKGLIST'
+          <h2>Packages</h2>
+          <table>
+          <tr><th>Package</th><th>Version</th><th>Build Date</th><th>SHA256</th></tr>
+          PKGLIST
+          for pkg in x86_64/*.pkg.tar.zst; do
+            pkginfo=$(zstd -dc "$pkg" 2>/dev/null | tar -xO .PKGINFO 2>/dev/null)
+            pkgname=$(echo "$pkginfo" | grep '^pkgname =' | head -1 | cut -d' ' -f3)
+            pkgver=$(echo "$pkginfo" | grep '^pkgver =' | head -1 | cut -d' ' -f3)
+            builddate_ts=$(echo "$pkginfo" | grep '^builddate =' | head -1 | cut -d' ' -f3)
+            [ -n "$builddate_ts" ] && builddate=$(date -d @"$builddate_ts" +%Y-%m-%d 2>/dev/null) || builddate=$(date -d @$(stat --format=%Y "$pkg") +%Y-%m-%d)
+            sha256=$(sha256sum "$pkg" | cut -d' ' -f1)
+            echo "<tr><td>$pkgname</td><td>$pkgver</td><td>$builddate</td><td><code>$sha256</code></td></tr>" >> packages.inc
+          done
+          echo '</table>' >> packages.inc
+
+          cat > index.html << 'MAINEOF'
+          <!DOCTYPE html>
+          <html><head><meta charset=utf-8>
+          <title>main-signed — SELinux Arch repo</title>
+           <style>body{font-family:sans-serif;max-width:50rem;margin:2rem auto;padding:0 1rem;line-height:1.6}
+          a{color:#0366d6}code{background:#f6f8fa;padding:.2em .4em;border-radius:3px}
+          table{width:100%;border-collapse:collapse;margin:1em 0;font-size:.9em}
+          th,td{padding:.3em .6em;text-align:left;border-bottom:1px solid #ddd;word-break:break-all}
+          th{background:#f0f0f0}</style>
+          </head><body>
+          <h1>main-signed</h1>
+          <p>GPG-signed SELinux package repository. <a href="../">Back</a></p>
+          <h2>Usage</h2>
+          <pre>[main-signed]
+          SigLevel = Required
+          Server = https://lenucksi.github.io/selinux/main-signed/$arch</pre>
+          <h2>Install signing key</h2>
+          <pre>pacman-key --add https://lenucksi.github.io/selinux/main-signed/x86_64/public.asc
+          pacman-key --lsign-key A66EAD29600BEF3A2F09B945EB8AEC2BA4B6DC1F</pre>
+          <!-- PACKAGES -->
+          </body></html>
+          MAINEOF
+          sed -i '/<!-- PACKAGES -->/{
+            r packages.inc
+            d
+          }' index.html
+          rm packages.inc
+          cd ../..
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download hello-world from nightly-hello-world (optional)
+        run: |
+          if gh release download nightly-hello-world \
+            --repo ${{ github.repository }} \
+            -p '*.tar.zst' \
+            -D repo/ 2>/dev/null; then
+            cd repo && tar -xf hello-go-repo-signed.tar.zst && rm -f *.tar.zst
+            mv go-hello-world hello-world
+
+            # Create real db.sig copies for SigLevel = Required (Pages doesn't follow symlinks)
+            cd hello-world/x86_64
+            cp go-hello-world.db.tar.zst.sig go-hello-world.db.sig
+            cp go-hello-world.files.tar.zst.sig go-hello-world.files.sig
+            cd ..
+
+            # Generate package listing
+            cat > packages.inc << 'PKGLIST'
+          <h2>Packages</h2>
+          <table>
+          <tr><th>Package</th><th>Version</th><th>Build Date</th><th>SHA256</th></tr>
+          PKGLIST
+            for pkg in x86_64/*.pkg.tar.zst; do
+              pkginfo=$(zstd -dc "$pkg" 2>/dev/null | tar -xO .PKGINFO 2>/dev/null)
+              pkgname=$(echo "$pkginfo" | grep '^pkgname =' | head -1 | cut -d' ' -f3)
+              pkgver=$(echo "$pkginfo" | grep '^pkgver =' | head -1 | cut -d' ' -f3)
+              builddate_ts=$(echo "$pkginfo" | grep '^builddate =' | head -1 | cut -d' ' -f3)
+              [ -n "$builddate_ts" ] && builddate=$(date -d @"$builddate_ts" +%Y-%m-%d 2>/dev/null) || builddate=$(date -d @$(stat --format=%Y "$pkg") +%Y-%m-%d)
+              sha256=$(sha256sum "$pkg" | cut -d' ' -f1)
+              echo "<tr><td>$pkgname</td><td>$pkgver</td><td>$builddate</td><td><code>$sha256</code></td></tr>" >> packages.inc
+            done
+            echo '</table>' >> packages.inc
+
+            cat > index.html << 'HELLOEOF'
+          <!DOCTYPE html>
+          <html><head><meta charset=utf-8>
+          <title>hello-world — PoC signed repo</title>
+          <style>body{font-family:sans-serif;max-width:50rem;margin:2rem auto;padding:0 1rem;line-height:1.6}
+          a{color:#0366d6}code{background:#f6f8fa;padding:.2em .4em;border-radius:3px}
+          table{width:100%;border-collapse:collapse;margin:1em 0;font-size:.9em}
+          th,td{padding:.3em .6em;text-align:left;border-bottom:1px solid #ddd;word-break:break-all}
+          th{background:#f0f0f0}</style>
+          </head><body>
+          <h1>hello-world</h1>
+          <p>PoC GPG-signed package repository. <a href="../">Back</a></p>
+          <h2>Usage</h2>
+          <pre>[go-hello-world]
+          SigLevel = Required
+          Server = https://lenucksi.github.io/selinux/hello-world/$arch</pre>
+          <h2>Install signing key</h2>
+          <pre>pacman-key --add https://lenucksi.github.io/selinux/hello-world/x86_64/public.asc
+          pacman-key --lsign-key A66EAD29600BEF3A2F09B945EB8AEC2BA4B6DC1F</pre>
+          <!-- PACKAGES -->
+          </body></html>
+          HELLOEOF
+            sed -i '/<!-- PACKAGES -->/{
+              r packages.inc
+              d
+            }' index.html
+            rm packages.inc
+            cd ..
+            echo "hello-world ready"
+          else
+            echo "no hello-world release — continuing without it"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create landing page
+        run: |
+          cat > repo/index.html << 'INDEXEOF'
+          <!DOCTYPE html>
+          <html><head><meta charset=utf-8>
+          <title>SELinux Arch Linux Repository</title>
+          <style>body{font-family:sans-serif;max-width:50rem;margin:2rem auto;padding:0 1rem;line-height:1.6}
+          a{color:#0366d6}code{background:#f6f8fa;padding:.2em .4em;border-radius:3px}</style>
+          </head><body>
+          <h1>SELinux Arch Linux Repository</h1>
+          <p>GPG-signed Arch Linux package repository for SELinux support.</p>
+          <h2>Repositories</h2>
+          <ul>
+          <li><a href="hello-world/">hello-world</a> — PoC signed repo</li>
+          <li><a href="main-signed/">main-signed</a> — Full SELinux signed repo</li>
+          </ul>
+          <h2>Usage</h2>
+          <pre>
+          [main-signed]
+          SigLevel = Required
+          Server = https://lenucksi.github.io/selinux/main-signed/$arch
+
+          [go-hello-world]
+          SigLevel = Required
+          Server = https://lenucksi.github.io/selinux/hello-world/$arch</pre>
+          <h2>Install signing key</h2>
+          <pre>
+          curl -O https://lenucksi.github.io/selinux/main-signed/x86_64/public.asc
+          sudo pacman-key --add public.asc
+          sudo pacman-key --lsign-key A66EAD29600BEF3A2F09B945EB8AEC2BA4B6DC1F</pre>
+          </body></html>
+          INDEXEOF
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: repo
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128 # v5.0.0
