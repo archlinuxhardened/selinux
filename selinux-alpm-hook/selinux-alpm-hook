@@ -28,6 +28,20 @@ while read -r FILE; do
         # Only show a warning when a file does not exist as this is not fatal
         echo >&2 "Ugh, an installed file does not exist: $FILE"
     fi
+
+    # A modified backup= file is written by pacman to <FILE>.pacnew (and the
+    # previous version saved to <FILE>.pacsave on removal) instead of <FILE>.
+    # Those are the files actually written this transaction, yet they are not
+    # in the package file list, so relabel them here too. Otherwise a freshly
+    # written .pacnew keeps whatever label it was created/extracted with (e.g.
+    # a custom label baked into a locally-built package) and carries it onto
+    # <FILE> when the admin merges with `mv`, which preserves the label. Probe
+    # silently: these variants usually do not exist, so absence is not a warning.
+    for VARIANT in "$FILE.pacnew" "$FILE.pacsave"; do
+        if [ -e "$VARIANT" ] || [ -L "$VARIANT" ] ; then
+            printf '%s\0' "$VARIANT"
+        fi
+    done
 done | xargs -0 /usr/bin/restorecon -F -T0 || die "Error while relabeling files"
 
 # The install hooks of packages create files which got labelled with the wrong SELinux user
