@@ -13,7 +13,7 @@ jobs:
       options: --security-opt=seccomp=unconfined
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Build and install Arch Linux's SELinux support packages in a docker container
         run: |
@@ -138,7 +138,7 @@ jobs:
     runs-on: ubuntu-26.04
     needs: prepare_testing
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install QEMU to the runner and make needed directories
         run: |
