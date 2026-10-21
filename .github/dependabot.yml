@@ -1,0 +1,15 @@
+version: 2
+updates:
+  -
+    # Documentation:
+    # https://docs.github.com/en/code-security/how-tos/secure-your-supply-chain/secure-your-dependencies/auto-update-actions#enabling-dependabot-version-updates-for-actions
+    package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    labels:
+      - dependencies
+      - ci
+    commit-message:
+      prefix: ".github/workflows"
+      include: "scope"
