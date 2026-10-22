@@ -74,7 +74,7 @@ jobs:
           sudo mount "${LOOP_DEVICE}p1" /tmp/arch
 
       - name: Get the SELinux packages from build job
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: Arch Linux packages for SELinux support
           path: repo
@@ -146,7 +146,7 @@ jobs:
           sudo apt-get install qemu-system-x86 qemu-utils
 
       - name: Download VM artifact for testing
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: Arch Linux VM with SELinux support
 
@@ -188,7 +188,7 @@ jobs:
           mkdir -v /tmp/boots/repo
 
       - name: Get the SELinux packages from build job
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: Arch Linux packages for SELinux support
           path: /tmp/boots/repo
@@ -210,7 +210,7 @@ jobs:
     if: github.ref == 'refs/heads/master'
     steps:
       - name: Get packages from build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: SELinux pacman repository
           path: release
