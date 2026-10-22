@@ -40,7 +40,7 @@ jobs:
           cp /startdir/*/*.pkg.tar.zst /packages
 
       - name: Upload packages as artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Arch Linux packages for SELinux support
           path: /packages
@@ -129,7 +129,7 @@ jobs:
           qemu-img convert -f raw -O qcow2 archselinux.raw archselinux.qcow2
 
       - name: Upload VM to artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Arch Linux VM with SELinux support
           path: archselinux.qcow2
@@ -170,7 +170,7 @@ jobs:
           ssh -o "StrictHostKeyChecking=no" root@localhost -p 10022 'restorecon -Rv /; ls -laZ /; sestatus'
 
       - name: Upload the qcow2 file containing VM image changes to artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: Arch Linux VM after tests and restorecon
           path: archselinux_test.qcow2
@@ -199,7 +199,7 @@ jobs:
            'repo-add /repo/selinux.db.tar.xz /repo/*'
 
       - name: Upload the ready repository as an artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: SELinux pacman repository
           path: /tmp/boots/repo
