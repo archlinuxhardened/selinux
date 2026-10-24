@@ -1,0 +1,229 @@
+name: Build and Deploy hello-go
+
+on:
+  workflow_call:
+  push:
+    branches: [master]
+    paths:
+      - 'hello-go/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hello-go-pages
+  cancel-in-progress: false
+
+jobs:
+
+  # ──────────────────────────────────────────────
+  # Job 1: Build (Container, kein GPG)
+  # ──────────────────────────────────────────────
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: archlinux:base-devel
+      options: --privileged
+    steps:
+      - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+
+      - name: Setup build user
+        run: |
+          pacman -Syu --noconfirm
+          pacman -S --noconfirm base-devel go go-tools
+          useradd -m builder
+          echo "builder ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+          chown -R builder:builder .
+          mkdir -p /packages
+          chmod 777 /packages
+
+      - name: Build package (unsigned)
+        run: |
+          cd hello-go
+          sudo -u builder PKGDEST=/packages makepkg --clean --noconfirm
+
+      - name: Upload unsigned packages
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: hello-go-unsigned
+          path: /packages/
+          retention-days: 1
+
+  # ──────────────────────────────────────────────
+  # Job 2: Sign (Runner, kein Container, GPG aktiv)
+  # ──────────────────────────────────────────────
+  sign:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+
+      - name: Import GPG key
+        id: gpg
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Download unsigned packages
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: hello-go-unsigned
+          path: /tmp/packages
+
+      - name: Sign packages with GPG
+        env:
+          GPGKEY: ${{ steps.gpg.outputs.fingerprint }}
+          PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          cd /tmp/packages
+          for pkg in *.pkg.tar.zst; do
+            echo "Signing: $pkg"
+            gpg --batch --detach-sign -u "$GPGKEY" \
+              --pinentry-mode loopback --passphrase-fd 0 \
+              --output "${pkg}.sig" --sign "${pkg}" <<< "$PASSPHRASE"
+          done
+          ls -la
+
+      - name: Upload signed packages
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: hello-go-signed
+          path: /tmp/packages/
+          retention-days: 1
+
+  # ──────────────────────────────────────────────
+  # Job 3: Create Repo (Container, kein GPG)
+  # ──────────────────────────────────────────────
+  create-repo:
+    runs-on: ubuntu-latest
+    needs: sign
+    container:
+      image: archlinux:base-devel
+      options: --privileged
+    steps:
+      - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+
+      - name: Download signed packages
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: hello-go-signed
+          path: /packages
+
+      - name: Create repo structure
+        run: |
+          mkdir -p repo/go-hello-world/x86_64
+          cp /packages/*.pkg.tar.zst* repo/go-hello-world/x86_64/
+          cp public.asc repo/go-hello-world/x86_64/
+          cd repo/go-hello-world/x86_64
+           repo-add --include-sigs go-hello-world.db.tar.zst *.pkg.tar.zst
+           ln -sf go-hello-world.db.tar.zst go-hello-world.db
+           ln -sf go-hello-world.files.tar.zst go-hello-world.files
+           {
+            echo '<!DOCTYPE html>'
+            echo '<html><head><meta charset=utf-8>'
+            echo '<title>go-hello-world -- signed Arch repo</title>'
+            echo '<style>body{font-family:sans-serif;max-width:50rem;margin:2rem auto;padding:0 1rem;line-height:1.6}'
+            echo 'a{color:#0366d6}code{background:#f6f8fa;padding:.2em .4em;border-radius:3px}</style>'
+            echo '</head><body>'
+            echo '<h1>go-hello-world</h1>'
+            echo '<p>GPG-signed Arch Linux package repository -- PoC.</p>'
+            echo '<h2>Add to /etc/pacman.conf</h2>'
+            echo '<pre>[go-hello-world]'
+            echo 'SigLevel = Required DatabaseOptional'
+            echo 'Server = https://lenucksi.github.io/selinux/go-hello-world/$arch'
+            echo '</pre>'
+            echo '<h2>Install signing key</h2>'
+            echo '<pre>pacman-key --add https://lenucksi.github.io/selinux/go-hello-world/x86_64/public.asc'
+            echo 'pacman-key --lsign-key A66EAD29600BEF3A2F09B945EB8AEC2BA4B6DC1F</pre>'
+            echo '<h2>Install</h2>'
+            echo '<pre>pacman -Sy hello-go</pre>'
+            echo '</body></html>'
+          } > ../../index.html
+          ls -la ../../
+
+      - name: Upload repo directory
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: repo-dir
+          path: repo/
+          retention-days: 1
+
+  # ──────────────────────────────────────────────
+  # Job 4: Sign DB + Upload artifact (Runner, GPG aktiv)
+  # ──────────────────────────────────────────────
+  sign-db:
+    runs-on: ubuntu-latest
+    needs: create-repo
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@9f698171ed81b15d1823a05fc7211befd50c8ae0 # v6.0.3
+
+      - name: Import GPG key
+        id: gpg
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # v7.0.0
+        with:
+          gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
+
+      - name: Download repo directory
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: repo-dir
+          path: repo
+
+      - name: Sign database files
+        env:
+          GPGKEY: ${{ steps.gpg.outputs.fingerprint }}
+          PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          cd repo/go-hello-world/x86_64
+          for db in *.db.tar.zst *.files.tar.zst; do
+            echo "Signing database: $db"
+            gpg --batch --detach-sign -u "$GPGKEY" \
+              --pinentry-mode loopback --passphrase-fd 0 \
+              --output "${db}.sig" --sign "${db}" <<< "$PASSPHRASE"
+          done
+          ls -la
+
+      - name: Verify all signatures
+        env:
+          GPGKEY: ${{ steps.gpg.outputs.fingerprint }}
+        run: |
+          cd repo/go-hello-world/x86_64
+          for pkg in hello-go-*.pkg.tar.zst; do
+            gpg --verify "${pkg}.sig" "${pkg}" || exit 1
+          done
+          for db in *.db.tar.zst *.files.tar.zst; do
+            gpg --verify "${db}.sig" "${db}" || exit 1
+          done
+           echo "All signatures verified"
+
+      - name: Create real db.sig copies (Pages doesn't follow symlinks)
+        run: |
+          cd repo/go-hello-world/x86_64
+          cp go-hello-world.db.tar.zst.sig go-hello-world.db.sig
+          cp go-hello-world.files.tar.zst.sig go-hello-world.files.sig
+
+      - name: Upload signed repo artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: hello-go-repo-dir
+          path: repo/
+          retention-days: 1
+
+      - name: Publish nightly-hello-world release
+        run: |
+          tar -acf hello-go-repo-signed.tar.zst -C repo go-hello-world/
+          gh release delete nightly-hello-world --cleanup-tag --yes \
+            --repo ${{ github.repository }} 2>/dev/null || true
+          gh release create nightly-hello-world \
+            --repo ${{ github.repository }} \
+            --title "Nightly Hello-World — $(date +'%Y-%m-%d')" \
+            --prerelease \
+            --notes "Commit: ${{ github.sha }}" \
+            hello-go-repo-signed.tar.zst
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
