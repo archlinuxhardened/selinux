@@ -1,7 +1,7 @@
 pkgbase = openssh-selinux
 	pkgdesc = SSH protocol implementation for remote login, command execution and file transfer, with SELinux support
 	pkgver = 10.6p1
-	pkgrel = 2
+	pkgrel = 3
 	url = https://www.openssh.com/portable.html
 	arch = x86_64
 	arch = aarch64
@@ -26,15 +26,15 @@ pkgbase = openssh-selinux
 	optdepends = sh: for ssh-copy-id and findssl.sh
 	optdepends = x11-ssh-askpass: input passphrase in X
 	optdepends = xorg-xauth: X11 forwarding
-	provides = openssh=10.6p1-2
-	provides = selinux-openssh=10.6p1-2
+	provides = openssh=10.6p1-3
+	provides = selinux-openssh=10.6p1-3
 	conflicts = openssh
 	conflicts = selinux-openssh
 	backup = etc/pam.d/sshd
 	backup = etc/ssh/ssh_config
 	backup = etc/ssh/sshd_config
-	source = https://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-10.6p1.tar.gz
-	source = https://ftp.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-10.6p1.tar.gz.asc
+	source = https://cdn.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-10.6p1.tar.gz
+	source = https://cdn.openbsd.org/pub/OpenBSD/OpenSSH/portable/openssh-10.6p1.tar.gz.asc
 	source = 99-archlinux.conf
 	source = openssh.tmpfiles
 	source = sshdgenkeys.service
